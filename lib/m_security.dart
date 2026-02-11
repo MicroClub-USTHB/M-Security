@@ -1,4 +1,3 @@
-
 import 'm_security_platform_interface.dart';
 
 class MSecurity {
