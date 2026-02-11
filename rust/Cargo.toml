@@ -8,6 +8,12 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.11.1"
+ring = "0.17"          
+chacha20poly1305 = "0.10"
+argon2 = "0.5"
+blake3 = "1.5"
+zstd = "0.13"          
+zeroize = "1.7"        
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
