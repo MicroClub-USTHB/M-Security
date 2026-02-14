@@ -11,6 +11,11 @@ pub trait Hasher {
     /// through some sort of rolling implementation, or updating state machine.
     fn read(&mut self, chunk: Vec<u8>);
 
+    /// Reset this hasher.
+    ///
+    /// Doing this will restore any state that was accumulated from [`Hasher::read`] calls.
+    fn reset(&mut self);
+
     /// Get the final digest of the hashed data.
     ///
     /// It's up to the caller to ensure all required data has been fed into the hasher before
