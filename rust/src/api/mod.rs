@@ -1,6 +1,4 @@
-//! # M-security rust API
+//! Public API module (scanned by FRB for binding generation).
 
-use crate::api::encryption::Encyprtion;
-
-mod encryption;
-mod hashing;
+pub mod encryption;
+pub mod hashing;

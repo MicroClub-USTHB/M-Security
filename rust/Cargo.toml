@@ -7,14 +7,50 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
+# FFI bridge
 flutter_rust_bridge = "=2.11.1"
-ring = "0.17"          
+
+# Async
+futures = "0.3"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Randomness
+rand = "0.8"
+
+# Secure memory
+zeroize = { version = "1.8", features = ["derive"] }
+
+# Constant-time operations
+subtle = "2.6"
+
+# Logging
+log = "0.4"
+
+# AEAD ciphers
+aes-gcm = "0.10"
 chacha20poly1305 = "0.10"
+
+# Hashing
+blake3 = "1.8"
+sha3 = "0.10"
+
+# KDF
 argon2 = "0.5"
-blake3 = "1.5"
-zstd = "0.13"          
-zeroize = "1.7"        
-futures = "0.3.31"
+hkdf = "0.12"
+sha2 = "0.10"
+hmac = "0.12"
+
+# Compression
+zstd = "0.13"
+
+[profile.release]
+panic = "abort"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[lints.clippy]
+unwrap_used = "deny"
