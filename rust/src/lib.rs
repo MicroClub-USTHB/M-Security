@@ -6,7 +6,7 @@
 
 pub mod api;
 
-#[allow(dead_code)] // TODO: wire up to api/
+#[allow(dead_code)] // Some items used later
 mod core;
 
 #[allow(clippy::unwrap_used)] // Generated code
