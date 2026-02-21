@@ -2,8 +2,10 @@
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Hasher;
+use flutter_rust_bridge::frb;
 
 /// BLAKE3 hasher wrapping the blake3 crate.
+#[frb(ignore)]
 pub struct Blake3Hasher {
     inner: blake3::Hasher,
 }
