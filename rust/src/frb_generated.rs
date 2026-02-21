@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1347368936;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1054375300;
 
 // Section: executor
 
@@ -48,6 +48,117 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__hashing__argon2__argon2id_hash_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "argon2id_hash",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_password = <String>::sse_decode(&mut deserializer);
+            let api_preset =
+                <crate::api::hashing::argon2::Argon2Preset>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
+                    let output_ok =
+                        crate::api::hashing::argon2::argon2id_hash(api_password, api_preset)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__hashing__argon2__argon2id_hash_with_salt_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "argon2id_hash_with_salt",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_password = <String>::sse_decode(&mut deserializer);
+            let api_salt = <String>::sse_decode(&mut deserializer);
+            let api_preset =
+                <crate::api::hashing::argon2::Argon2Preset>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
+                    let output_ok = crate::api::hashing::argon2::argon2id_hash_with_salt(
+                        api_password,
+                        api_salt,
+                        api_preset,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__hashing__argon2__argon2id_verify_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "argon2id_verify",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_phc_hash = <String>::sse_decode(&mut deserializer);
+            let api_password = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
+                    let output_ok =
+                        crate::api::hashing::argon2::argon2id_verify(api_phc_hash, api_password)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__hashing__blake3_hash_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -761,6 +872,18 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for crate::api::hashing::argon2::Argon2Preset {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::hashing::argon2::Argon2Preset::Mobile,
+            1 => crate::api::hashing::argon2::Argon2Preset::Desktop,
+            _ => unreachable!("Invalid variant for Argon2Preset: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for crate::core::error::CryptoError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -800,10 +923,20 @@ impl SseDecode for crate::core::error::CryptoError {
                 let mut var_field0 = <String>::sse_decode(deserializer);
                 return crate::core::error::CryptoError::InvalidParameter(var_field0);
             }
+            8 => {
+                return crate::core::error::CryptoError::AuthenticationFailed;
+            }
             _ => {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseDecode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
     }
 }
 
@@ -845,13 +978,6 @@ impl SseDecode for usize {
     }
 }
 
-impl SseDecode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
-    }
-}
-
 impl SseDecode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -868,46 +994,63 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__hashing__blake3_hash_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__encryption__create_noop_encryption_impl(
+        1 => {
+            wire__crate__api__hashing__argon2__argon2id_hash_impl(port, ptr, rust_vec_len, data_len)
+        }
+        2 => wire__crate__api__hashing__argon2__argon2id_hash_with_salt_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        4 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__encryption__encryption_algorithm_id_impl(
+        3 => wire__crate__api__hashing__argon2__argon2id_verify_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__hashing__hasher_algorithm_id_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__encryption__noop__noop_encryption_algorithm_id_impl(
+        4 => wire__crate__api__hashing__blake3_hash_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__encryption__create_noop_encryption_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__encryption__noop__noop_encryption_decrypt_impl(
+        7 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__encryption__encryption_algorithm_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__encryption__noop__noop_encryption_encrypt_impl(
+        11 => {
+            wire__crate__api__hashing__hasher_algorithm_id_impl(port, ptr, rust_vec_len, data_len)
+        }
+        12 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__encryption__noop__noop_encryption_algorithm_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__encryption__noop__noop_encryption_decrypt_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        17 => wire__crate__api__encryption__noop__noop_encryption_encrypt_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        18 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -957,6 +1100,27 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<HasherHandle>> for HasherHandl
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::hashing::argon2::Argon2Preset {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Mobile => 0.into_dart(),
+            Self::Desktop => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::hashing::argon2::Argon2Preset
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::hashing::argon2::Argon2Preset>
+    for crate::api::hashing::argon2::Argon2Preset
+{
+    fn into_into_dart(self) -> crate::api::hashing::argon2::Argon2Preset {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -983,6 +1147,7 @@ impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
             crate::core::error::CryptoError::InvalidParameter(field0) => {
                 [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
+            crate::core::error::CryptoError::AuthenticationFailed => [8.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -1061,6 +1226,22 @@ impl SseEncode for String {
     }
 }
 
+impl SseEncode for crate::api::hashing::argon2::Argon2Preset {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::hashing::argon2::Argon2Preset::Mobile => 0,
+                crate::api::hashing::argon2::Argon2Preset::Desktop => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for crate::core::error::CryptoError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1096,10 +1277,20 @@ impl SseEncode for crate::core::error::CryptoError {
                 <i32>::sse_encode(7, serializer);
                 <String>::sse_encode(field0, serializer);
             }
+            crate::core::error::CryptoError::AuthenticationFailed => {
+                <i32>::sse_encode(8, serializer);
+            }
             _ => {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseEncode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -1137,13 +1328,6 @@ impl SseEncode for usize {
             .cursor
             .write_u64::<NativeEndian>(self as _)
             .unwrap();
-    }
-}
-
-impl SseEncode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
     }
 }
 
