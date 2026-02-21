@@ -1,6 +1,7 @@
 //! Hashing API module.
 
-pub mod blake3;
+mod blake3;
+mod sha3;
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Hasher;
@@ -26,6 +27,11 @@ impl HasherHandle {
 /// Create a BLAKE3 hasher handle.
 pub fn create_blake3() -> HasherHandle {
     HasherHandle::new(Box::new(blake3::Blake3Hasher::new()))
+}
+
+/// Create a SHA-3 hasher handle.
+pub fn create_sha3() -> HasherHandle {
+    HasherHandle::new(Box::new(sha3::Sha3Hasher::new()))
 }
 
 /// Feed data into the hasher.
@@ -65,4 +71,12 @@ pub fn hasher_algorithm_id(handle: &HasherHandle) -> Result<String, CryptoError>
 /// Convenience function for hashing data in a single call.
 pub fn blake3_hash(data: Vec<u8>) -> Vec<u8> {
     ::blake3::hash(&data).as_bytes().to_vec()
+}
+
+/// One-shot SHA-3 hash function.
+///
+/// Convenience function for hashing data in a single call.
+pub fn sha3_hash(data: Vec<u8>) -> Vec<u8> {
+    use ::sha3::{Digest, Sha3_256 as Sha3Digest};
+    Sha3Digest::digest(&data).to_vec()
 }
