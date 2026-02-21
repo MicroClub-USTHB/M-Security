@@ -30,21 +30,31 @@ A native Rust cryptographic SDK for Flutter, providing secure, high-performance 
 | Section | Status |
 |---------|--------|
 | Foundation (traits, error handling, FRB setup) | Done |
-| 2.1 Modern Hashing | In progress |
+| 2.1 BLAKE3 | Done |
+| 2.1 SHA-3 (Keccak) | Done |
+| 2.1 Argon2id | Next |
 | 2.2 Authenticated Encryption | Planned |
 | 2.3 Key Derivation | Planned |
 
-### Implemented (Foundation)
+### Implemented
 
+**Foundation**
 - Flutter plugin scaffold with platform support (Android, iOS, macOS, Linux, Windows)
 - Rust crate structure with `cdylib` + `staticlib` outputs
 - Flutter Rust Bridge v2.11.1 integration
 - Core traits: `Encryption`, `Hasher`, `Kdf` with `Send + Sync + 'static`
 - `CryptoError` enum with FFI-safe variants
 - `SecretBuffer` with zeroize on Drop
-- Opaque handle pattern (`#[frb(opaque)]` on `CipherHandle`)
+- Opaque handle pattern (`#[frb(opaque)]` on `CipherHandle`, `HasherHandle`)
 - Noop encryption reference implementation (FRB validation)
 - `clippy::unwrap_used = "deny"` and `panic = "abort"` in release
+
+**Hashing**
+- BLAKE3 hasher — one-shot (`blake3_hash`) and streaming via `HasherHandle`
+- SHA-3-256 hasher — one-shot (`sha3_hash`) and streaming via `HasherHandle`
+- `HasherHandle` with `Mutex<Box<dyn Hasher>>` for interior mutability
+- Dart integration tests: 10 cases (known vectors, streaming, chunk-size consistency)
+- Verified on macOS (desktop) and iOS (simulator)
 
 ### Future Milestone
 
