@@ -34,7 +34,7 @@ aes-gcm = "0.10"
 chacha20poly1305 = "0.10"
 
 # Hashing
-blake3 = "1.8"
+blake3 = { version = "1.8", default-features = false, features = ["std"] }
 sha3 = "0.10"
 
 # KDF
@@ -43,11 +43,18 @@ hkdf = "0.12"
 sha2 = "0.10"
 hmac = "0.12"
 
-# Compression
-zstd = "0.13"
+# Compression 
+zstd = { version = "0.13", optional = true }
+
+[features]
+default = []
+compression = ["zstd"]
 
 [profile.release]
 panic = "abort"
+
+[dev-dependencies]
+hex = "0.4"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
