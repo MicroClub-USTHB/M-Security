@@ -28,6 +28,9 @@ pub enum CryptoError {
 
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
+
+    #[error("Authentication failed")]
+    AuthenticationFailed,
 }
 
 impl From<std::io::Error> for CryptoError {
