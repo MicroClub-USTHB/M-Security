@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:m_security/src/rust/api/hashing/argon2.dart';
+import 'package:m_security/src/hashing/argon2.dart';
 import 'package:m_security/src/rust/frb_generated.dart';
 
 void main() {
