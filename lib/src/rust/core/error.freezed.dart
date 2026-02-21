@@ -55,7 +55,7 @@ extension CryptoErrorPatterns on CryptoError {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -66,7 +66,8 @@ return decryptionFailed(_that);case CryptoError_HashingFailed() when hashingFail
 return hashingFailed(_that);case CryptoError_KdfFailed() when kdfFailed != null:
 return kdfFailed(_that);case CryptoError_IoError() when ioError != null:
 return ioError(_that);case CryptoError_InvalidParameter() when invalidParameter != null:
-return invalidParameter(_that);case _:
+return invalidParameter(_that);case CryptoError_AuthenticationFailed() when authenticationFailed != null:
+return authenticationFailed(_that);case _:
   return orElse();
 
 }
@@ -84,7 +85,7 @@ return invalidParameter(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,required TResult Function( CryptoError_AuthenticationFailed value)  authenticationFailed,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
@@ -95,7 +96,8 @@ return decryptionFailed(_that);case CryptoError_HashingFailed():
 return hashingFailed(_that);case CryptoError_KdfFailed():
 return kdfFailed(_that);case CryptoError_IoError():
 return ioError(_that);case CryptoError_InvalidParameter():
-return invalidParameter(_that);}
+return invalidParameter(_that);case CryptoError_AuthenticationFailed():
+return authenticationFailed(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -109,7 +111,7 @@ return invalidParameter(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult? Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -120,7 +122,8 @@ return decryptionFailed(_that);case CryptoError_HashingFailed() when hashingFail
 return hashingFailed(_that);case CryptoError_KdfFailed() when kdfFailed != null:
 return kdfFailed(_that);case CryptoError_IoError() when ioError != null:
 return ioError(_that);case CryptoError_InvalidParameter() when invalidParameter != null:
-return invalidParameter(_that);case _:
+return invalidParameter(_that);case CryptoError_AuthenticationFailed() when authenticationFailed != null:
+return authenticationFailed(_that);case _:
   return null;
 
 }
@@ -137,7 +140,7 @@ return invalidParameter(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,TResult Function()?  authenticationFailed,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -147,7 +150,8 @@ return decryptionFailed();case CryptoError_HashingFailed() when hashingFailed !=
 return hashingFailed(_that.field0);case CryptoError_KdfFailed() when kdfFailed != null:
 return kdfFailed(_that.field0);case CryptoError_IoError() when ioError != null:
 return ioError(_that.field0);case CryptoError_InvalidParameter() when invalidParameter != null:
-return invalidParameter(_that.field0);case _:
+return invalidParameter(_that.field0);case CryptoError_AuthenticationFailed() when authenticationFailed != null:
+return authenticationFailed();case _:
   return orElse();
 
 }
@@ -165,7 +169,7 @@ return invalidParameter(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,required TResult Function()  authenticationFailed,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce():
@@ -175,7 +179,8 @@ return decryptionFailed();case CryptoError_HashingFailed():
 return hashingFailed(_that.field0);case CryptoError_KdfFailed():
 return kdfFailed(_that.field0);case CryptoError_IoError():
 return ioError(_that.field0);case CryptoError_InvalidParameter():
-return invalidParameter(_that.field0);}
+return invalidParameter(_that.field0);case CryptoError_AuthenticationFailed():
+return authenticationFailed();}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -189,7 +194,7 @@ return invalidParameter(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,TResult? Function()?  authenticationFailed,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -199,7 +204,8 @@ return decryptionFailed();case CryptoError_HashingFailed() when hashingFailed !=
 return hashingFailed(_that.field0);case CryptoError_KdfFailed() when kdfFailed != null:
 return kdfFailed(_that.field0);case CryptoError_IoError() when ioError != null:
 return ioError(_that.field0);case CryptoError_InvalidParameter() when invalidParameter != null:
-return invalidParameter(_that.field0);case _:
+return invalidParameter(_that.field0);case CryptoError_AuthenticationFailed() when authenticationFailed != null:
+return authenticationFailed();case _:
   return null;
 
 }
@@ -668,5 +674,37 @@ as String,
 
 
 }
+
+/// @nodoc
+
+
+class CryptoError_AuthenticationFailed extends CryptoError {
+  const CryptoError_AuthenticationFailed(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CryptoError_AuthenticationFailed);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CryptoError.authenticationFailed()';
+}
+
+
+}
+
+
+
 
 // dart format on

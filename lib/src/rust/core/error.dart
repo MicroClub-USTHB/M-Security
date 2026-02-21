@@ -26,4 +26,6 @@ sealed class CryptoError with _$CryptoError implements FrbException {
   const factory CryptoError.ioError(String field0) = CryptoError_IoError;
   const factory CryptoError.invalidParameter(String field0) =
       CryptoError_InvalidParameter;
+  const factory CryptoError.authenticationFailed() =
+      CryptoError_AuthenticationFailed;
 }

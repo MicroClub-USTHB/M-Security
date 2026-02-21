@@ -6,6 +6,7 @@
 import 'api/encryption.dart';
 import 'api/encryption/noop.dart';
 import 'api/hashing.dart';
+import 'api/hashing/argon2.dart';
 import 'core/error.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -67,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1347368936;
+  int get rustContentHash => -1054375300;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,6 +79,22 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<String> crateApiHashingArgon2Argon2IdHash({
+    required String password,
+    required Argon2Preset preset,
+  });
+
+  Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({
+    required String password,
+    required String salt,
+    required Argon2Preset preset,
+  });
+
+  Future<void> crateApiHashingArgon2Argon2IdVerify({
+    required String phcHash,
+    required String password,
+  });
+
   Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data});
 
   Future<HasherHandle> crateApiHashingCreateBlake3();
@@ -161,6 +178,113 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<String> crateApiHashingArgon2Argon2IdHash({
+    required String password,
+    required Argon2Preset preset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(password, serializer);
+          sse_encode_argon_2_preset(preset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiHashingArgon2Argon2IdHashConstMeta,
+        argValues: [password, preset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashConstMeta =>
+      const TaskConstMeta(
+        debugName: "argon2id_hash",
+        argNames: ["password", "preset"],
+      );
+
+  @override
+  Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({
+    required String password,
+    required String salt,
+    required Argon2Preset preset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(password, serializer);
+          sse_encode_String(salt, serializer);
+          sse_encode_argon_2_preset(preset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta,
+        argValues: [password, salt, preset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta =>
+      const TaskConstMeta(
+        debugName: "argon2id_hash_with_salt",
+        argNames: ["password", "salt", "preset"],
+      );
+
+  @override
+  Future<void> crateApiHashingArgon2Argon2IdVerify({
+    required String phcHash,
+    required String password,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(phcHash, serializer);
+          sse_encode_String(password, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiHashingArgon2Argon2IdVerifyConstMeta,
+        argValues: [phcHash, password],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiHashingArgon2Argon2IdVerifyConstMeta =>
+      const TaskConstMeta(
+        debugName: "argon2id_verify",
+        argNames: ["phcHash", "password"],
+      );
+
+  @override
   Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data}) {
     return handler.executeNormal(
       NormalTask(
@@ -170,7 +294,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 4,
             port: port_,
           );
         },
@@ -197,7 +321,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 5,
             port: port_,
           );
         },
@@ -225,7 +349,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 6,
             port: port_,
           );
         },
@@ -253,7 +377,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 7,
             port: port_,
           );
         },
@@ -291,7 +415,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 8,
             port: port_,
           );
         },
@@ -330,7 +454,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 9,
             port: port_,
           );
         },
@@ -365,7 +489,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 10,
             port: port_,
           );
         },
@@ -401,7 +525,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 11,
             port: port_,
           );
         },
@@ -437,7 +561,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 12,
             port: port_,
           );
         },
@@ -468,7 +592,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 13,
             port: port_,
           );
         },
@@ -503,7 +627,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 14,
             port: port_,
           );
         },
@@ -536,7 +660,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -573,7 +697,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 16,
             port: port_,
           );
         },
@@ -610,7 +734,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -641,7 +765,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
@@ -736,6 +860,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Argon2Preset dco_decode_argon_2_preset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Argon2Preset.values[raw as int];
+  }
+
+  @protected
   NoopEncryption dco_decode_box_autoadd_noop_encryption(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_noop_encryption(raw);
@@ -764,9 +894,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_IoError(dco_decode_String(raw[1]));
       case 7:
         return CryptoError_InvalidParameter(dco_decode_String(raw[1]));
+      case 8:
+        return CryptoError_AuthenticationFailed();
       default:
         throw Exception("unreachable");
     }
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -888,6 +1026,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return Argon2Preset.values[inner];
+  }
+
+  @protected
   NoopEncryption sse_decode_box_autoadd_noop_encryption(
     SseDeserializer deserializer,
   ) {
@@ -927,9 +1072,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 7:
         var var_field0 = sse_decode_String(deserializer);
         return CryptoError_InvalidParameter(var_field0);
+      case 8:
+        return CryptoError_AuthenticationFailed();
       default:
         throw UnimplementedError('');
     }
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -967,12 +1120,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
-  }
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -1066,6 +1213,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_noop_encryption(
     NoopEncryption self,
     SseSerializer serializer,
@@ -1104,7 +1257,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case CryptoError_InvalidParameter(field0: final field0):
         sse_encode_i_32(7, serializer);
         sse_encode_String(field0, serializer);
+      case CryptoError_AuthenticationFailed():
+        sse_encode_i_32(8, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -1152,12 +1313,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 
   @protected

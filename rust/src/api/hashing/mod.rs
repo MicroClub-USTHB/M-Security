@@ -2,6 +2,7 @@
 
 mod blake3;
 mod sha3;
+pub mod argon2;
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Hasher;

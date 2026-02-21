@@ -9,6 +9,7 @@
 import 'api/encryption.dart';
 import 'api/encryption/noop.dart';
 import 'api/hashing.dart';
+import 'api/hashing/argon2.dart';
 import 'core/error.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -71,10 +72,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  Argon2Preset dco_decode_argon_2_preset(dynamic raw);
+
+  @protected
   NoopEncryption dco_decode_box_autoadd_noop_encryption(dynamic raw);
 
   @protected
   CryptoError dco_decode_crypto_error(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
@@ -134,12 +141,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer);
+
+  @protected
   NoopEncryption sse_decode_box_autoadd_noop_encryption(
     SseDeserializer deserializer,
   );
 
   @protected
   CryptoError sse_decode_crypto_error(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
@@ -158,9 +171,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
@@ -211,6 +221,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_noop_encryption(
     NoopEncryption self,
     SseSerializer serializer,
@@ -218,6 +231,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_crypto_error(CryptoError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
@@ -242,9 +258,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
