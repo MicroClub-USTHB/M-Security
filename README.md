@@ -1,36 +1,79 @@
 # M-Security SDK
 
-`m_security` is a security sdk build with rust and dart to help flutter developers secure their code.
+A native Rust cryptographic SDK for Flutter, providing secure, high-performance primitives for hashing, encryption, and key derivation via Flutter Rust Bridge (FRB).
 
-The goal is to provide secure, high-performance primitives for hashing, encryption, and protected storage.
+## Cryptographic Specifications
+
+### 2.1 Modern Hashing
+
+| Algorithm | Purpose | Crate |
+|-----------|---------|-------|
+| **Argon2id** | Password hashing, GPU/ASIC resistant | `argon2 0.5` |
+| **BLAKE3** | Ultra fast integrity verification and checksums | `blake3 1.8` |
+| **SHA-3 (Keccak)** | NIST standard for blockchain/state-level compatibility | `sha3 0.10` |
+
+### 2.2 Authenticated Encryption (AEAD)
+
+| Algorithm | Purpose | Crate |
+|-----------|---------|-------|
+| **AES-256-GCM** | Industry standard with hardware acceleration (AES-NI) | `aes-gcm 0.10` |
+| **ChaCha20-Poly1305** | High-performance alternative for mobile (no AES hardware) | `chacha20poly1305 0.10` |
+
+### 2.3 Key Derivation (KDF)
+
+| Algorithm | Purpose | Crate |
+|-----------|---------|-------|
+| **HKDF** | Convert shared secrets or passwords into high-entropy keys | `hkdf 0.12` |
 
 ## Current Status
 
-This repository is in early development.
+| Section | Status |
+|---------|--------|
+| Foundation (traits, error handling, FRB setup) | Done |
+| 2.1 BLAKE3 | Done |
+| 2.1 SHA-3 (Keccak) | Done |
+| 2.1 Argon2id | Next |
+| 2.2 Authenticated Encryption | Planned |
+| 2.3 Key Derivation | Planned |
 
-Implemented now:
-- Flutter plugin scaffold
-- Rust bridge wiring (`flutter_rust_bridge`)
-- Sample Rust APIs in `rust/src/api/simple.rs`
+### Implemented
 
-Planned modules:
-- Hashing (`Argon2id`, `BLAKE3`, `SHA-3`)
-- Encryption (`AES-GCM`, `ChaCha20-Poly1305`)
-- KDF (`HKDF`, `PBKDF2`)
-- Encrypted virtual file system and secure shredding
+**Foundation**
+- Flutter plugin scaffold with platform support (Android, iOS, macOS, Linux, Windows)
+- Rust crate structure with `cdylib` + `staticlib` outputs
+- Flutter Rust Bridge v2.11.1 integration
+- Core traits: `Encryption`, `Hasher`, `Kdf` with `Send + Sync + 'static`
+- `CryptoError` enum with FFI-safe variants
+- `SecretBuffer` with zeroize on Drop
+- Opaque handle pattern (`#[frb(opaque)]` on `CipherHandle`, `HasherHandle`)
+- Noop encryption reference implementation (FRB validation)
+- `clippy::unwrap_used = "deny"` and `panic = "abort"` in release
+
+**Hashing**
+- BLAKE3 hasher — one-shot (`blake3_hash`) and streaming via `HasherHandle`
+- SHA-3-256 hasher — one-shot (`sha3_hash`) and streaming via `HasherHandle`
+- `HasherHandle` with `Mutex<Box<dyn Hasher>>` for interior mutability
+- Dart integration tests: 10 cases (known vectors, streaming, chunk-size consistency)
+- Verified on macOS (desktop) and iOS (simulator)
+
+### Future Milestone
+
+- Streaming encryption/decryption/hashing
+- Compression (Zstd)
+- Encrypted Virtual File System (.vault)
 
 ## Tech Stack
 
-- Flutter SDK (stable)
-- Dart SDK `^3.10.8`
-- Rust (stable via `rustup`)
-- `flutter_rust_bridge` `2.11.1`
+- **Flutter SDK** (stable)
+- **Dart SDK** `^3.10.8`
+- **Rust** (stable via `rustup`)
+- **flutter_rust_bridge** `2.11.1`
 
 ## Prerequisites
 
-Install these before building.
+Install these before building:
 
-All platforms:
+**All platforms:**
 - Flutter SDK
 - Rust toolchain (`rustup`)
 - FRB code generator:
@@ -39,70 +82,58 @@ All platforms:
 cargo install flutter_rust_bridge_codegen
 ```
 
-Platform-specific:
-- Windows: Visual Studio C++ Build Tools (MSVC), LLVM
-- macOS: Xcode, Homebrew (and Android NDK if targeting Android)
-- Linux: `build-essential`, `libssl-dev`, `pkg-config`, `llvm`
+**Platform-specific:**
+- **Windows:** Visual Studio C++ Build Tools (MSVC), LLVM
+- **macOS:** Xcode, Homebrew (and Android NDK if targeting Android)
+- **Linux:** `build-essential`, `libssl-dev`, `pkg-config`, `llvm`
 
 ## Quick Start
 
-From the project root:
-
 ```bash
 flutter pub get
-cd rust
-cargo build
-cd ..
-```
-
-## Generate Rust<->Dart Bindings
-
-Regenerate bindings whenever you change Rust API signatures exposed through FRB.
-
-```bash
+cd rust && cargo build && cd ..
 flutter_rust_bridge_codegen generate
 ```
 
 ## Project Structure
 
-```text
+```
 .
-|-- lib/
-|-- rust/
-|   |-- src/
-|   |   |-- api/
-|   |   |   |-- mod.rs
-|   |   |   `-- simple.rs
-|   `-- Cargo.toml
-`-- pubspec.yaml
+├── lib/                          # Dart code
+│   └── src/rust/                 # FRB-generated bindings
+├── rust/
+│   └── src/
+│       ├── api/                  # Public API (FRB scans this)
+│       │   ├── encryption/       # AEAD implementations
+│       │   └── hashing/          # Hash implementations
+│       └── core/                 # Internal (traits, errors, types)
+│           ├── error.rs          # CryptoError enum
+│           ├── secret.rs         # SecretBuffer with zeroize
+│           └── traits.rs         # Encryption, Hasher, Kdf traits
+└── pubspec.yaml
 ```
 
-## Adding New Rust API Modules
+## Cross-Compilation Targets
 
-Rust modules must be declared in their parent `mod.rs`.
-
-Example:
-1. Create `rust/src/api/hashing.rs`
-2. Register it in `rust/src/api/mod.rs`:
-
-```rust
-pub mod simple;
-pub mod hashing;
-```
-
-If you create a subfolder (for example `rust/src/api/storage/`), add its own `mod.rs` and declare child modules there.
+| Target | Platform |
+|--------|----------|
+| `aarch64-linux-android` | Android ARM64 |
+| `armv7-linux-androideabi` | Android ARM32 |
+| `aarch64-apple-ios` | iOS ARM64 |
+| `aarch64-apple-ios-sim` | iOS Simulator |
+| `aarch64-apple-darwin` | macOS ARM64 |
+| `x86_64-apple-darwin` | macOS Intel |
+| `x86_64-unknown-linux-gnu` | Linux |
+| `x86_64-pc-windows-msvc` | Windows |
 
 ## Security Guidelines
 
-- Prefer streaming for large file operations; avoid loading full files into RAM.
-- Keep key material in platform-secure storage where possible (iOS Secure Enclave, Android Keystore).
-- Zero sensitive data in memory using `zeroize`.
+- All key material is zeroized on Drop via `zeroize` crate
+- No `unwrap()` in FFI-visible code paths (`clippy::unwrap_used = "deny"`)
+- `panic = "abort"` in release profile
+- Streaming for large files (constant memory footprint)
+- Platform-secure storage for keys (iOS Secure Enclave, Android Keystore) - future
 
-## Development Notes
+## License
 
-Current sample API (`rust/src/api/simple.rs`) includes:
-- `greet(name)`
-- `init_app()`
-- `hash_password(password)` (mock function i used to test the bridge)
-
-
+MIT

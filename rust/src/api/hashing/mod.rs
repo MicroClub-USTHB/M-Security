@@ -1,30 +1,82 @@
-/// Shared trait for all hashing algorithms available.
-pub trait Hasher {
-    /// The needed parameters.
-    ///
-    /// You should store this type inside your encryption algorithm
-    type Params: Send + 'static;
+//! Hashing API module.
 
-    /// Feed the hasher a single chunk of data.
-    ///
-    /// It's up to the actual hashing implementation to see how to incorporate the data, generally
-    /// through some sort of rolling implementation, or updating state machine.
-    fn read(&mut self, chunk: Vec<u8>);
+mod blake3;
+mod sha3;
 
-    /// Reset this hasher.
-    ///
-    /// Doing this will restore any state that was accumulated from [`Hasher::read`] calls.
-    fn reset(&mut self);
+use crate::core::error::CryptoError;
+use crate::core::traits::Hasher;
+use flutter_rust_bridge::frb;
+use std::sync::Mutex;
 
-    /// Get the final digest of the hashed data.
-    ///
-    /// It's up to the caller to ensure all required data has been fed into the hasher before
-    /// retreiving the [`Self::digest`].
-    fn digest(&self) -> String;
+/// Opaque handle wrapping any hasher implementation.
+///
+/// Uses Mutex for interior mutability since Hasher::update requires &mut self.
+#[frb(opaque)]
+pub struct HasherHandle {
+    inner: Mutex<Box<dyn Hasher>>,
+}
 
-    /// Get the final digest of the hashed data, as a [`Vec<u8>`].
-    ///
-    /// It's up to the caller to ensure all required data has been fed into the hasher before
-    /// retreiving the [`Self::digest`].
-    fn digest_bytes(&self) -> Vec<u8>;
+impl HasherHandle {
+    fn new(hasher: Box<dyn Hasher>) -> Self {
+        Self {
+            inner: Mutex::new(hasher),
+        }
+    }
+}
+
+/// Create a BLAKE3 hasher handle.
+pub fn create_blake3() -> HasherHandle {
+    HasherHandle::new(Box::new(blake3::Blake3Hasher::new()))
+}
+
+/// Create a SHA-3 hasher handle.
+pub fn create_sha3() -> HasherHandle {
+    HasherHandle::new(Box::new(sha3::Sha3Hasher::new()))
+}
+
+/// Feed data into the hasher.
+pub fn hasher_update(handle: &HasherHandle, data: Vec<u8>) -> Result<(), CryptoError> {
+    let mut guard = handle.inner.lock().map_err(|_| {
+        CryptoError::HashingFailed("Hasher lock poisoned".into())
+    })?;
+    guard.update(&data)
+}
+
+/// Reset the hasher to its initial state.
+pub fn hasher_reset(handle: &HasherHandle) -> Result<(), CryptoError> {
+    let mut guard = handle.inner.lock().map_err(|_| {
+        CryptoError::HashingFailed("Hasher lock poisoned".into())
+    })?;
+    guard.reset()
+}
+
+/// Finalize and return the digest.
+pub fn hasher_finalize(handle: &HasherHandle) -> Result<Vec<u8>, CryptoError> {
+    let guard = handle.inner.lock().map_err(|_| {
+        CryptoError::HashingFailed("Hasher lock poisoned".into())
+    })?;
+    guard.finalize()
+}
+
+/// Get the algorithm identifier for the hasher.
+pub fn hasher_algorithm_id(handle: &HasherHandle) -> Result<String, CryptoError> {
+    let guard = handle.inner.lock().map_err(|_| {
+        CryptoError::HashingFailed("Hasher lock poisoned".into())
+    })?;
+    Ok(guard.algorithm_id().to_string())
+}
+
+/// One-shot BLAKE3 hash function.
+///
+/// Convenience function for hashing data in a single call.
+pub fn blake3_hash(data: Vec<u8>) -> Vec<u8> {
+    ::blake3::hash(&data).as_bytes().to_vec()
+}
+
+/// One-shot SHA-3 hash function.
+///
+/// Convenience function for hashing data in a single call.
+pub fn sha3_hash(data: Vec<u8>) -> Vec<u8> {
+    use ::sha3::{Digest, Sha3_256 as Sha3Digest};
+    Sha3Digest::digest(&data).to_vec()
 }

@@ -3,12 +3,43 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import '../core/error.dart';
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-abstract class Encyprtion {
-  /// Encrypt a single chunk of data.
-  Future<Uint8List> encrypt({required List<int> chunk});
+// These functions are ignored because they are not marked as `pub`: `new`
 
-  Future<void> getParams();
-}
+/// Create a noop encryption handle (for testing FRB opaque pattern).
+Future<CipherHandle> createNoopEncryption() =>
+    RustLib.instance.api.crateApiEncryptionCreateNoopEncryption();
+
+/// Encrypt plaintext using the given cipher handle.
+Future<Uint8List> encrypt({
+  required CipherHandle cipher,
+  required List<int> plaintext,
+  required List<int> aad,
+}) => RustLib.instance.api.crateApiEncryptionEncrypt(
+  cipher: cipher,
+  plaintext: plaintext,
+  aad: aad,
+);
+
+/// Decrypt ciphertext using the given cipher handle.
+Future<Uint8List> decrypt({
+  required CipherHandle cipher,
+  required List<int> ciphertext,
+  required List<int> aad,
+}) => RustLib.instance.api.crateApiEncryptionDecrypt(
+  cipher: cipher,
+  ciphertext: ciphertext,
+  aad: aad,
+);
+
+/// Get the algorithm identifier for the cipher.
+Future<String> encryptionAlgorithmId({required CipherHandle cipher}) => RustLib
+    .instance
+    .api
+    .crateApiEncryptionEncryptionAlgorithmId(cipher: cipher);
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>
+abstract class CipherHandle implements RustOpaqueInterface {}
