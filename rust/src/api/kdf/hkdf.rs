@@ -1,5 +1,5 @@
 use flutter_rust_bridge::frb;
-use hkdf::{Hkdf, InvalidLength};
+use hkdf::Hkdf;
 use sha2::Sha256;
 
 use crate::{api::error::CryptoError, core::secret::SecretBuffer};
