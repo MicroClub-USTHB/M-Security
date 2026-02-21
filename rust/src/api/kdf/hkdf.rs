@@ -14,6 +14,10 @@ pub fn hkdf_derive(
     info: Vec<u8>,
     output_len: usize,
 ) -> Result<SecretBuffer, CryptoError> {
+    if (output_len == 0) {
+        return Err(CryptoError::KdfFailed(String::from("Invalid OKM length")));
+    }
+
     let salt = salt.as_ref().map(Vec::as_slice);
     let hk = Hkdf::<Sha256>::new(salt, &ikm);
     let mut buf = vec![0u8; output_len];
@@ -48,4 +52,37 @@ pub fn hkdf_expand(
     hk.expand(&info, &mut buf)
         .map_err(|_| CryptoError::KdfFailed(String::from("Invalid OKM length")))?;
     Ok(SecretBuffer::new(buf))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_creating_key_matches_output_len() {
+        let ikm = b"bWljcm9jbHVi"; // "microclub" in base64
+        let salt = b"c29tZXNhbHQ"; // "somesalt" in base64 no-pad
+        let info = b"m-security";
+        let hash = hkdf_derive(ikm.into(), Some(salt.into()), info.into(), 32).unwrap();
+        let inner_len = hash.as_bytes().len();
+        assert_eq!(inner_len, 32);
+    }
+
+    #[test]
+    fn test_creating_key_with_size_zero() {
+        let ikm = b"bWljcm9jbHVi"; // "microclub" in base64
+        let salt = b"c29tZXNhbHQ"; // "somesalt" in base64 no-pad
+        let info = b"m-security";
+        let res = hkdf_derive(ikm.into(), Some(salt.into()), info.into(), 0);
+        assert!(res.is_err(), "Key size is invalid (=8160)");
+    }
+
+    #[test]
+    fn test_creating_key_with_size_8160() {
+        let ikm = b"bWljcm9jbHVi"; // "microclub" in base64
+        let salt = b"c29tZXNhbHQ"; // "somesalt" in base64 no-pad
+        let info = b"m-security";
+        let res = hkdf_derive(ikm.into(), Some(salt.into()), info.into(), 8200);
+        assert!(res.is_err(), "Key size is invalid (>8160)");
+    }
 }
