@@ -2,9 +2,7 @@
 
 mod blake3;
 mod sha3;
-mod argon2;
-
-pub use argon2::{argon2id_hash, argon2id_hash_with_salt, argon2id_verify, Argon2Preset};
+pub mod argon2;
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Hasher;
