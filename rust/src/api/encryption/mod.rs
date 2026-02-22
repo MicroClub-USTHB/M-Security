@@ -1,5 +1,6 @@
 //! Encryption API module.
 
+pub mod aes_gcm;
 pub mod noop;
 
 use crate::core::error::CryptoError;
@@ -21,6 +22,12 @@ impl CipherHandle {
 /// Create a noop encryption handle (for testing FRB opaque pattern).
 pub fn create_noop_encryption() -> CipherHandle {
     CipherHandle::new(Box::new(noop::NoopEncryption {}))
+}
+
+/// Create an AES-256-GCM cipher handle from a 32-byte key.
+pub fn create_aes256_gcm(key: Vec<u8>) -> Result<CipherHandle, CryptoError> {
+    let cipher = aes_gcm::Aes256GcmCipher::new(key)?;
+    Ok(CipherHandle::new(Box::new(cipher)))
 }
 
 /// Encrypt plaintext using the given cipher handle.
