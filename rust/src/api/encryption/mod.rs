@@ -30,17 +30,20 @@ pub fn create_aes256_gcm(key: Vec<u8>) -> Result<CipherHandle, CryptoError> {
     Ok(CipherHandle::new(Box::new(cipher)))
 }
 
+/// Generate a random 32-byte key for AES-256-GCM.
+pub fn generate_aes256_gcm_key() -> Result<Vec<u8>, CryptoError> {
+    aes_gcm::generate_aes_key()
+}
+
 /// Encrypt plaintext using the given cipher handle.
+///
+/// Empty plaintext is valid — produces an authenticated tag with no ciphertext,
+/// useful for authenticate-only use cases with AAD.
 pub fn encrypt(
     cipher: &CipherHandle,
     plaintext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<Vec<u8>, CryptoError> {
-    if plaintext.is_empty() {
-        return Err(CryptoError::InvalidParameter(
-            "Plaintext cannot be empty".into(),
-        ));
-    }
     cipher.inner.encrypt(&plaintext, &aad)
 }
 
@@ -50,11 +53,6 @@ pub fn decrypt(
     ciphertext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<Vec<u8>, CryptoError> {
-    if ciphertext.is_empty() {
-        return Err(CryptoError::InvalidParameter(
-            "Ciphertext cannot be empty".into(),
-        ));
-    }
     cipher.inner.decrypt(&ciphertext, &aad)
 }
 
