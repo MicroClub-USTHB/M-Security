@@ -96,6 +96,13 @@ mod tests {
         generate_aes_key().expect("key gen failed")
     }
 
+    fn hex(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).expect("valid hex"))
+            .collect()
+    }
+
     #[test]
     fn encrypt_then_decrypt_roundtrip() {
         let key = make_key();
@@ -203,5 +210,79 @@ mod tests {
         // Less than nonce + tag = 28 bytes
         let result = cipher.decrypt(&[0u8; 27], b"");
         assert!(matches!(result, Err(CryptoError::AuthenticationFailed)));
+    }
+
+    // NIST SP 800-38D Test Case 16 (AES-256, 96-bit IV, with AAD)
+    #[test]
+    fn nist_test_vector_decrypt() {
+        let key = hex("feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
+        let nonce = hex("cafebabefacedbaddecaf888");
+        let expected_pt = hex(
+            "d9313225f88406e5a55909c5aff5269a\
+             86a7a9531534f7da2e4c303d8a318a72\
+             1c3c0c95956809532fcf0e2449a6b525\
+             b16aedf5aa0de657ba637b39",
+        );
+        let aad = hex("feedfacedeadbeeffeedfacedeadbeefabaddad2");
+        let ct = hex(
+            "522dc1f099567d07f47f37a32a84427d\
+             643a8cdcbfe5c0c97598a2bd2555d1aa\
+             8cb08e48590dbb3da7b08b1056828838\
+             c5f61e6393ba7a0abcc9f662",
+        );
+        let tag = hex("76fc6ece0f4e1768cddf8853bb2d551b");
+
+        // Build wire format: nonce || ciphertext || tag
+        let mut input = Vec::with_capacity(nonce.len() + ct.len() + tag.len());
+        input.extend_from_slice(&nonce);
+        input.extend_from_slice(&ct);
+        input.extend_from_slice(&tag);
+
+        let cipher = Aes256GcmCipher::new(key).expect("cipher");
+        let plaintext = cipher.decrypt(&input, &aad).expect("decrypt");
+        assert_eq!(plaintext, expected_pt);
+    }
+
+    // NIST SP 800-38D Test Case 14 (AES-256, 96-bit IV, no AAD)
+    #[test]
+    fn nist_test_vector_no_aad() {
+        let key = hex("0000000000000000000000000000000000000000000000000000000000000000");
+        let nonce = hex("000000000000000000000000");
+        let expected_pt = hex("");
+        let ct = hex("");
+        let tag = hex("530f8afbc74536b9a963b4f1c4cb738b");
+
+        let mut input = Vec::with_capacity(nonce.len() + ct.len() + tag.len());
+        input.extend_from_slice(&nonce);
+        input.extend_from_slice(&ct);
+        input.extend_from_slice(&tag);
+
+        let cipher = Aes256GcmCipher::new(key).expect("cipher");
+        let plaintext = cipher.decrypt(&input, &expected_pt).expect("decrypt");
+        assert_eq!(plaintext, expected_pt);
+    }
+
+    #[test]
+    fn large_payload_roundtrip() {
+        let cipher = Aes256GcmCipher::new(make_key()).expect("cipher");
+        let plaintext = vec![0xABu8; 1_000_000]; // 1 MB
+        let aad = b"large-payload-test";
+
+        let ciphertext = cipher.encrypt(&plaintext, aad).expect("encrypt");
+        // nonce (12) + plaintext (1M) + tag (16)
+        assert_eq!(ciphertext.len(), NONCE_LEN + plaintext.len() + TAG_LEN);
+
+        let decrypted = cipher.decrypt(&ciphertext, aad).expect("decrypt");
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn empty_aad_roundtrip() {
+        let cipher = Aes256GcmCipher::new(make_key()).expect("cipher");
+        let plaintext = b"data with no associated data";
+
+        let ciphertext = cipher.encrypt(plaintext, b"").expect("encrypt");
+        let decrypted = cipher.decrypt(&ciphertext, b"").expect("decrypt");
+        assert_eq!(decrypted, plaintext);
     }
 }
