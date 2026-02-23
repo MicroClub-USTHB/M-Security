@@ -4,4 +4,3 @@ pub mod encryption;
 pub mod error;
 pub mod hashing;
 pub mod kdf;
-pub mod streaming;

@@ -1,7 +1,7 @@
 //! Hashing API module.
 
-pub(crate) mod blake3;
-pub(crate) mod sha3;
+mod blake3;
+mod sha3;
 pub mod argon2;
 
 use crate::core::error::CryptoError;
