@@ -7,10 +7,14 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/encryption.dart';
+import 'api/encryption/aes_gcm.dart';
+import 'api/encryption/chacha20.dart';
 import 'api/encryption/noop.dart';
 import 'api/hashing.dart';
 import 'api/hashing/argon2.dart';
+import 'api/kdf/hkdf.dart';
 import 'core/error.dart';
+import 'core/secret.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -72,10 +76,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  Aes256GcmCipher dco_decode_aes_256_gcm_cipher(dynamic raw);
+
+  @protected
   Argon2Preset dco_decode_argon_2_preset(dynamic raw);
 
   @protected
+  Aes256GcmCipher dco_decode_box_autoadd_aes_256_gcm_cipher(dynamic raw);
+
+  @protected
+  ChaCha20Poly1305Cipher dco_decode_box_autoadd_cha_cha_20_poly_1305_cipher(
+    dynamic raw,
+  );
+
+  @protected
   NoopEncryption dco_decode_box_autoadd_noop_encryption(dynamic raw);
+
+  @protected
+  ChaCha20Poly1305Cipher dco_decode_cha_cha_20_poly_1305_cipher(dynamic raw);
 
   @protected
   CryptoError dco_decode_crypto_error(dynamic raw);
@@ -91,6 +109,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NoopEncryption dco_decode_noop_encryption(dynamic raw);
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  SecretBuffer dco_decode_secret_buffer(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -141,10 +165,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  Aes256GcmCipher sse_decode_aes_256_gcm_cipher(SseDeserializer deserializer);
+
+  @protected
   Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer);
 
   @protected
+  Aes256GcmCipher sse_decode_box_autoadd_aes_256_gcm_cipher(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ChaCha20Poly1305Cipher sse_decode_box_autoadd_cha_cha_20_poly_1305_cipher(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NoopEncryption sse_decode_box_autoadd_noop_encryption(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ChaCha20Poly1305Cipher sse_decode_cha_cha_20_poly_1305_cipher(
     SseDeserializer deserializer,
   );
 
@@ -162,6 +204,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NoopEncryption sse_decode_noop_encryption(SseDeserializer deserializer);
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  SecretBuffer sse_decode_secret_buffer(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -221,11 +269,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_aes_256_gcm_cipher(
+    Aes256GcmCipher self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_aes_256_gcm_cipher(
+    Aes256GcmCipher self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_cha_cha_20_poly_1305_cipher(
+    ChaCha20Poly1305Cipher self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_noop_encryption(
     NoopEncryption self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cha_cha_20_poly_1305_cipher(
+    ChaCha20Poly1305Cipher self,
     SseSerializer serializer,
   );
 
@@ -249,6 +321,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     NoopEncryption self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_secret_buffer(SecretBuffer self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
