@@ -1,6 +1,7 @@
 //! Encryption API module.
 
 pub mod aes_gcm;
+pub mod chacha20;
 pub mod noop;
 
 use crate::core::error::CryptoError;
@@ -33,6 +34,17 @@ pub fn create_aes256_gcm(key: Vec<u8>) -> Result<CipherHandle, CryptoError> {
 /// Generate a random 32-byte key for AES-256-GCM.
 pub fn generate_aes256_gcm_key() -> Result<Vec<u8>, CryptoError> {
     aes_gcm::generate_aes_key()
+}
+
+/// Create a ChaCha20-Poly1305 cipher handle from a 32-byte key.
+pub fn create_chacha20_poly1305(key: Vec<u8>) -> Result<CipherHandle, CryptoError> {
+    let cipher = chacha20::ChaCha20Poly1305Cipher::new(key)?;
+    Ok(CipherHandle::new(Box::new(cipher)))
+}
+
+/// Generate a random 32-byte key for ChaCha20-Poly1305.
+pub fn generate_chacha20_poly1305_key() -> Result<Vec<u8>, CryptoError> {
+    chacha20::generate_chacha_key()
 }
 
 /// Encrypt plaintext using the given cipher handle.
