@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 828.1109999999999 663.9" width="828.1109999999999" height="663.9" style="--bg:#0d1117;--fg:#c9d1d9;--accent:#58a6ff;--muted:#8b949e;--surface:#161b22;--border:#30363d;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<g class="subgraph" data-id="Dart" data-label="Flutter / Dart">
+  <rect x="46.29849999999993" y="40" width="735.514" height="96.9" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="46.29849999999993" y="40" width="735.514" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="58.29849999999993" y="54" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Flutter / Dart</text>
+</g>
+<g class="subgraph" data-id="FRB" data-label="FRB Generated Bindings">
+  <rect x="288.16049999999996" y="245.20000000000002" width="251.78999999999994" height="96.9" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="288.16049999999996" y="245.20000000000002" width="251.78999999999994" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="300.16049999999996" y="259.20000000000005" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">FRB Generated Bindings</text>
+</g>
+<g class="subgraph" data-id="API" data-label="Rust API Layer — rust/src/api/">
+  <rect x="40" y="386.1" width="748.1109999999999" height="96.9" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="386.1" width="748.1109999999999" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="52" y="400.1" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Rust API Layer — rust/src/api/</text>
+</g>
+<g class="subgraph" data-id="Core" data-label="Rust Core — rust/src/core/">
+  <rect x="76.30899999999997" y="527" width="675.4929999999999" height="96.9" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="76.30899999999997" y="527" width="675.4929999999999" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="88.30899999999997" y="541" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Rust Core — rust/src/core/</text>
+</g>
+<polyline class="edge" data-from="Dart" data-to="FRB" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="FFI boundary" points="414.05549999999994,136.9 414.05549999999994,245.20000000000002" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FRB" data-to="API" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="414.05549999999994,342.1 414.05549999999994,386.1" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="API" data-to="Core" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="414.05549999999994,483 414.05549999999994,527" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="Dart" data-to="FRB" data-label="FFI boundary">
+  <rect x="372.55549999999994" y="175.9" width="82.39600000000002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="413.7534999999999" y="191.05" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">FFI boundary</text>
+</g>
+<g class="node" data-id="A1" data-label="AesGcmService · Chacha20Service" data-shape="rectangle">
+  <rect x="197.45649999999995" y="84" width="258.322" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="326.61749999999995" y="102.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">AesGcmService · Chacha20Service</text>
+</g>
+<g class="node" data-id="A2" data-label="argon2IdHash · blake3Hash · sha3Hash" data-shape="rectangle">
+  <rect x="483.77849999999995" y="84" width="282.034" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="624.7955" y="102.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">argon2IdHash · blake3Hash · sha3Hash</text>
+</g>
+<g class="node" data-id="A3" data-label="hkdfDerive" data-shape="rectangle">
+  <rect x="62.29849999999993" y="84" width="107.158" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="115.87749999999994" y="102.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">hkdfDerive</text>
+</g>
+<g class="node" data-id="B" data-label="SSE Codec · Opaque Pointers" data-shape="rectangle">
+  <rect x="304.16049999999996" y="289.20000000000005" width="219.78999999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="414.05549999999994" y="307.65000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">SSE Codec · Opaque Pointers</text>
+</g>
+<g class="node" data-id="C1" data-label="encryption: AES-GCM · ChaCha20" data-shape="rectangle">
+  <rect x="237.09999999999997" y="430.1" width="244.24299999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="359.22149999999993" y="448.55" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">encryption: AES-GCM · ChaCha20</text>
+</g>
+<g class="node" data-id="C2" data-label="hashing: BLAKE3 · SHA-3 · Argon2id" data-shape="rectangle">
+  <rect x="509.34299999999996" y="430.1" width="262.7679999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="640.7269999999999" y="448.55" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">hashing: BLAKE3 · SHA-3 · Argon2id</text>
+</g>
+<g class="node" data-id="C3" data-label="kdf: HKDF-SHA256" data-shape="rectangle">
+  <rect x="56" y="430.1" width="153.09999999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="132.54999999999998" y="448.55" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">kdf: HKDF-SHA256</text>
+</g>
+<g class="node" data-id="D1" data-label="Encryption · Hasher · Kdf traits" data-shape="rectangle">
+  <rect x="277.8549999999999" y="571" width="226.45899999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="391.0844999999999" y="589.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Encryption · Hasher · Kdf traits</text>
+</g>
+<g class="node" data-id="D2" data-label="CryptoError · SecretBuffer" data-shape="rectangle">
+  <rect x="532.314" y="571" width="203.48799999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="634.058" y="589.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">CryptoError · SecretBuffer</text>
+</g>
+<g class="node" data-id="D3" data-label="CSPRNG via OsRng" data-shape="rectangle">
+  <rect x="92.30899999999997" y="571" width="157.546" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="171.08199999999997" y="589.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">CSPRNG via OsRng</text>
+</g>
+</svg>
