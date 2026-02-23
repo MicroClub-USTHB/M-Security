@@ -4,40 +4,21 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../../core/error.dart';
+import '../../core/traits.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// A no-op cipher that returns data unchanged.
-/// Used to validate FRB opaque handle pattern works.
-class NoopEncryption {
-  const NoopEncryption();
-
-  Future<void> algorithmId() => RustLib.instance.api
-      .crateApiEncryptionNoopNoopEncryptionAlgorithmId(that: this);
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NoopEncryption>>
+abstract class NoopEncryption implements RustOpaqueInterface, Encryption {
+  Future<void> algorithmId();
 
   Future<Uint8List> decrypt({
     required List<int> ciphertext,
     required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionNoopNoopEncryptionDecrypt(
-    that: this,
-    ciphertext: ciphertext,
-    aad: aad,
-  );
+  });
 
   Future<Uint8List> encrypt({
     required List<int> plaintext,
     required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionNoopNoopEncryptionEncrypt(
-    that: this,
-    plaintext: plaintext,
-    aad: aad,
-  );
-
-  @override
-  int get hashCode => 0;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NoopEncryption && runtimeType == other.runtimeType;
+  });
 }
