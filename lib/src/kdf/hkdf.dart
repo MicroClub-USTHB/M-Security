@@ -3,7 +3,7 @@ import 'package:m_security/src/rust/api/kdf/hkdf.dart' as rust_hkdf;
 
 /// HKDF-SHA256 key derivation functions.
 ///
-/// HKDF (HMAC-based Extract-and-Expand Key Derivation Function) is a 
+/// HKDF (HMAC-based Extract-and-Expand Key Derivation Function) is a
 /// cryptographic key derivation function that converts weak key material
 /// (like passwords) into strong cryptographic keys.
 
@@ -17,18 +17,20 @@ class MHKDF {
     required Uint8List info,
     required int outputLen,
   }){
+    // Validate output length bounds (RFC 5869 limit for SHA-256).
+    if (outputLen<=0){
+      throw Exception('Output length must be positive');
+    }
+    if(outputLen>8160){
+      throw Exception('Output length must be less than 8160 bytes, got $outputLen',);
+    }
     try{
-      // Validate output length bounds (RFC 5869 limit for SHA-256).
-      if(outputLen<=0){
-        throw Exception('Output length must be positive');
-      }
-      if(outputLen>8160){
-        throw Exception('Output length must be less than 8160 bytes, got $outputLen');
-      }
-      //call rust_hkdf.hkdfDerive() 
-      final secretBuffer= rust_hkdf.hkdfDerive(ikm: ikm, salt: salt ?? Uint8List(0), info: info, outputLen: BigInt.from(outputLen));
-      //extract bytes from SecretBuffer 
-      return secretBuffer.inner;
+      return rust_hkdf.hkdfDerive(
+        ikm: ikm,
+        salt: salt ?? Uint8List(0),
+        info: info,
+        outputLen: BigInt.from(outputLen),
+      );
     }catch(e){
       throw Exception('MHKDF derive failed: $e');
     }
@@ -39,9 +41,11 @@ class MHKDF {
     required Uint8List ikm,
     Uint8List? salt,
   }){
-    try{
-      final secretBuffer= rust_hkdf.hkdfExtract(ikm: ikm, salt: salt??Uint8List(0));
-      return secretBuffer.inner;
+    try {
+      return rust_hkdf.hkdfExtract(  
+        ikm: ikm,
+        salt: salt ?? Uint8List(0),
+      );
     }catch(e){
       throw Exception('MHKDF extract failed: $e');
     }
@@ -53,15 +57,20 @@ class MHKDF {
     required Uint8List info,
     required int outputLen,
   })async{
-    try{
-      if(outputLen<=0){
-        throw Exception('Output length must be positive, got $outputLen');
-      }
-      if(outputLen>8160){
-        throw Exception('Output length must be less than 8160 bytes, got $outputLen');
-      }
-      final secretBuffer= await rust_hkdf.hkdfExpand(prk: prk, info:info, outputLen: BigInt.from(outputLen));
-      return secretBuffer.inner;
+    if(outputLen<=0){
+      throw Exception('Output length must be positive, got $outputLen');
+    }
+    if(outputLen>8160){
+      throw Exception(
+        'Output length must be less than 8160 bytes, got $outputLen',
+      );
+    }
+    try {
+      return await rust_hkdf.hkdfExpand(
+        prk: prk,
+        info:info,
+        outputLen: BigInt.from(outputLen),
+      );
     } catch(e){
       throw Exception('MHKDF expand failed: $e');
     }
