@@ -3,6 +3,8 @@
 //! All traits require Send + Sync + 'static to ensure they can be
 //! safely used across FFI boundaries with FRB opaque handles.
 
+use flutter_rust_bridge::frb;
+
 use crate::core::error::CryptoError;
 use crate::core::secret::SecretBuffer;
 
@@ -10,6 +12,7 @@ use crate::core::secret::SecretBuffer;
 ///
 /// Implementors provide AEAD (Authenticated Encryption with Associated Data).
 /// The nonce is generated internally and prepended to the ciphertext.
+#[frb(ignore)]
 pub trait Encryption: Send + Sync + 'static {
     /// Encrypt plaintext with optional associated data.
     ///
@@ -28,6 +31,7 @@ pub trait Encryption: Send + Sync + 'static {
 /// Streaming hash operations.
 ///
 /// Implementors can accumulate data in chunks before producing a digest.
+#[frb(ignore)]
 pub trait Hasher: Send + Sync + 'static {
     /// Feed data into the hasher.
     fn update(&mut self, data: &[u8]) -> Result<(), CryptoError>;
@@ -47,6 +51,7 @@ pub trait Hasher: Send + Sync + 'static {
 /// Key derivation operations.
 ///
 /// Implementors derive cryptographic keys from passwords or master keys.
+#[frb(ignore)]
 pub trait Kdf: Send + Sync + 'static {
     /// Derive a key from password and salt.
     ///

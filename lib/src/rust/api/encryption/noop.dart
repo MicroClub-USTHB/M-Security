@@ -8,12 +8,8 @@ import '../../core/traits.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// Generate a random 32-byte AES-256 key.
-Future<Uint8List> generateAesKey() =>
-    RustLib.instance.api.crateApiEncryptionAesGcmGenerateAesKey();
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aes256GcmCipher>>
-abstract class Aes256GcmCipher implements RustOpaqueInterface, Encryption {
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NoopEncryption>>
+abstract class NoopEncryption implements RustOpaqueInterface, Encryption {
   Future<void> algorithmId();
 
   Future<Uint8List> decrypt({
@@ -25,8 +21,4 @@ abstract class Aes256GcmCipher implements RustOpaqueInterface, Encryption {
     required List<int> plaintext,
     required List<int> aad,
   });
-
-  // HINT: Make it `#[frb(sync)]` to let it become the default constructor of Dart class.
-  static Future<Aes256GcmCipher> newInstance({required List<int> key}) =>
-      RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherNew(key: key);
 }
