@@ -4,6 +4,7 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
     ChaCha20Poly1305,
 };
+use flutter_rust_bridge::frb;
 
 use crate::core::error::CryptoError;
 use crate::core::rng::generate_nonce;
@@ -15,6 +16,7 @@ const NONCE_LEN: usize = 12;
 const TAG_LEN: usize = 16;
 
 /// ChaCha20-Poly1305 cipher with key stored in secure, zeroize-on-drop memory.
+#[frb(opaque)] // must be opaque to maintain SecretBuffer guanrantees.
 pub struct ChaCha20Poly1305Cipher {
     key: SecretBuffer,
 }

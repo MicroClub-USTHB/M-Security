@@ -4,6 +4,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit, Payload},
     Aes256Gcm,
 };
+use flutter_rust_bridge::frb;
 
 use crate::core::error::CryptoError;
 use crate::core::rng::generate_nonce;
@@ -15,6 +16,7 @@ const NONCE_LEN: usize = 12;
 const TAG_LEN: usize = 16;
 
 /// AES-256-GCM cipher with key stored in secure, zeroize-on-drop memory.
+#[frb(opaque)] // must be opaque to maintain SecretBuffer guanrantees.
 pub struct Aes256GcmCipher {
     key: SecretBuffer,
 }
