@@ -32,9 +32,13 @@ A native Rust cryptographic SDK for Flutter, providing secure, high-performance 
 | Foundation (traits, error handling, FRB setup) | Done |
 | 2.1 BLAKE3 | Done |
 | 2.1 SHA-3 (Keccak) | Done |
-| 2.1 Argon2id | Next |
-| 2.2 Authenticated Encryption | Planned |
-| 2.3 Key Derivation | Planned |
+| 2.1 Argon2id | Done |
+| 2.2 AES-256-GCM | Done |
+| 2.2 ChaCha20-Poly1305 | Done |
+| 2.3 HKDF (Rust) | Done |
+| 2.3 HKDF (Dart wrapper) | Pending |
+| Streaming (Rust) | Done |
+| Streaming (FRB bridge) | In Progress |
 
 ### Implemented
 
@@ -52,14 +56,32 @@ A native Rust cryptographic SDK for Flutter, providing secure, high-performance 
 **Hashing**
 - BLAKE3 hasher — one-shot (`blake3_hash`) and streaming via `HasherHandle`
 - SHA-3-256 hasher — one-shot (`sha3_hash`) and streaming via `HasherHandle`
+- Argon2id password hashing — Mobile/Desktop presets, PHC string format, verify API
 - `HasherHandle` with `Mutex<Box<dyn Hasher>>` for interior mutability
-- Dart integration tests: 10 cases (known vectors, streaming, chunk-size consistency)
-- Verified on macOS (desktop) and iOS (simulator)
+- Dart integration tests verified on macOS (desktop) and iOS (simulator)
+
+**Authenticated Encryption (AEAD)**
+- AES-256-GCM — 32-byte key, 12-byte nonce, 16-byte auth tag, optional AAD (15 tests, NIST SP 800-38D vectors)
+- ChaCha20-Poly1305 — same interface, mobile-optimized (16 tests, RFC 8439 vectors)
+- Output format: `nonce || ciphertext || tag`
+- Opaque `CipherHandle` with constructor/encrypt/decrypt/key-gen API
+- Dart wrappers with integration tests for both algorithms
+
+**Key Derivation**
+- HKDF-SHA256 — extract, expand, and combined derive API (Rust complete, Dart wrapper pending)
+
+**Streaming (Rust-side, not yet wired to FRB)**
+- 64KB chunked encrypt/decrypt/hash with progress callbacks
+- MSEC 50-byte header format (magic + version + algorithm + chunk size + salt)
+- Per-file HKDF-derived keys, per-chunk derived nonces
+- Chunk AAD includes header + chunk index (reorder/tamper detection)
+- Supports AES-GCM and ChaCha20-Poly1305
+- 22 tests covering roundtrips, tampering, truncation, reordering
 
 ### Future Milestone
 
-- Streaming encryption/decryption/hashing
-- Compression (Zstd)
+- Streaming FRB bridge wiring (in progress)
+- Compression (Zstd + Brotli)
 - Encrypted Virtual File System (.vault)
 
 ## Tech Stack
@@ -104,8 +126,10 @@ flutter_rust_bridge_codegen generate
 ├── rust/
 │   └── src/
 │       ├── api/                  # Public API (FRB scans this)
-│       │   ├── encryption/       # AEAD implementations
-│       │   └── hashing/          # Hash implementations
+│       │   ├── encryption/       # AEAD (AES-GCM, ChaCha20)
+│       │   ├── hashing/          # Hash (BLAKE3, SHA-3, Argon2id)
+│       │   ├── kdf/              # Key derivation (HKDF)
+│       │   └── streaming/        # Chunked encrypt/decrypt/hash
 │       └── core/                 # Internal (traits, errors, types)
 │           ├── error.rs          # CryptoError enum
 │           ├── secret.rs         # SecretBuffer with zeroize
