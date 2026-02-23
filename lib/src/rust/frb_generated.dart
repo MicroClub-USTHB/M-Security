@@ -4,10 +4,13 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/encryption.dart';
+import 'api/encryption/aes_gcm.dart';
 import 'api/encryption/noop.dart';
 import 'api/hashing.dart';
 import 'api/hashing/argon2.dart';
+import 'api/kdf/hkdf.dart';
 import 'core/error.dart';
+import 'core/secret.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -68,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1054375300;
+  int get rustContentHash => 932968050;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +82,26 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<void> crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId({
+    required Aes256GcmCipher that,
+  });
+
+  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherDecrypt({
+    required Aes256GcmCipher that,
+    required List<int> ciphertext,
+    required List<int> aad,
+  });
+
+  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherEncrypt({
+    required Aes256GcmCipher that,
+    required List<int> plaintext,
+    required List<int> aad,
+  });
+
+  Future<Aes256GcmCipher> crateApiEncryptionAesGcmAes256GcmCipherNew({
+    required List<int> key,
+  });
+
   Future<String> crateApiHashingArgon2Argon2IdHash({
     required String password,
     required Argon2Preset preset,
@@ -96,6 +119,10 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data});
+
+  Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({
+    required List<int> key,
+  });
 
   Future<HasherHandle> crateApiHashingCreateBlake3();
 
@@ -119,6 +146,10 @@ abstract class RustLibApi extends BaseApi {
     required CipherHandle cipher,
   });
 
+  Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey();
+
+  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey();
+
   Future<String> crateApiHashingHasherAlgorithmId({
     required HasherHandle handle,
   });
@@ -132,6 +163,24 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiHashingHasherUpdate({
     required HasherHandle handle,
     required List<int> data,
+  });
+
+  SecretBuffer crateApiKdfHkdfHkdfDerive({
+    required List<int> ikm,
+    Uint8List? salt,
+    required List<int> info,
+    required BigInt outputLen,
+  });
+
+  Future<SecretBuffer> crateApiKdfHkdfHkdfExpand({
+    required List<int> prk,
+    required List<int> info,
+    required BigInt outputLen,
+  });
+
+  SecretBuffer crateApiKdfHkdfHkdfExtract({
+    required List<int> ikm,
+    Uint8List? salt,
   });
 
   Future<void> crateApiEncryptionNoopNoopEncryptionAlgorithmId({
@@ -178,6 +227,147 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<void> crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId({
+    required Aes256GcmCipher that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_aes_256_gcm_cipher(that, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherAlgorithmIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiEncryptionAesGcmAes256GcmCipherAlgorithmIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "aes_256_gcm_cipher_algorithm_id",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherDecrypt({
+    required Aes256GcmCipher that,
+    required List<int> ciphertext,
+    required List<int> aad,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_aes_256_gcm_cipher(that, serializer);
+          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
+          sse_encode_list_prim_u_8_loose(aad, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherDecryptConstMeta,
+        argValues: [that, ciphertext, aad],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherDecryptConstMeta =>
+      const TaskConstMeta(
+        debugName: "aes_256_gcm_cipher_decrypt",
+        argNames: ["that", "ciphertext", "aad"],
+      );
+
+  @override
+  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherEncrypt({
+    required Aes256GcmCipher that,
+    required List<int> plaintext,
+    required List<int> aad,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_aes_256_gcm_cipher(that, serializer);
+          sse_encode_list_prim_u_8_loose(plaintext, serializer);
+          sse_encode_list_prim_u_8_loose(aad, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherEncryptConstMeta,
+        argValues: [that, plaintext, aad],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherEncryptConstMeta =>
+      const TaskConstMeta(
+        debugName: "aes_256_gcm_cipher_encrypt",
+        argNames: ["that", "plaintext", "aad"],
+      );
+
+  @override
+  Future<Aes256GcmCipher> crateApiEncryptionAesGcmAes256GcmCipherNew({
+    required List<int> key,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(key, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_aes_256_gcm_cipher,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherNewConstMeta,
+        argValues: [key],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherNewConstMeta =>
+      const TaskConstMeta(
+        debugName: "aes_256_gcm_cipher_new",
+        argNames: ["key"],
+      );
+
+  @override
   Future<String> crateApiHashingArgon2Argon2IdHash({
     required String password,
     required Argon2Preset preset,
@@ -191,7 +381,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 5,
             port: port_,
           );
         },
@@ -228,7 +418,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 6,
             port: port_,
           );
         },
@@ -263,7 +453,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 7,
             port: port_,
           );
         },
@@ -294,7 +484,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 8,
             port: port_,
           );
         },
@@ -313,6 +503,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "blake3_hash", argNames: ["data"]);
 
   @override
+  Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({
+    required List<int> key,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(key, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionCreateAes256GcmConstMeta,
+        argValues: [key],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionCreateAes256GcmConstMeta =>
+      const TaskConstMeta(debugName: "create_aes256_gcm", argNames: ["key"]);
+
+  @override
   Future<HasherHandle> crateApiHashingCreateBlake3() {
     return handler.executeNormal(
       NormalTask(
@@ -321,7 +542,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 10,
             port: port_,
           );
         },
@@ -349,7 +570,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 11,
             port: port_,
           );
         },
@@ -377,7 +598,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 12,
             port: port_,
           );
         },
@@ -415,7 +636,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 13,
             port: port_,
           );
         },
@@ -454,7 +675,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 14,
             port: port_,
           );
         },
@@ -489,7 +710,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 15,
             port: port_,
           );
         },
@@ -511,6 +732,60 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionGenerateAes256GcmKeyConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionGenerateAes256GcmKeyConstMeta =>
+      const TaskConstMeta(debugName: "generate_aes256_gcm_key", argNames: []);
+
+  @override
+  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta =>
+      const TaskConstMeta(debugName: "generate_aes_key", argNames: []);
+
+  @override
   Future<String> crateApiHashingHasherAlgorithmId({
     required HasherHandle handle,
   }) {
@@ -525,7 +800,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 18,
             port: port_,
           );
         },
@@ -561,7 +836,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 19,
             port: port_,
           );
         },
@@ -592,7 +867,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 20,
             port: port_,
           );
         },
@@ -627,7 +902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 21,
             port: port_,
           );
         },
@@ -649,6 +924,102 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  SecretBuffer crateApiKdfHkdfHkdfDerive({
+    required List<int> ikm,
+    Uint8List? salt,
+    required List<int> info,
+    required BigInt outputLen,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(ikm, serializer);
+          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
+          sse_encode_list_prim_u_8_loose(info, serializer);
+          sse_encode_usize(outputLen, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_secret_buffer,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiKdfHkdfHkdfDeriveConstMeta,
+        argValues: [ikm, salt, info, outputLen],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKdfHkdfHkdfDeriveConstMeta => const TaskConstMeta(
+    debugName: "hkdf_derive",
+    argNames: ["ikm", "salt", "info", "outputLen"],
+  );
+
+  @override
+  Future<SecretBuffer> crateApiKdfHkdfHkdfExpand({
+    required List<int> prk,
+    required List<int> info,
+    required BigInt outputLen,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(prk, serializer);
+          sse_encode_list_prim_u_8_loose(info, serializer);
+          sse_encode_usize(outputLen, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_secret_buffer,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiKdfHkdfHkdfExpandConstMeta,
+        argValues: [prk, info, outputLen],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKdfHkdfHkdfExpandConstMeta => const TaskConstMeta(
+    debugName: "hkdf_expand",
+    argNames: ["prk", "info", "outputLen"],
+  );
+
+  @override
+  SecretBuffer crateApiKdfHkdfHkdfExtract({
+    required List<int> ikm,
+    Uint8List? salt,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(ikm, serializer);
+          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_secret_buffer,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiKdfHkdfHkdfExtractConstMeta,
+        argValues: [ikm, salt],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiKdfHkdfHkdfExtractConstMeta =>
+      const TaskConstMeta(debugName: "hkdf_extract", argNames: ["ikm", "salt"]);
+
+  @override
   Future<void> crateApiEncryptionNoopNoopEncryptionAlgorithmId({
     required NoopEncryption that,
   }) {
@@ -660,7 +1031,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 25,
             port: port_,
           );
         },
@@ -697,7 +1068,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 26,
             port: port_,
           );
         },
@@ -734,7 +1105,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 27,
             port: port_,
           );
         },
@@ -765,7 +1136,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 28,
             port: port_,
           );
         },
@@ -860,9 +1231,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Aes256GcmCipher dco_decode_aes_256_gcm_cipher(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return Aes256GcmCipher(key: dco_decode_secret_buffer(arr[0]));
+  }
+
+  @protected
   Argon2Preset dco_decode_argon_2_preset(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return Argon2Preset.values[raw as int];
+  }
+
+  @protected
+  Aes256GcmCipher dco_decode_box_autoadd_aes_256_gcm_cipher(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_aes_256_gcm_cipher(raw);
   }
 
   @protected
@@ -926,6 +1312,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (arr.isNotEmpty)
       throw Exception('unexpected arr length: expect 0 but see ${arr.length}');
     return NoopEncryption();
+  }
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  SecretBuffer dco_decode_secret_buffer(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return SecretBuffer(inner: dco_decode_list_prim_u_8_strict(arr[0]));
   }
 
   @protected
@@ -1026,10 +1427,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Aes256GcmCipher sse_decode_aes_256_gcm_cipher(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_key = sse_decode_secret_buffer(deserializer);
+    return Aes256GcmCipher(key: var_key);
+  }
+
+  @protected
   Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return Argon2Preset.values[inner];
+  }
+
+  @protected
+  Aes256GcmCipher sse_decode_box_autoadd_aes_256_gcm_cipher(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_aes_256_gcm_cipher(deserializer));
   }
 
   @protected
@@ -1103,6 +1519,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   NoopEncryption sse_decode_noop_encryption(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NoopEncryption();
+  }
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_prim_u_8_strict(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  SecretBuffer sse_decode_secret_buffer(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return SecretBuffer(inner: var_inner);
   }
 
   @protected
@@ -1213,9 +1647,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_aes_256_gcm_cipher(
+    Aes256GcmCipher self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_secret_buffer(self.key, serializer);
+  }
+
+  @protected
   void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_aes_256_gcm_cipher(
+    Aes256GcmCipher self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_aes_256_gcm_cipher(self, serializer);
   }
 
   @protected
@@ -1296,6 +1748,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_prim_u_8_strict(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_secret_buffer(SecretBuffer self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.inner, serializer);
   }
 
   @protected

@@ -13,7 +13,18 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 Future<CipherHandle> createNoopEncryption() =>
     RustLib.instance.api.crateApiEncryptionCreateNoopEncryption();
 
+/// Create an AES-256-GCM cipher handle from a 32-byte key.
+Future<CipherHandle> createAes256Gcm({required List<int> key}) =>
+    RustLib.instance.api.crateApiEncryptionCreateAes256Gcm(key: key);
+
+/// Generate a random 32-byte key for AES-256-GCM.
+Future<Uint8List> generateAes256GcmKey() =>
+    RustLib.instance.api.crateApiEncryptionGenerateAes256GcmKey();
+
 /// Encrypt plaintext using the given cipher handle.
+///
+/// Empty plaintext is valid — produces an authenticated tag with no ciphertext,
+/// useful for authenticate-only use cases with AAD.
 Future<Uint8List> encrypt({
   required CipherHandle cipher,
   required List<int> plaintext,
