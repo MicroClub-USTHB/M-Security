@@ -1,141 +1,159 @@
-# M-Security SDK
+# M-Security
 
-A native Rust cryptographic SDK for Flutter, providing secure, high-performance primitives for hashing, encryption, and key derivation via Flutter Rust Bridge (FRB).
+A native Rust cryptographic SDK for Flutter. High-performance hashing, authenticated encryption, and key derivation — all implemented in Rust and exposed to Dart via [Flutter Rust Bridge](https://github.com/aspect-build/aspect-cli/issues/flutter_rust_bridge) (FRB).
 
-## Cryptographic Specifications
+## Features
 
-### 2.1 Modern Hashing
+### Hashing
 
-| Algorithm | Purpose | Crate |
-|-----------|---------|-------|
-| **Argon2id** | Password hashing, GPU/ASIC resistant | `argon2 0.5` |
-| **BLAKE3** | Ultra fast integrity verification and checksums | `blake3 1.8` |
-| **SHA-3 (Keccak)** | NIST standard for blockchain/state-level compatibility | `sha3 0.10` |
+| Algorithm | API | Output |
+|-----------|-----|--------|
+| **BLAKE3** | One-shot (`blake3_hash`) + streaming (`HasherHandle`) | 32 bytes |
+| **SHA-3-256** | One-shot (`sha3_hash`) + streaming (`HasherHandle`) | 32 bytes |
+| **Argon2id** | Password hash + verify, Mobile/Desktop presets | PHC string |
 
-### 2.2 Authenticated Encryption (AEAD)
+### Authenticated Encryption (AEAD)
 
-| Algorithm | Purpose | Crate |
-|-----------|---------|-------|
-| **AES-256-GCM** | Industry standard with hardware acceleration (AES-NI) | `aes-gcm 0.10` |
-| **ChaCha20-Poly1305** | High-performance alternative for mobile (no AES hardware) | `chacha20poly1305 0.10` |
+| Algorithm | Key | Nonce | Tag | Output Format |
+|-----------|-----|-------|-----|---------------|
+| **AES-256-GCM** | 32 B | 12 B (auto) | 16 B | `nonce \|\| ciphertext \|\| tag` |
+| **ChaCha20-Poly1305** | 32 B | 12 B (auto) | `16 B | `nonce \|\| ciphertext \|\| tag` |
 
-### 2.3 Key Derivation (KDF)
+Both ciphers use the same `CipherHandle` interface — create, encrypt, decrypt, generate key.
 
-| Algorithm | Purpose | Crate |
-|-----------|---------|-------|
-| **HKDF** | Convert shared secrets or passwords into high-entropy keys | `hkdf 0.12` |
+### Key Derivation
 
-## Current Status
+| Algorithm | API |
+|-----------|-----|
+| **HKDF-SHA256** | `hkdf_derive`, `hkdf_extract`, `hkdf_expand` |
 
-| Section | Status |
-|---------|--------|
-| Foundation (traits, error handling, FRB setup) | Done |
-| 2.1 BLAKE3 | Done |
-| 2.1 SHA-3 (Keccak) | Done |
-| 2.1 Argon2id | Done |
-| 2.2 AES-256-GCM | Done |
-| 2.2 ChaCha20-Poly1305 | Done |
-| 2.3 HKDF (Rust) | Done |
-| 2.3 HKDF (Dart wrapper) | Pending |
-| Streaming (Rust) | Done |
-| Streaming (FRB bridge) | In Progress |
+Derive multiple subkeys from a single master key using different `info` strings for domain separation.
 
-### Implemented
+## Architecture
 
-**Foundation**
-- Flutter plugin scaffold with platform support (Android, iOS, macOS, Linux, Windows)
-- Rust crate structure with `cdylib` + `staticlib` outputs
-- Flutter Rust Bridge v2.11.1 integration
-- Core traits: `Encryption`, `Hasher`, `Kdf` with `Send + Sync + 'static`
-- `CryptoError` enum with FFI-safe variants
-- `SecretBuffer` with zeroize on Drop
-- Opaque handle pattern (`#[frb(opaque)]` on `CipherHandle`, `HasherHandle`)
-- Noop encryption reference implementation (FRB validation)
-- `clippy::unwrap_used = "deny"` and `panic = "abort"` in release
+<div align="center">
+  <img src="assets/architecture.svg" alt="M-Security Architecture" width="600">
+</div>
 
-**Hashing**
-- BLAKE3 hasher — one-shot (`blake3_hash`) and streaming via `HasherHandle`
-- SHA-3-256 hasher — one-shot (`sha3_hash`) and streaming via `HasherHandle`
-- Argon2id password hashing — Mobile/Desktop presets, PHC string format, verify API
-- `HasherHandle` with `Mutex<Box<dyn Hasher>>` for interior mutability
-- Dart integration tests verified on macOS (desktop) and iOS (simulator)
+**Key design decisions:**
 
-**Authenticated Encryption (AEAD)**
-- AES-256-GCM — 32-byte key, 12-byte nonce, 16-byte auth tag, optional AAD (15 tests, NIST SP 800-38D vectors)
-- ChaCha20-Poly1305 — same interface, mobile-optimized (16 tests, RFC 8439 vectors)
-- Output format: `nonce || ciphertext || tag`
-- Opaque `CipherHandle` with constructor/encrypt/decrypt/key-gen API
-- Dart wrappers with integration tests for both algorithms
+- **Opaque handles** — Crypto state lives in Rust behind `#[frb(opaque)]` handles (`CipherHandle`, `HasherHandle`). Dart holds a pointer, never raw key bytes.
+- **Trait objects** — All implementations are behind `Box<dyn Trait>` with `Send + Sync + 'static`, allowing runtime algorithm selection.
+- **Secure memory** — All key-holding structs derive `ZeroizeOnDrop`. Key material is zeroed when handles are dropped.
+- **No panics across FFI** — `clippy::unwrap_used = "deny"`, `panic = "abort"` in release. All operations return `Result<T, CryptoError>`.
 
-**Key Derivation**
-- HKDF-SHA256 — extract, expand, and combined derive API (Rust complete, Dart wrapper pending)
+## Dart Usage
 
-**Streaming (Rust-side, not yet wired to FRB)**
-- 64KB chunked encrypt/decrypt/hash with progress callbacks
-- MSEC 50-byte header format (magic + version + algorithm + chunk size + salt)
-- Per-file HKDF-derived keys, per-chunk derived nonces
-- Chunk AAD includes header + chunk index (reorder/tamper detection)
-- Supports AES-GCM and ChaCha20-Poly1305
-- 22 tests covering roundtrips, tampering, truncation, reordering
+### AES-256-GCM
 
-### Future Milestone
+```dart
+import 'package:m_security/src/encryption/aes_gcm.dart';
 
-- Streaming FRB bridge wiring (in progress)
-- Compression (Zstd + Brotli)
-- Encrypted Virtual File System (.vault)
+final aes = AesGcmService();
+await aes.initWithRandomKey();
 
-## Tech Stack
-
-- **Flutter SDK** (stable)
-- **Dart SDK** `^3.10.8`
-- **Rust** (stable via `rustup`)
-- **flutter_rust_bridge** `2.11.1`
-
-## Prerequisites
-
-Install these before building:
-
-**All platforms:**
-- Flutter SDK
-- Rust toolchain (`rustup`)
-- FRB code generator:
-
-```bash
-cargo install flutter_rust_bridge_codegen
+final encrypted = await aes.encryptString('hello');
+final decrypted = await aes.decryptString(encrypted);
 ```
 
-**Platform-specific:**
-- **Windows:** Visual Studio C++ Build Tools (MSVC), LLVM
-- **macOS:** Xcode, Homebrew (and Android NDK if targeting Android)
-- **Linux:** `build-essential`, `libssl-dev`, `pkg-config`, `llvm`
+### ChaCha20-Poly1305
 
-## Quick Start
+```dart
+import 'package:m_security/src/encryption/chacha20.dart';
 
-```bash
-flutter pub get
-cd rust && cargo build && cd ..
-flutter_rust_bridge_codegen generate
+final chacha = Chacha20Service();
+await chacha.initWithRandomKey();
+
+final encrypted = await chacha.encryptString('hello');
+final decrypted = await chacha.decryptString(encrypted);
 ```
 
-## Project Structure
+### Argon2id Password Hashing
+
+```dart
+import 'package:m_security/src/hashing/argon2.dart';
+
+// Hash (auto-selects Mobile or Desktop preset based on build flag)
+final phc = await argon2IdHash(password: 'hunter2');
+
+// Verify
+await argon2IdVerify(phcHash: phc, password: 'hunter2');
+```
+
+### BLAKE3 / SHA-3 (One-shot)
+
+```dart
+import 'package:m_security/src/rust/api/hashing/blake3.dart';
+import 'package:m_security/src/rust/api/hashing/sha3.dart';
+
+final digest = await blake3Hash(data: bytes);
+final sha3Digest = await sha3Hash(data: bytes);
+```
+
+### HKDF Key Derivation
+
+```dart
+import 'package:m_security/src/rust/api/kdf/hkdf.dart';
+
+final derived = await hkdfDerive(
+  ikm: masterKey,
+  salt: null,
+  info: Uint8List.fromList('encryption-key'.codeUnits),
+  outputLen: 32,
+);
+```
+
+## Rust API Reference
+
+### Encryption
 
 ```
-.
-├── lib/                          # Dart code
-│   └── src/rust/                 # FRB-generated bindings
-├── rust/
-│   └── src/
-│       ├── api/                  # Public API (FRB scans this)
-│       │   ├── encryption/       # AEAD (AES-GCM, ChaCha20)
-│       │   ├── hashing/          # Hash (BLAKE3, SHA-3, Argon2id)
-│       │   ├── kdf/              # Key derivation (HKDF)
-│       │   └── streaming/        # Chunked encrypt/decrypt/hash
-│       └── core/                 # Internal (traits, errors, types)
-│           ├── error.rs          # CryptoError enum
-│           ├── secret.rs         # SecretBuffer with zeroize
-│           └── traits.rs         # Encryption, Hasher, Kdf traits
-└── pubspec.yaml
+create_aes256_gcm(key)           → CipherHandle
+create_chacha20_poly1305(key)    → CipherHandle
+encrypt(handle, plaintext, aad)  → Vec<u8>
+decrypt(handle, ciphertext, aad) → Vec<u8>
+generate_aes256_gcm_key()        → Vec<u8>
+generate_chacha20_poly1305_key() → Vec<u8>
 ```
+
+### Hashing
+
+```
+blake3_hash(data)                → Vec<u8>
+sha3_hash(data)                  → Vec<u8>
+create_blake3()                  → HasherHandle
+create_sha3()                    → HasherHandle
+hasher_update(handle, data)      → ()
+hasher_reset(handle)             → ()
+hasher_finalize(handle)          → Vec<u8>
+```
+
+### Password Hashing
+
+```
+argon2id_hash(password, preset)              → String (PHC)
+argon2id_hash_with_salt(password, salt, preset) → String (PHC)
+argon2id_verify(phc_hash, password)          → ()
+```
+
+Presets: `Mobile` (64 MiB, t=3, p=4) | `Desktop` (256 MiB, t=4, p=8)
+
+### Key Derivation
+
+```
+hkdf_derive(ikm, salt?, info, output_len)  → Vec<u8>
+hkdf_extract(ikm, salt?)                   → Vec<u8> (PRK)
+hkdf_expand(prk, info, output_len)         → Vec<u8>
+```
+
+## Security
+
+- All key material zeroized on Drop (`zeroize` crate with `ZeroizeOnDrop` derive)
+- No `unwrap()` in FFI-visible code (`clippy::unwrap_used = "deny"`)
+- `panic = "abort"` in release profile — no UB from panics crossing FFI
+- Nonces generated internally via `OsRng` — callers never handle nonces
+- Raw keys never cross the FFI boundary — stays behind opaque Rust handles
+- AEAD tag verification prevents silent decryption of tampered data
 
 ## Cross-Compilation Targets
 
@@ -150,13 +168,48 @@ flutter_rust_bridge_codegen generate
 | `x86_64-unknown-linux-gnu` | Linux |
 | `x86_64-pc-windows-msvc` | Windows |
 
-## Security Guidelines
+## Tech Stack
 
-- All key material is zeroized on Drop via `zeroize` crate
-- No `unwrap()` in FFI-visible code paths (`clippy::unwrap_used = "deny"`)
-- `panic = "abort"` in release profile
-- Streaming for large files (constant memory footprint)
-- Platform-secure storage for keys (iOS Secure Enclave, Android Keystore) - future
+- **Rust** (stable) — crypto core
+- **Flutter Rust Bridge** 2.11.1 — FFI code generation
+- **Flutter SDK** (stable) / **Dart SDK** ^3.10.8
+
+## Prerequisites
+
+```bash
+# Rust toolchain
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# FRB codegen
+cargo install flutter_rust_bridge_codegen
+```
+
+Platform-specific: Xcode (macOS/iOS), Android NDK (Android), Visual Studio Build Tools + LLVM (Windows), `build-essential` + `libssl-dev` (Linux).
+
+## Quick Start
+
+```bash
+flutter pub get
+cd rust && cargo build && cd ..
+flutter_rust_bridge_codegen generate
+flutter run
+```
+
+## Testing
+
+**Rust unit tests:**
+```bash
+cd rust && cargo test
+```
+
+**Dart integration tests** (requires a running device/simulator):
+```bash
+cd example
+flutter test integration_test/aes_gcm_test.dart
+flutter test integration_test/chacha20_test.dart
+flutter test integration_test/hashing_test.dart
+flutter test integration_test/argon2_test.dart
+```
 
 ## License
 
