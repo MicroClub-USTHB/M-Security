@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:m_security/src/rust/api/encryption.dart' as rust_encryption;
 
@@ -11,20 +12,26 @@ class Chacha20Service {
   }
 
   Future<Uint8List> encrypt(Uint8List plaintext, {Uint8List? aad}) async {
-    if (_cipher == null) throw Exception('Cipher not initialized');
+    final cipher = _cipher;
+    if (cipher == null) {
+      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
+    }
 
     return rust_encryption.encrypt(
-      cipher: _cipher!,
+      cipher: cipher,
       plaintext: plaintext,
       aad: aad ?? Uint8List(0),
     );
   }
 
   Future<Uint8List> decrypt(Uint8List ciphertext, {Uint8List? aad}) async {
-    if (_cipher == null) throw Exception('Cipher not initialized');
+    final cipher = _cipher;
+    if (cipher == null) {
+      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
+    }
 
     return rust_encryption.decrypt(
-      cipher: _cipher!,
+      cipher: cipher,
       ciphertext: ciphertext,
       aad: aad ?? Uint8List(0),
     );
@@ -32,16 +39,16 @@ class Chacha20Service {
 
   Future<Uint8List> encryptString(String plaintext, {String? aad}) async {
     return encrypt(
-      Uint8List.fromList(plaintext.codeUnits),
-      aad: aad != null ? Uint8List.fromList(aad.codeUnits) : null,
+      Uint8List.fromList(utf8.encode(plaintext)),
+      aad: aad != null ? Uint8List.fromList(utf8.encode(aad)) : null,
     );
   }
 
   Future<String> decryptString(Uint8List ciphertext, {String? aad}) async {
     final decrypted = await decrypt(
       ciphertext,
-      aad: aad != null ? Uint8List.fromList(aad.codeUnits) : null,
+      aad: aad != null ? Uint8List.fromList(utf8.encode(aad)) : null,
     );
-    return String.fromCharCodes(decrypted);
+    return utf8.decode(decrypted);
   }
 }

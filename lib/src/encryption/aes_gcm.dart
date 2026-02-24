@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:m_security/src/rust/api/encryption.dart' as rust_encryption;
 
@@ -11,36 +12,38 @@ class AesGcmService {
   }
 
   Future<Uint8List> encrypt(Uint8List data) async {
-    if (_cipher == null) {
-      throw Exception("cipher is not initialized.");
+    final cipher = _cipher;
+    if (cipher == null) {
+      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
     }
 
     return rust_encryption.encrypt(
-      cipher: _cipher!,
+      cipher: cipher,
       plaintext: data,
       aad: Uint8List(0),
     );
   }
 
   Future<Uint8List> decrypt(Uint8List encrypted) async {
-    if (_cipher == null) {
-      throw Exception("cipher is not initialized.");
+    final cipher = _cipher;
+    if (cipher == null) {
+      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
     }
 
     return rust_encryption.decrypt(
-      cipher: _cipher!,
+      cipher: cipher,
       ciphertext: encrypted,
       aad: Uint8List(0),
     );
   }
 
   Future<Uint8List> encryptString(String text) async {
-    final bytes = Uint8List.fromList(text.codeUnits);
+    final bytes = Uint8List.fromList(utf8.encode(text));
     return encrypt(bytes);
   }
 
   Future<String> decryptString(Uint8List encrypted) async {
     final bytes = await decrypt(encrypted);
-    return String.fromCharCodes(bytes);
+    return utf8.decode(bytes);
   }
 }
