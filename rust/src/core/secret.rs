@@ -8,7 +8,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 ///
 /// Use this for all key material to ensure secrets don't linger in memory.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
-#[frb(opaque)]
+#[frb(ignore)]
 pub struct SecretBuffer {
     inner: Vec<u8>,
 }

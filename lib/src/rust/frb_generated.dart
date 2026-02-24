@@ -71,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -750396704;
+  int get rustContentHash => -1451637143;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,45 +82,6 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<void> crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId({
-    required Aes256GcmCipher that,
-  });
-
-  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherDecrypt({
-    required Aes256GcmCipher that,
-    required List<int> ciphertext,
-    required List<int> aad,
-  });
-
-  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherEncrypt({
-    required Aes256GcmCipher that,
-    required List<int> plaintext,
-    required List<int> aad,
-  });
-
-  Future<Aes256GcmCipher> crateApiEncryptionAesGcmAes256GcmCipherNew({
-    required List<int> key,
-  });
-
-  Future<void> crateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmId({
-    required ChaCha20Poly1305Cipher that,
-  });
-
-  Future<Uint8List> crateApiEncryptionChacha20ChaCha20Poly1305CipherDecrypt({
-    required ChaCha20Poly1305Cipher that,
-    required List<int> ciphertext,
-    required List<int> aad,
-  });
-
-  Future<Uint8List> crateApiEncryptionChacha20ChaCha20Poly1305CipherEncrypt({
-    required ChaCha20Poly1305Cipher that,
-    required List<int> plaintext,
-    required List<int> aad,
-  });
-
-  Future<ChaCha20Poly1305Cipher>
-  crateApiEncryptionChacha20ChaCha20Poly1305CipherNew({required List<int> key});
-
   Future<void> crateApiEncryptionNoopNoopEncryptionAlgorithmId({
     required NoopEncryption that,
   });
@@ -229,24 +190,6 @@ abstract class RustLibApi extends BaseApi {
   Future<Uint8List> crateApiHashingSha3Hash({required List<int> data});
 
   RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_Aes256GcmCipher;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_Aes256GcmCipher;
-
-  CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_Aes256GcmCipherPtr;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_ChaCha20Poly1305Cipher;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_ChaCha20Poly1305Cipher;
-
-  CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_ChaCha20Poly1305CipherPtr;
-
-  RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_CipherHandle;
 
   RustArcDecrementStrongCountFnType
@@ -281,313 +224,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<void> crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId({
-    required Aes256GcmCipher that,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-            that,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 1,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherAlgorithmIdConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiEncryptionAesGcmAes256GcmCipherAlgorithmIdConstMeta =>
-      const TaskConstMeta(
-        debugName: "Aes256GcmCipher_algorithm_id",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherDecrypt({
-    required Aes256GcmCipher that,
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-            that,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherDecryptConstMeta,
-        argValues: [that, ciphertext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherDecryptConstMeta =>
-      const TaskConstMeta(
-        debugName: "Aes256GcmCipher_decrypt",
-        argNames: ["that", "ciphertext", "aad"],
-      );
-
-  @override
-  Future<Uint8List> crateApiEncryptionAesGcmAes256GcmCipherEncrypt({
-    required Aes256GcmCipher that,
-    required List<int> plaintext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-            that,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(plaintext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherEncryptConstMeta,
-        argValues: [that, plaintext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherEncryptConstMeta =>
-      const TaskConstMeta(
-        debugName: "Aes256GcmCipher_encrypt",
-        argNames: ["that", "plaintext", "aad"],
-      );
-
-  @override
-  Future<Aes256GcmCipher> crateApiEncryptionAesGcmAes256GcmCipherNew({
-    required List<int> key,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 4,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmAes256GcmCipherNewConstMeta,
-        argValues: [key],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionAesGcmAes256GcmCipherNewConstMeta =>
-      const TaskConstMeta(debugName: "Aes256GcmCipher_new", argNames: ["key"]);
-
-  @override
-  Future<void> crateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmId({
-    required ChaCha20Poly1305Cipher that,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-            that,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 5,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: null,
-        ),
-        constMeta:
-            kCrateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmIdConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmIdConstMeta =>
-      const TaskConstMeta(
-        debugName: "ChaCha20Poly1305Cipher_algorithm_id",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<Uint8List> crateApiEncryptionChacha20ChaCha20Poly1305CipherDecrypt({
-    required ChaCha20Poly1305Cipher that,
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-            that,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 6,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta:
-            kCrateApiEncryptionChacha20ChaCha20Poly1305CipherDecryptConstMeta,
-        argValues: [that, ciphertext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiEncryptionChacha20ChaCha20Poly1305CipherDecryptConstMeta =>
-      const TaskConstMeta(
-        debugName: "ChaCha20Poly1305Cipher_decrypt",
-        argNames: ["that", "ciphertext", "aad"],
-      );
-
-  @override
-  Future<Uint8List> crateApiEncryptionChacha20ChaCha20Poly1305CipherEncrypt({
-    required ChaCha20Poly1305Cipher that,
-    required List<int> plaintext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-            that,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(plaintext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 7,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta:
-            kCrateApiEncryptionChacha20ChaCha20Poly1305CipherEncryptConstMeta,
-        argValues: [that, plaintext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiEncryptionChacha20ChaCha20Poly1305CipherEncryptConstMeta =>
-      const TaskConstMeta(
-        debugName: "ChaCha20Poly1305Cipher_encrypt",
-        argNames: ["that", "plaintext", "aad"],
-      );
-
-  @override
-  Future<ChaCha20Poly1305Cipher>
-  crateApiEncryptionChacha20ChaCha20Poly1305CipherNew({
-    required List<int> key,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 8,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher,
-          decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta:
-            kCrateApiEncryptionChacha20ChaCha20Poly1305CipherNewConstMeta,
-        argValues: [key],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiEncryptionChacha20ChaCha20Poly1305CipherNewConstMeta =>
-      const TaskConstMeta(
-        debugName: "ChaCha20Poly1305Cipher_new",
-        argNames: ["key"],
-      );
-
-  @override
   Future<void> crateApiEncryptionNoopNoopEncryptionAlgorithmId({
     required NoopEncryption that,
   }) {
@@ -602,7 +238,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 1,
             port: port_,
           );
         },
@@ -642,7 +278,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 2,
             port: port_,
           );
         },
@@ -682,7 +318,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 3,
             port: port_,
           );
         },
@@ -717,7 +353,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 4,
             port: port_,
           );
         },
@@ -754,7 +390,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 5,
             port: port_,
           );
         },
@@ -789,7 +425,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 6,
             port: port_,
           );
         },
@@ -820,7 +456,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 7,
             port: port_,
           );
         },
@@ -850,7 +486,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 8,
             port: port_,
           );
         },
@@ -878,7 +514,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 9,
             port: port_,
           );
         },
@@ -909,7 +545,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 10,
             port: port_,
           );
         },
@@ -940,7 +576,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 11,
             port: port_,
           );
         },
@@ -968,7 +604,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 12,
             port: port_,
           );
         },
@@ -1006,7 +642,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 13,
             port: port_,
           );
         },
@@ -1045,7 +681,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 14,
             port: port_,
           );
         },
@@ -1080,7 +716,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 15,
             port: port_,
           );
         },
@@ -1110,7 +746,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 16,
             port: port_,
           );
         },
@@ -1137,7 +773,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 17,
             port: port_,
           );
         },
@@ -1164,7 +800,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 18,
             port: port_,
           );
         },
@@ -1194,7 +830,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 19,
             port: port_,
           );
         },
@@ -1227,7 +863,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 20,
             port: port_,
           );
         },
@@ -1263,7 +899,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 21,
             port: port_,
           );
         },
@@ -1294,7 +930,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 22,
             port: port_,
           );
         },
@@ -1329,7 +965,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1365,7 +1001,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_list_prim_u_8_strict(salt, serializer);
           sse_encode_list_prim_u_8_loose(info, serializer);
           sse_encode_usize(outputLen, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1399,7 +1035,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1430,7 +1066,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(ikm, serializer);
           sse_encode_opt_list_prim_u_8_strict(salt, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1456,7 +1092,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1473,22 +1109,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiHashingSha3HashConstMeta =>
       const TaskConstMeta(debugName: "sha3_hash", argNames: ["data"]);
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_Aes256GcmCipher => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_Aes256GcmCipher => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_ChaCha20Poly1305Cipher => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_ChaCha20Poly1305Cipher => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher;
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_CipherHandle => wire
@@ -1513,26 +1133,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType
   get rust_arc_decrement_strong_count_NoopEncryption => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNoopEncryption;
-
-  @protected
-  Aes256GcmCipher
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalDcoDecode(
-      raw as List<dynamic>,
-    );
-  }
 
   @protected
   CipherHandle
@@ -1562,26 +1162,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Aes256GcmCipher
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalDcoDecode(
-      raw as List<dynamic>,
-    );
-  }
-
-  @protected
   CipherHandle
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     dynamic raw,
@@ -1606,26 +1186,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NoopEncryptionImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  Aes256GcmCipher
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalDcoDecode(
-      raw as List<dynamic>,
-    );
   }
 
   @protected
@@ -1740,30 +1300,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Aes256GcmCipher
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
   CipherHandle
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     SseDeserializer deserializer,
@@ -1800,30 +1336,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Aes256GcmCipher
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
   CipherHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     SseDeserializer deserializer,
@@ -1854,30 +1366,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NoopEncryptionImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  Aes256GcmCipher
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return Aes256GcmCipherImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  ChaCha20Poly1305Cipher
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ChaCha20Poly1305CipherImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -2028,32 +1516,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    Aes256GcmCipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as Aes256GcmCipherImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    ChaCha20Poly1305Cipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as ChaCha20Poly1305CipherImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     CipherHandle self,
     SseSerializer serializer,
@@ -2093,32 +1555,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    Aes256GcmCipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as Aes256GcmCipherImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    ChaCha20Poly1305Cipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as ChaCha20Poly1305CipherImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     CipherHandle self,
     SseSerializer serializer,
@@ -2152,32 +1588,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as NoopEncryptionImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAes256GcmCipher(
-    Aes256GcmCipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as Aes256GcmCipherImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChaCha20Poly1305Cipher(
-    ChaCha20Poly1305Cipher self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as ChaCha20Poly1305CipherImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -2331,99 +1741,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
   }
-}
-
-@sealed
-class Aes256GcmCipherImpl extends RustOpaque implements Aes256GcmCipher {
-  // Not to be used by end users
-  Aes256GcmCipherImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  Aes256GcmCipherImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Aes256GcmCipher,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Aes256GcmCipher,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Aes256GcmCipherPtr,
-  );
-
-  Future<void> algorithmId() => RustLib.instance.api
-      .crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId(that: this);
-
-  Future<Uint8List> decrypt({
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherDecrypt(
-    that: this,
-    ciphertext: ciphertext,
-    aad: aad,
-  );
-
-  Future<Uint8List> encrypt({
-    required List<int> plaintext,
-    required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherEncrypt(
-    that: this,
-    plaintext: plaintext,
-    aad: aad,
-  );
-}
-
-@sealed
-class ChaCha20Poly1305CipherImpl extends RustOpaque
-    implements ChaCha20Poly1305Cipher {
-  // Not to be used by end users
-  ChaCha20Poly1305CipherImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  ChaCha20Poly1305CipherImpl.frbInternalSseDecode(
-    BigInt ptr,
-    int externalSizeOnNative,
-  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount: RustLib
-        .instance
-        .api
-        .rust_arc_increment_strong_count_ChaCha20Poly1305Cipher,
-    rustArcDecrementStrongCount: RustLib
-        .instance
-        .api
-        .rust_arc_decrement_strong_count_ChaCha20Poly1305Cipher,
-    rustArcDecrementStrongCountPtr: RustLib
-        .instance
-        .api
-        .rust_arc_decrement_strong_count_ChaCha20Poly1305CipherPtr,
-  );
-
-  Future<void> algorithmId() => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmId(that: this);
-
-  Future<Uint8List> decrypt({
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherDecrypt(
-        that: this,
-        ciphertext: ciphertext,
-        aad: aad,
-      );
-
-  Future<Uint8List> encrypt({
-    required List<int> plaintext,
-    required List<int> aad,
-  }) => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherEncrypt(
-        that: this,
-        plaintext: plaintext,
-        aad: aad,
-      );
 }
 
 @sealed
