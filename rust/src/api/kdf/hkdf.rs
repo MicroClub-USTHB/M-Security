@@ -73,6 +73,7 @@ pub fn hkdf_expand(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
