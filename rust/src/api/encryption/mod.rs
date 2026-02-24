@@ -21,8 +21,19 @@ impl CipherHandle {
 }
 
 /// Create a noop encryption handle (for testing FRB opaque pattern).
+///
+/// # Panics
+/// Panics at runtime unless the `testing` feature is enabled.
+/// **Never** enable the `testing` feature in production builds.
 pub fn create_noop_encryption() -> CipherHandle {
-    CipherHandle::new(Box::new(noop::NoopEncryption {}))
+    #[cfg(feature = "testing")]
+    {
+        CipherHandle::new(Box::new(noop::NoopEncryption {}))
+    }
+    #[cfg(not(feature = "testing"))]
+    {
+        panic!("noop cipher is disabled — enable the `testing` feature to use it")
+    }
 }
 
 /// Create an AES-256-GCM cipher handle from a 32-byte key.

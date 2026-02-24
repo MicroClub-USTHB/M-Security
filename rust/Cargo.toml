@@ -10,21 +10,14 @@ crate-type = ["cdylib", "staticlib"]
 # FFI bridge
 flutter_rust_bridge = "=2.11.1"
 
-# Async
-futures = "0.3"
-
 # Error handling
 thiserror = "2.0"
-anyhow = "1.0"
 
 # Randomness
 rand = "0.8"
 
 # Secure memory
 zeroize = { version = "1.8", features = ["derive"] }
-
-# Constant-time operations
-subtle = "2.6"
 
 # Logging
 log = "0.4"
@@ -41,7 +34,6 @@ sha3 = "0.10"
 argon2 = "0.5"
 hkdf = "0.12"
 sha2 = "0.10"
-hmac = "0.12"
 
 # Compression 
 zstd = { version = "0.13", optional = true }
@@ -49,6 +41,7 @@ zstd = { version = "0.13", optional = true }
 [features]
 default = []
 compression = ["zstd"]
+testing = [] # exposes noop cipher — never enable in production builds
 
 [profile.release]
 panic = "abort"

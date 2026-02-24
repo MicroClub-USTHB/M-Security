@@ -1,24 +1,34 @@
 use flutter_rust_bridge::frb;
 use hkdf::Hkdf;
 use sha2::Sha256;
+use zeroize::Zeroize;
 
 use crate::api::error::CryptoError;
 
 /// One-shot HKDF-SHA256: extract + expand in a single call.
 /// Returns `output_len` bytes of derived key material.
+///
+/// # Security
+/// Input key material (`ikm`, `salt`) is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned `Vec<u8>`.
 #[frb(sync)]
 pub fn hkdf_derive(
-    ikm: Vec<u8>,
-    salt: Option<Vec<u8>>,
+    mut ikm: Vec<u8>,
+    mut salt: Option<Vec<u8>>,
     info: Vec<u8>,
     output_len: usize,
 ) -> Result<Vec<u8>, CryptoError> {
     if output_len == 0 {
+        ikm.zeroize();
+        salt.zeroize();
         return Err(CryptoError::KdfFailed(String::from("Invalid OKM length")));
     }
 
-    let salt = salt.as_ref().map(Vec::as_slice);
-    let hk = Hkdf::<Sha256>::new(salt, &ikm);
+    let salt_ref = salt.as_ref().map(Vec::as_slice);
+    let hk = Hkdf::<Sha256>::new(salt_ref, &ikm);
+    ikm.zeroize();
+    salt.zeroize();
+
     let mut buf = vec![0u8; output_len];
     hk.expand(&info, &mut buf)
         .map_err(|_| CryptoError::KdfFailed(String::from("Invalid OKM length")))?;
@@ -26,21 +36,36 @@ pub fn hkdf_derive(
 }
 
 /// HKDF-Extract: produce a pseudorandom key (PRK) from input key material.
+///
+/// # Security
+/// Input key material (`ikm`, `salt`) is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned PRK.
 #[frb(sync)]
-pub fn hkdf_extract(ikm: Vec<u8>, salt: Option<Vec<u8>>) -> Result<Vec<u8>, CryptoError> {
-    let salt = salt.as_ref().map(Vec::as_slice);
-    let (prk, _) = Hkdf::<Sha256>::extract(salt, &ikm);
+pub fn hkdf_extract(
+    mut ikm: Vec<u8>,
+    mut salt: Option<Vec<u8>>,
+) -> Result<Vec<u8>, CryptoError> {
+    let salt_ref = salt.as_ref().map(Vec::as_slice);
+    let (prk, _) = Hkdf::<Sha256>::extract(salt_ref, &ikm);
+    ikm.zeroize();
+    salt.zeroize();
     Ok(prk[..].to_vec())
 }
 
 /// HKDF-Expand: expand a PRK into `output_len` bytes of derived key material.
+///
+/// # Security
+/// The input PRK is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned key material.
 pub fn hkdf_expand(
-    prk: Vec<u8>,
+    mut prk: Vec<u8>,
     info: Vec<u8>,
     output_len: usize,
 ) -> Result<Vec<u8>, CryptoError> {
-    let hk = Hkdf::<Sha256>::from_prk(&prk)
-        .map_err(|_| CryptoError::KdfFailed(String::from("PRK is not large enough")))?;
+    let hk = Hkdf::<Sha256>::from_prk(&prk);
+    prk.zeroize();
+    let hk = hk.map_err(|_| CryptoError::KdfFailed(String::from("PRK is not large enough")))?;
+
     let mut buf = vec![0u8; output_len];
     hk.expand(&info, &mut buf)
         .map_err(|_| CryptoError::KdfFailed(String::from("Invalid OKM length")))?;
