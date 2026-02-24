@@ -4,56 +4,12 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../../core/error.dart';
-import '../../core/secret.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ChaCha20Poly1305Cipher`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `algorithm_id`, `decrypt`, `encrypt`, `new`
 
 /// Generate a random 32-byte ChaCha20-Poly1305 key.
 Future<Uint8List> generateChachaKey() =>
     RustLib.instance.api.crateApiEncryptionChacha20GenerateChachaKey();
-
-/// ChaCha20-Poly1305 cipher with key stored in secure, zeroize-on-drop memory.
-class ChaCha20Poly1305Cipher {
-  final SecretBuffer key;
-
-  const ChaCha20Poly1305Cipher({required this.key});
-
-  Future<void> algorithmId() => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherAlgorithmId(that: this);
-
-  Future<Uint8List> decrypt({
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherDecrypt(
-        that: this,
-        ciphertext: ciphertext,
-        aad: aad,
-      );
-
-  Future<Uint8List> encrypt({
-    required List<int> plaintext,
-    required List<int> aad,
-  }) => RustLib.instance.api
-      .crateApiEncryptionChacha20ChaCha20Poly1305CipherEncrypt(
-        that: this,
-        plaintext: plaintext,
-        aad: aad,
-      );
-
-  // HINT: Make it `#[frb(sync)]` to let it become the default constructor of Dart class.
-  static Future<ChaCha20Poly1305Cipher> newInstance({required List<int> key}) =>
-      RustLib.instance.api.crateApiEncryptionChacha20ChaCha20Poly1305CipherNew(
-        key: key,
-      );
-
-  @override
-  int get hashCode => key.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ChaCha20Poly1305Cipher &&
-          runtimeType == other.runtimeType &&
-          key == other.key;
-}

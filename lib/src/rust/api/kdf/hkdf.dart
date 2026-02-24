@@ -4,14 +4,12 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../../core/error.dart';
-import '../../core/secret.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// Derive a key using a [`Hkdf::<Sha256>`]. This internally does the extraction and expand into the
-/// OKM. You can retreive the resulting key from the [`SecretBuffer`], which assured to contain
-/// `output_len` bytes.
-SecretBuffer hkdfDerive({
+/// One-shot HKDF-SHA256: extract + expand in a single call.
+/// Returns `output_len` bytes of derived key material.
+Uint8List hkdfDerive({
   required List<int> ikm,
   Uint8List? salt,
   required List<int> info,
@@ -23,17 +21,12 @@ SecretBuffer hkdfDerive({
   outputLen: outputLen,
 );
 
-/// Extract a pseudo-random key (PRK) using a [`Hdfk::<Sha256>`]. This is the first step of the
-/// key-deriving process and you generally should just generate a final key using [`hkdf_derive`].
-SecretBuffer hkdfExtract({required List<int> ikm, Uint8List? salt}) =>
+/// HKDF-Extract: produce a pseudorandom key (PRK) from input key material.
+Uint8List hkdfExtract({required List<int> ikm, Uint8List? salt}) =>
     RustLib.instance.api.crateApiKdfHkdfHkdfExtract(ikm: ikm, salt: salt);
 
-/// Expand an OKM (final key) from a PRK+info. This is the second step of the key-deriving process,
-/// you should do this only when you generated a good-enough separate PRK using [`hkdf_extract`],
-/// and want to start generating keys from it.
-///
-/// The result key from the [`SecretBuffer`] is assured to contain `output_len` bytes.
-Future<SecretBuffer> hkdfExpand({
+/// HKDF-Expand: expand a PRK into `output_len` bytes of derived key material.
+Future<Uint8List> hkdfExpand({
   required List<int> prk,
   required List<int> info,
   required BigInt outputLen,

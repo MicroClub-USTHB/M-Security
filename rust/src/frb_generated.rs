@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1136058635;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1794546795;
 
 // Section: executor
 
@@ -48,155 +48,6 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_algorithm_id_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "aes_256_gcm_cipher_algorithm_id",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that =
-                <crate::api::encryption::aes_gcm::Aes256GcmCipher>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok({
-                        crate::api::encryption::aes_gcm::Aes256GcmCipher::algorithm_id(&api_that);
-                    })?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_decrypt_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "aes_256_gcm_cipher_decrypt",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that =
-                <crate::api::encryption::aes_gcm::Aes256GcmCipher>::sse_decode(&mut deserializer);
-            let api_ciphertext = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_aad = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::encryption::aes_gcm::Aes256GcmCipher::decrypt(
-                        &api_that,
-                        &api_ciphertext,
-                        &api_aad,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_encrypt_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "aes_256_gcm_cipher_encrypt",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that =
-                <crate::api::encryption::aes_gcm::Aes256GcmCipher>::sse_decode(&mut deserializer);
-            let api_plaintext = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_aad = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::encryption::aes_gcm::Aes256GcmCipher::encrypt(
-                        &api_that,
-                        &api_plaintext,
-                        &api_aad,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_new_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "aes_256_gcm_cipher_new",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::encryption::aes_gcm::Aes256GcmCipher::new(api_key)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__hashing__argon2__argon2id_hash_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -336,163 +187,6 @@ fn wire__crate__api__hashing__blake3_hash_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::hashing::blake3_hash(api_data))?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_algorithm_id_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "cha_cha_20_poly_1305_cipher_algorithm_id",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that = <crate::api::encryption::chacha20::ChaCha20Poly1305Cipher>::sse_decode(
-                &mut deserializer,
-            );
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok({
-                        crate::api::encryption::chacha20::ChaCha20Poly1305Cipher::algorithm_id(
-                            &api_that,
-                        );
-                    })?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_decrypt_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "cha_cha_20_poly_1305_cipher_decrypt",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that = <crate::api::encryption::chacha20::ChaCha20Poly1305Cipher>::sse_decode(
-                &mut deserializer,
-            );
-            let api_ciphertext = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_aad = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok =
-                        crate::api::encryption::chacha20::ChaCha20Poly1305Cipher::decrypt(
-                            &api_that,
-                            &api_ciphertext,
-                            &api_aad,
-                        )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_encrypt_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "cha_cha_20_poly_1305_cipher_encrypt",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_that = <crate::api::encryption::chacha20::ChaCha20Poly1305Cipher>::sse_decode(
-                &mut deserializer,
-            );
-            let api_plaintext = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_aad = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok =
-                        crate::api::encryption::chacha20::ChaCha20Poly1305Cipher::encrypt(
-                            &api_that,
-                            &api_plaintext,
-                            &api_aad,
-                        )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_new_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "cha_cha_20_poly_1305_cipher_new",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok =
-                        crate::api::encryption::chacha20::ChaCha20Poly1305Cipher::new(api_key)?;
                     Ok(output_ok)
                 })())
             }
@@ -1477,14 +1171,6 @@ impl SseDecode for String {
     }
 }
 
-impl SseDecode for crate::api::encryption::aes_gcm::Aes256GcmCipher {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_key = <crate::core::secret::SecretBuffer>::sse_decode(deserializer);
-        return crate::api::encryption::aes_gcm::Aes256GcmCipher { key: var_key };
-    }
-}
-
 impl SseDecode for crate::api::hashing::argon2::Argon2Preset {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1494,14 +1180,6 @@ impl SseDecode for crate::api::hashing::argon2::Argon2Preset {
             1 => crate::api::hashing::argon2::Argon2Preset::Desktop,
             _ => unreachable!("Invalid variant for Argon2Preset: {}", inner),
         };
-    }
-}
-
-impl SseDecode for crate::api::encryption::chacha20::ChaCha20Poly1305Cipher {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_key = <crate::core::secret::SecretBuffer>::sse_decode(deserializer);
-        return crate::api::encryption::chacha20::ChaCha20Poly1305Cipher { key: var_key };
     }
 }
 
@@ -1591,14 +1269,6 @@ impl SseDecode for Option<Vec<u8>> {
     }
 }
 
-impl SseDecode for crate::core::secret::SecretBuffer {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_inner = <Vec<u8>>::sse_decode(deserializer);
-        return crate::core::secret::SecretBuffer { inner: var_inner };
-    }
-}
-
 impl SseDecode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1634,145 +1304,97 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_algorithm_id_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        2 => wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_decrypt_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        3 => wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_encrypt_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        4 => wire__crate__api__encryption__aes_gcm__aes_256_gcm_cipher_new_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        5 => {
+        1 => {
             wire__crate__api__hashing__argon2__argon2id_hash_impl(port, ptr, rust_vec_len, data_len)
         }
-        6 => wire__crate__api__hashing__argon2__argon2id_hash_with_salt_impl(
+        2 => wire__crate__api__hashing__argon2__argon2id_hash_with_salt_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__hashing__argon2__argon2id_verify_impl(
+        3 => wire__crate__api__hashing__argon2__argon2id_verify_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__hashing__blake3_hash_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_algorithm_id_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        10 => wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_decrypt_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        11 => wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_encrypt_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        12 => wire__crate__api__encryption__chacha20__cha_cha_20_poly_1305_cipher_new_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        13 => {
+        4 => wire__crate__api__hashing__blake3_hash_impl(port, ptr, rust_vec_len, data_len),
+        5 => {
             wire__crate__api__encryption__create_aes256_gcm_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__encryption__create_chacha20_poly1305_impl(
+        6 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__encryption__create_chacha20_poly1305_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__encryption__create_noop_encryption_impl(
+        8 => wire__crate__api__encryption__create_noop_encryption_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__encryption__encryption_algorithm_id_impl(
+        9 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__encryption__encryption_algorithm_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__encryption__generate_aes256_gcm_key_impl(
+        13 => wire__crate__api__encryption__generate_aes256_gcm_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(
+        14 => wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
+        15 => wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__encryption__chacha20__generate_chacha_key_impl(
+        16 => wire__crate__api__encryption__chacha20__generate_chacha_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => {
+        17 => {
             wire__crate__api__hashing__hasher_algorithm_id_impl(port, ptr, rust_vec_len, data_len)
         }
-        26 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__kdf__hkdf__hkdf_expand_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__encryption__noop__noop_encryption_algorithm_id_impl(
+        18 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__kdf__hkdf__hkdf_expand_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__encryption__noop__noop_encryption_algorithm_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        33 => wire__crate__api__encryption__noop__noop_encryption_decrypt_impl(
+        25 => wire__crate__api__encryption__noop__noop_encryption_decrypt_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        34 => wire__crate__api__encryption__noop__noop_encryption_encrypt_impl(
+        26 => wire__crate__api__encryption__noop__noop_encryption_encrypt_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        35 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1785,8 +1407,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        29 => wire__crate__api__kdf__hkdf__hkdf_derive_impl(ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__kdf__hkdf__hkdf_extract_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__kdf__hkdf__hkdf_derive_impl(ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__kdf__hkdf__hkdf_extract_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1824,23 +1446,6 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<HasherHandle>> for HasherHandl
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::encryption::aes_gcm::Aes256GcmCipher {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [self.key.into_into_dart().into_dart()].into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::encryption::aes_gcm::Aes256GcmCipher
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::encryption::aes_gcm::Aes256GcmCipher>
-    for crate::api::encryption::aes_gcm::Aes256GcmCipher
-{
-    fn into_into_dart(self) -> crate::api::encryption::aes_gcm::Aes256GcmCipher {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::hashing::argon2::Argon2Preset {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -1858,23 +1463,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::hashing::argon2::Argon2Preset
     for crate::api::hashing::argon2::Argon2Preset
 {
     fn into_into_dart(self) -> crate::api::hashing::argon2::Argon2Preset {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::encryption::chacha20::ChaCha20Poly1305Cipher {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [self.key.into_into_dart().into_dart()].into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::encryption::chacha20::ChaCha20Poly1305Cipher
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::encryption::chacha20::ChaCha20Poly1305Cipher>
-    for crate::api::encryption::chacha20::ChaCha20Poly1305Cipher
-{
-    fn into_into_dart(self) -> crate::api::encryption::chacha20::ChaCha20Poly1305Cipher {
         self
     }
 }
@@ -1940,23 +1528,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::encryption::noop::NoopEncrypt
         self
     }
 }
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::core::secret::SecretBuffer {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [self.inner.into_into_dart().into_dart()].into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::core::secret::SecretBuffer
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::core::secret::SecretBuffer>
-    for crate::core::secret::SecretBuffer
-{
-    fn into_into_dart(self) -> crate::core::secret::SecretBuffer {
-        self
-    }
-}
 
 impl SseEncode for CipherHandle {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2001,13 +1572,6 @@ impl SseEncode for String {
     }
 }
 
-impl SseEncode for crate::api::encryption::aes_gcm::Aes256GcmCipher {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <crate::core::secret::SecretBuffer>::sse_encode(self.key, serializer);
-    }
-}
-
 impl SseEncode for crate::api::hashing::argon2::Argon2Preset {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2021,13 +1585,6 @@ impl SseEncode for crate::api::hashing::argon2::Argon2Preset {
             },
             serializer,
         );
-    }
-}
-
-impl SseEncode for crate::api::encryption::chacha20::ChaCha20Poly1305Cipher {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <crate::core::secret::SecretBuffer>::sse_encode(self.key, serializer);
     }
 }
 
@@ -2105,13 +1662,6 @@ impl SseEncode for Option<Vec<u8>> {
         if let Some(value) = self {
             <Vec<u8>>::sse_encode(value, serializer);
         }
-    }
-}
-
-impl SseEncode for crate::core::secret::SecretBuffer {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<u8>>::sse_encode(self.inner, serializer);
     }
 }
 

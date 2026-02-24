@@ -4,52 +4,12 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../../core/error.dart';
-import '../../core/secret.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Aes256GcmCipher`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `algorithm_id`, `decrypt`, `encrypt`, `new`
 
 /// Generate a random 32-byte AES-256 key.
 Future<Uint8List> generateAesKey() =>
     RustLib.instance.api.crateApiEncryptionAesGcmGenerateAesKey();
-
-/// AES-256-GCM cipher with key stored in secure, zeroize-on-drop memory.
-class Aes256GcmCipher {
-  final SecretBuffer key;
-
-  const Aes256GcmCipher({required this.key});
-
-  Future<void> algorithmId() => RustLib.instance.api
-      .crateApiEncryptionAesGcmAes256GcmCipherAlgorithmId(that: this);
-
-  Future<Uint8List> decrypt({
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherDecrypt(
-    that: this,
-    ciphertext: ciphertext,
-    aad: aad,
-  );
-
-  Future<Uint8List> encrypt({
-    required List<int> plaintext,
-    required List<int> aad,
-  }) => RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherEncrypt(
-    that: this,
-    plaintext: plaintext,
-    aad: aad,
-  );
-
-  // HINT: Make it `#[frb(sync)]` to let it become the default constructor of Dart class.
-  static Future<Aes256GcmCipher> newInstance({required List<int> key}) =>
-      RustLib.instance.api.crateApiEncryptionAesGcmAes256GcmCipherNew(key: key);
-
-  @override
-  int get hashCode => key.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Aes256GcmCipher &&
-          runtimeType == other.runtimeType &&
-          key == other.key;
-}
