@@ -40,6 +40,7 @@ jobs:
       - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
+      - run: dart run build_runner build --delete-conflicting-outputs
       - run: dart analyze lib/ integration_test/
 
   build-android:
@@ -57,7 +58,10 @@ jobs:
       - uses: nttld/setup-ndk@v1
         with:
           ndk-version: r27c
+      - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
+      - run: flutter_rust_bridge_codegen generate
+      - run: dart run build_runner build --delete-conflicting-outputs
       - run: cd example && flutter build apk --release
 
   build-ios:
@@ -72,8 +76,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
-      - run: cd example && flutter build ios --release --no-codesign
+      - run: flutter_rust_bridge_codegen generate
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: cd example && flutter build ios --simulator --debug
 
   build-linux:
     name: Linux build
@@ -86,7 +93,10 @@ jobs:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
+      - run: flutter_rust_bridge_codegen generate
+      - run: dart run build_runner build --delete-conflicting-outputs
       - run: cd example && flutter build linux --release
 
   build-windows:
@@ -99,5 +109,8 @@ jobs:
         with:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
+      - run: flutter_rust_bridge_codegen generate
+      - run: dart run build_runner build --delete-conflicting-outputs
       - run: cd example && flutter build windows --release
