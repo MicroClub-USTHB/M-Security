@@ -1,7 +1,7 @@
 //! Secure memory wrapper that zeroes on drop.
 
-use std::fmt;
 use flutter_rust_bridge::frb;
+use std::fmt;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A buffer that securely zeroes its contents when dropped.

@@ -95,8 +95,8 @@ mod tests {
 
     #[test]
     fn test_hash_contains_preset_params() {
-        let hash = argon2id_hash("test".into(), Argon2Preset::Mobile)
-            .expect("hashing should succeed");
+        let hash =
+            argon2id_hash("test".into(), Argon2Preset::Mobile).expect("hashing should succeed");
 
         // Mobile: m=65536 (64*1024), t=3, p=4
         assert!(hash.contains("m=65536"), "Missing memory param: {}", hash);
@@ -106,8 +106,8 @@ mod tests {
 
     #[test]
     fn test_hash_desktop_preset_params() {
-        let hash = argon2id_hash("test".into(), Argon2Preset::Desktop)
-            .expect("hashing should succeed");
+        let hash =
+            argon2id_hash("test".into(), Argon2Preset::Desktop).expect("hashing should succeed");
 
         // Desktop: m=262144 (256*1024), t=4, p=8
         assert!(hash.contains("m=262144"), "Missing memory param: {}", hash);
@@ -147,7 +147,10 @@ mod tests {
         let hash2 = argon2id_hash_with_salt("password".into(), salt.into(), Argon2Preset::Mobile)
             .expect("hashing should succeed");
 
-        assert_eq!(hash1, hash2, "Same password + salt should produce same hash");
+        assert_eq!(
+            hash1, hash2,
+            "Same password + salt should produce same hash"
+        );
     }
 
     #[test]
@@ -159,7 +162,10 @@ mod tests {
         let hash2 = argon2id_hash_with_salt("password2".into(), salt.into(), Argon2Preset::Mobile)
             .expect("hashing should succeed");
 
-        assert_ne!(hash1, hash2, "Different passwords should produce different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different passwords should produce different hashes"
+        );
     }
 
     #[test]
@@ -196,7 +202,11 @@ mod tests {
 
     #[test]
     fn test_invalid_salt() {
-        let result = argon2id_hash_with_salt("password".into(), "!!!invalid!!!".into(), Argon2Preset::Mobile);
+        let result = argon2id_hash_with_salt(
+            "password".into(),
+            "!!!invalid!!!".into(),
+            Argon2Preset::Mobile,
+        );
         assert!(result.is_err());
         match result {
             Err(CryptoError::InvalidParameter(_)) => {} // expected
@@ -207,8 +217,8 @@ mod tests {
     #[test]
     fn test_empty_password_hashes() {
         // Empty password is valid — Argon2id should handle it
-        let hash = argon2id_hash(String::new(), Argon2Preset::Mobile)
-            .expect("empty password should hash");
+        let hash =
+            argon2id_hash(String::new(), Argon2Preset::Mobile).expect("empty password should hash");
         assert!(hash.starts_with("$argon2id$"));
         assert!(argon2id_verify(hash, String::new()).is_ok());
     }
