@@ -29,14 +29,17 @@ jobs:
       - run: cargo test
 
   dart:
-    name: Dart (analyze)
+    name: Dart (codegen + analyze)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install flutter_rust_bridge_codegen
       - run: flutter pub get
+      - run: flutter_rust_bridge_codegen generate
       - run: dart analyze lib/ integration_test/
 
   build-android:
