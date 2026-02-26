@@ -23,6 +23,30 @@ impl HasherHandle {
             inner: Mutex::new(hasher),
         }
     }
+
+    pub(crate) fn update_raw(&self, data: &[u8]) -> Result<(), CryptoError> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
+        guard.update(data)
+    }
+
+    pub(crate) fn finalize_raw(&self) -> Result<Vec<u8>, CryptoError> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
+        guard.finalize()
+    }
+
+    pub(crate) fn reset_raw(&self) -> Result<(), CryptoError> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
+        guard.reset()
+    }
 }
 
 /// Create a BLAKE3 hasher handle.
