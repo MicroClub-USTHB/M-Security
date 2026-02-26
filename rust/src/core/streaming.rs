@@ -520,7 +520,7 @@ mod tests {
         bytes[0] = b'X';
         let result = StreamHeader::from_bytes(&bytes);
         assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
+        let err = result.expect_err("should fail").to_string();
         assert!(err.contains("magic"), "Error should mention magic: {err}");
     }
 
@@ -711,7 +711,7 @@ mod tests {
 
         let result = strip_last_chunk_padding(&padded);
         assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
+        let err = result.expect_err("should fail").to_string();
         assert!(
             err.contains("padding"),
             "Error should mention padding: {err}"
