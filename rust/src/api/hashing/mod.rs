@@ -32,6 +32,7 @@ impl HasherHandle {
         guard.update(data)
     }
 
+    #[allow(dead_code)] // used by streaming hash tests
     pub(crate) fn finalize_raw(&self) -> Result<Vec<u8>, CryptoError> {
         let guard = self
             .inner

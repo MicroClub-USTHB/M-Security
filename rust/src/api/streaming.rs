@@ -302,15 +302,16 @@ pub(crate) fn decrypt_file_impl(
 
 // -- Streaming hash (no encryption padding) -----------------------------------
 
-/// Hash a file in streaming 64KB chunks.
+/// Feed an entire file into the hasher in 64KB chunks. Does NOT finalize.
 ///
 /// Resets the hasher first to ensure a clean state, then feeds raw file bytes
-/// (no padding). The digest matches `blake3_hash(fs::read(path))`.
-pub(crate) fn hash_file_impl(
+/// (no padding). Caller must call `finalize_raw()` / `hasherFinalize()` to
+/// obtain the digest.
+pub(crate) fn hash_file_feed(
     hasher: &HasherHandle,
     file_path: &str,
     on_progress: &dyn Fn(f64),
-) -> Result<Vec<u8>, CryptoError> {
+) -> Result<(), CryptoError> {
     hasher.reset_raw()?;
 
     let file = File::open(file_path)
@@ -336,9 +337,22 @@ pub(crate) fn hash_file_impl(
         }
     }
 
-    let digest = hasher.finalize_raw()?;
     on_progress(1.0);
-    Ok(digest)
+    Ok(())
+}
+
+/// Hash a file in streaming 64KB chunks (feed + finalize).
+///
+/// Convenience wrapper: feeds the entire file then finalizes.
+/// The digest matches `blake3_hash(fs::read(path))`.
+#[cfg(test)]
+fn hash_file_impl(
+    hasher: &HasherHandle,
+    file_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<Vec<u8>, CryptoError> {
+    hash_file_feed(hasher, file_path, on_progress)?;
+    hasher.finalize_raw()
 }
 
 // -- FRB entry points (thin wrappers) ----------------------------------------
@@ -373,17 +387,20 @@ pub fn stream_decrypt_file(
     })
 }
 
-/// Hash a file using streaming 64KB chunks.
+/// Hash a file using streaming 64KB chunks — feeds data only, does NOT finalize.
 ///
-/// Reads raw file bytes (no encryption padding) so the digest matches
-/// one-shot `blake3_hash()` / `sha3_hash()` output.
+/// Reads raw file bytes (no encryption padding) and feeds them to the hasher.
 /// Progress (0.0..1.0) is pushed to `progress_sink`.
+///
+/// After the stream completes, call `hasherFinalize()` from Dart to obtain
+/// the digest. This two-step design is required because FRB cannot return
+/// both a Stream and a value from the same function.
 pub fn stream_hash_file(
     hasher: &HasherHandle,
     file_path: String,
     progress_sink: StreamSink<f64>,
-) -> Result<Vec<u8>, CryptoError> {
-    hash_file_impl(hasher, &file_path, &|p| {
+) -> Result<(), CryptoError> {
+    hash_file_feed(hasher, &file_path, &|p| {
         let _ = progress_sink.add(p);
     })
 }
