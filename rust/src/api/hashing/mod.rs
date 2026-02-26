@@ -1,8 +1,8 @@
 //! Hashing API module.
 
+pub mod argon2;
 mod blake3;
 mod sha3;
-pub mod argon2;
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Hasher;
@@ -37,33 +37,37 @@ pub fn create_sha3() -> HasherHandle {
 
 /// Feed data into the hasher.
 pub fn hasher_update(handle: &HasherHandle, data: Vec<u8>) -> Result<(), CryptoError> {
-    let mut guard = handle.inner.lock().map_err(|_| {
-        CryptoError::HashingFailed("Hasher lock poisoned".into())
-    })?;
+    let mut guard = handle
+        .inner
+        .lock()
+        .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
     guard.update(&data)
 }
 
 /// Reset the hasher to its initial state.
 pub fn hasher_reset(handle: &HasherHandle) -> Result<(), CryptoError> {
-    let mut guard = handle.inner.lock().map_err(|_| {
-        CryptoError::HashingFailed("Hasher lock poisoned".into())
-    })?;
+    let mut guard = handle
+        .inner
+        .lock()
+        .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
     guard.reset()
 }
 
 /// Finalize and return the digest.
 pub fn hasher_finalize(handle: &HasherHandle) -> Result<Vec<u8>, CryptoError> {
-    let guard = handle.inner.lock().map_err(|_| {
-        CryptoError::HashingFailed("Hasher lock poisoned".into())
-    })?;
+    let guard = handle
+        .inner
+        .lock()
+        .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
     guard.finalize()
 }
 
 /// Get the algorithm identifier for the hasher.
 pub fn hasher_algorithm_id(handle: &HasherHandle) -> Result<String, CryptoError> {
-    let guard = handle.inner.lock().map_err(|_| {
-        CryptoError::HashingFailed("Hasher lock poisoned".into())
-    })?;
+    let guard = handle
+        .inner
+        .lock()
+        .map_err(|_| CryptoError::HashingFailed("Hasher lock poisoned".into()))?;
     Ok(guard.algorithm_id().to_string())
 }
 

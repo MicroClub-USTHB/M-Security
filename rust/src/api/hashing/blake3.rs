@@ -56,9 +56,9 @@ mod tests {
         let digest = hasher.finalize().expect("finalize should succeed");
 
         // BLAKE3 empty string hash (official test vector)
-        let expected = hex::decode(
-            "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
-        ).expect("valid hex");
+        let expected =
+            hex::decode("af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262")
+                .expect("valid hex");
 
         assert_eq!(digest, expected);
     }
@@ -66,13 +66,15 @@ mod tests {
     #[test]
     fn test_hello_world() {
         let mut hasher = Blake3Hasher::new();
-        hasher.update(b"hello world").expect("update should succeed");
+        hasher
+            .update(b"hello world")
+            .expect("update should succeed");
         let digest = hasher.finalize().expect("finalize should succeed");
 
         // BLAKE3("hello world") - verified against reference implementation
-        let expected = hex::decode(
-            "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
-        ).expect("valid hex");
+        let expected =
+            hex::decode("d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24")
+                .expect("valid hex");
 
         assert_eq!(digest, expected);
     }
@@ -101,7 +103,9 @@ mod tests {
 
         // After reset, should produce empty hash
         let digest = hasher.finalize().expect("finalize should succeed");
-        let empty_hash = Blake3Hasher::new().finalize().expect("finalize should succeed");
+        let empty_hash = Blake3Hasher::new()
+            .finalize()
+            .expect("finalize should succeed");
 
         assert_eq!(digest, empty_hash);
     }

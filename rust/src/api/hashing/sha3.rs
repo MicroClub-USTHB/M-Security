@@ -57,10 +57,9 @@ mod tests {
         let digest = hasher.finalize().expect("finalize should succeed");
 
         // NIST SHA-3 empty string test vector
-        let expected = hex::decode(
-            "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-        )
-        .expect("valid hex");
+        let expected =
+            hex::decode("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a")
+                .expect("valid hex");
 
         assert_eq!(digest, expected);
     }
@@ -72,10 +71,9 @@ mod tests {
         let digest = hasher.finalize().expect("finalize should succeed");
 
         // NIST SHA-3("abc") test vector
-        let expected = hex::decode(
-            "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
-        )
-        .expect("valid hex");
+        let expected =
+            hex::decode("3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532")
+                .expect("valid hex");
 
         assert_eq!(digest, expected);
     }
@@ -104,7 +102,9 @@ mod tests {
 
         // After reset, should produce empty hash
         let digest = hasher.finalize().expect("finalize should succeed");
-        let empty_hash = Sha3Hasher::new().finalize().expect("finalize should succeed");
+        let empty_hash = Sha3Hasher::new()
+            .finalize()
+            .expect("finalize should succeed");
 
         assert_eq!(digest, empty_hash);
     }
