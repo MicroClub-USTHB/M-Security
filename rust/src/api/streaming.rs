@@ -12,6 +12,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 
 use crate::api::encryption::CipherHandle;
+use crate::api::hashing::HasherHandle;
 use crate::core::error::CryptoError;
 use crate::core::streaming::{
     finish_file, pad_last_chunk, strip_last_chunk_padding, ChunkAad, ChunkReader, ChunkWriter,
@@ -299,6 +300,47 @@ pub(crate) fn decrypt_file_impl(
     Ok(())
 }
 
+// -- Streaming hash (no encryption padding) -----------------------------------
+
+/// Hash a file in streaming 64KB chunks.
+///
+/// Resets the hasher first to ensure a clean state, then feeds raw file bytes
+/// (no padding). The digest matches `blake3_hash(fs::read(path))`.
+pub(crate) fn hash_file_impl(
+    hasher: &HasherHandle,
+    file_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<Vec<u8>, CryptoError> {
+    hasher.reset_raw()?;
+
+    let file = File::open(file_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot open input '{file_path}': {e}")))?;
+    let file_size = file
+        .metadata()
+        .map_err(|e| CryptoError::IoError(format!("Cannot stat input: {e}")))?
+        .len();
+
+    let mut reader = BufReader::new(file);
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    let mut bytes_hashed: u64 = 0;
+
+    loop {
+        let n = read_full(&mut reader, &mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update_raw(&buf[..n])?;
+        bytes_hashed += n as u64;
+        if file_size > 0 {
+            on_progress((bytes_hashed as f64 / file_size as f64).min(0.99));
+        }
+    }
+
+    let digest = hasher.finalize_raw()?;
+    on_progress(1.0);
+    Ok(digest)
+}
+
 // -- FRB entry points (thin wrappers) ----------------------------------------
 
 use crate::frb_generated::StreamSink;
@@ -327,6 +369,21 @@ pub fn stream_decrypt_file(
     progress_sink: StreamSink<f64>,
 ) -> Result<(), CryptoError> {
     decrypt_file_impl(cipher, &input_path, &output_path, &|p| {
+        let _ = progress_sink.add(p);
+    })
+}
+
+/// Hash a file using streaming 64KB chunks.
+///
+/// Reads raw file bytes (no encryption padding) so the digest matches
+/// one-shot `blake3_hash()` / `sha3_hash()` output.
+/// Progress (0.0..1.0) is pushed to `progress_sink`.
+pub fn stream_hash_file(
+    hasher: &HasherHandle,
+    file_path: String,
+    progress_sink: StreamSink<f64>,
+) -> Result<Vec<u8>, CryptoError> {
+    hash_file_impl(hasher, &file_path, &|p| {
         let _ = progress_sink.add(p);
     })
 }
@@ -724,5 +781,98 @@ mod tests {
         assert!(encrypted.exists(), "Output should exist");
         let tmp = format!("{}.tmp", encrypted.to_str().expect("p"));
         assert!(!std::path::Path::new(&tmp).exists(), "Temp file should be gone after success");
+    }
+
+    // -- Streaming hash tests -------------------------------------------------
+
+    fn make_blake3_hasher() -> HasherHandle {
+        crate::api::hashing::create_blake3()
+    }
+
+    fn make_sha3_hasher() -> HasherHandle {
+        crate::api::hashing::create_sha3()
+    }
+
+    #[test]
+    fn test_streaming_hash_matches_oneshot_blake3() {
+        let data = b"Hello, streaming hash with BLAKE3!";
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let path = dir.path().join("input.bin");
+        fs::write(&path, data).expect("write");
+
+        let hasher = make_blake3_hasher();
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
+            .expect("hash");
+
+        let oneshot = crate::api::hashing::blake3_hash(data.to_vec());
+        assert_eq!(digest, oneshot);
+    }
+
+    #[test]
+    fn test_streaming_hash_matches_oneshot_sha3() {
+        let data = b"Hello, streaming hash with SHA-3!";
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let path = dir.path().join("input.bin");
+        fs::write(&path, data).expect("write");
+
+        let hasher = make_sha3_hasher();
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
+            .expect("hash");
+
+        let oneshot = crate::api::hashing::sha3_hash(data.to_vec());
+        assert_eq!(digest, oneshot);
+    }
+
+    #[test]
+    fn test_streaming_hash_empty_file() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let path = dir.path().join("empty.bin");
+        fs::write(&path, b"").expect("write");
+
+        let hasher = make_blake3_hasher();
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
+            .expect("hash");
+
+        let oneshot = crate::api::hashing::blake3_hash(Vec::new());
+        assert_eq!(digest, oneshot);
+    }
+
+    #[test]
+    fn test_streaming_hash_large_file() {
+        let data = vec![0xAB; 1024 * 1024 + 37]; // 1MB + 37 bytes
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let path = dir.path().join("large.bin");
+        fs::write(&path, &data).expect("write");
+
+        let hasher = make_blake3_hasher();
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
+            .expect("hash");
+
+        let oneshot = crate::api::hashing::blake3_hash(data);
+        assert_eq!(digest, oneshot);
+    }
+
+    #[test]
+    fn test_streaming_hash_exact_boundary() {
+        let data = vec![0xCD; CHUNK_SIZE]; // exactly 64KB
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let path = dir.path().join("boundary.bin");
+        fs::write(&path, &data).expect("write");
+
+        let hasher = make_blake3_hasher();
+        let progress = std::sync::Mutex::new(Vec::new());
+        let digest = hash_file_impl(
+            &hasher,
+            path.to_str().expect("p"),
+            &|p| progress.lock().expect("lock").push(p),
+        )
+        .expect("hash");
+
+        let oneshot = crate::api::hashing::blake3_hash(data);
+        assert_eq!(digest, oneshot);
+
+        let vals = progress.lock().expect("lock");
+        assert!(!vals.is_empty());
+        assert!((vals.last().copied().unwrap_or(0.0) - 1.0).abs() < f64::EPSILON);
     }
 }
