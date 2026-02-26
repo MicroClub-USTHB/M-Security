@@ -483,7 +483,7 @@ mod tests {
         let tampered = dir.path().join("tampered.bin");
         let decrypted = dir.path().join("decrypted.bin");
 
-        fs::write(&input, &vec![0xAA; CHUNK_SIZE * 3]).expect("write");
+        fs::write(&input, vec![0xAA; CHUNK_SIZE * 3]).expect("write");
         encrypt_file_impl(
             &cipher,
             input.to_str().expect("p"),
@@ -520,7 +520,7 @@ mod tests {
         let tampered = dir.path().join("tampered.bin");
         let decrypted = dir.path().join("decrypted.bin");
 
-        fs::write(&input, &vec![0xBB; CHUNK_SIZE * 3]).expect("write");
+        fs::write(&input, vec![0xBB; CHUNK_SIZE * 3]).expect("write");
         encrypt_file_impl(
             &cipher,
             input.to_str().expect("p"),
@@ -554,7 +554,7 @@ mod tests {
         let tampered = dir.path().join("tampered.bin");
         let decrypted = dir.path().join("decrypted.bin");
 
-        fs::write(&input, &vec![0xCC; CHUNK_SIZE + 100]).expect("write");
+        fs::write(&input, vec![0xCC; CHUNK_SIZE + 100]).expect("write");
         encrypt_file_impl(
             &cipher,
             input.to_str().expect("p"),
@@ -584,7 +584,7 @@ mod tests {
         let input = dir.path().join("input.bin");
         let encrypted = dir.path().join("encrypted.bin");
 
-        fs::write(&input, &[0xDD; 100]).expect("write");
+        fs::write(&input, [0xDD; 100]).expect("write");
         encrypt_file_impl(
             &cipher,
             input.to_str().expect("p"),
@@ -637,7 +637,7 @@ mod tests {
         let decrypted = dir.path().join("decrypted.bin");
 
         // 3 full chunks -> 3 intermediate + 1 empty final = 4 total
-        fs::write(&input, &vec![0xAA; CHUNK_SIZE * 3]).expect("write");
+        fs::write(&input, vec![0xAA; CHUNK_SIZE * 3]).expect("write");
 
         let enc_progress = std::sync::Mutex::new(Vec::new());
         encrypt_file_impl(
@@ -677,7 +677,7 @@ mod tests {
         let input = dir.path().join("input.bin");
         let encrypted = dir.path().join("encrypted.bin");
 
-        fs::write(&input, &vec![0xFF; CHUNK_SIZE * 3]).expect("write");
+        fs::write(&input, vec![0xFF; CHUNK_SIZE * 3]).expect("write");
         encrypt_file_impl(
             &cipher,
             input.to_str().expect("p"),
