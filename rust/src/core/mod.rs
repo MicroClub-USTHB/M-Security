@@ -7,4 +7,5 @@ pub mod error;
 pub mod format;
 pub mod rng;
 pub mod secret;
+pub mod streaming;
 pub mod traits;

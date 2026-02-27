@@ -48,6 +48,7 @@ panic = "abort"
 
 [dev-dependencies]
 hex = "0.4"
+tempfile = "3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

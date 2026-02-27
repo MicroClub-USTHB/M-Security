@@ -18,6 +18,21 @@ impl CipherHandle {
     fn new(cipher: Box<dyn Encryption>) -> Self {
         Self { inner: cipher }
     }
+
+    /// Direct encrypt for internal use (streaming). Not FRB-visible.
+    pub(crate) fn encrypt_raw(&self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        self.inner.encrypt(plaintext, aad)
+    }
+
+    /// Direct decrypt for internal use (streaming). Not FRB-visible.
+    pub(crate) fn decrypt_raw(&self, ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        self.inner.decrypt(ciphertext, aad)
+    }
+
+    /// Get the algorithm_id for internal use (streaming header).
+    pub(crate) fn algorithm_id(&self) -> &'static str {
+        self.inner.algorithm_id()
+    }
 }
 
 /// Create a noop encryption handle (for testing FRB opaque pattern).
