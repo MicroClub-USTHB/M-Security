@@ -42,11 +42,6 @@ version: X.Y.Z
 version = "X.Y.Z"
 ```
 
-**`rust_builder/pubspec.yaml`** (if applicable):
-```yaml
-version: X.Y.Z
-```
-
 ### 3. Update CHANGELOG.md
 
 Move the `## Unreleased` section content under a new version header with the current date:

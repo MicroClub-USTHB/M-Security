@@ -21,11 +21,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_rust_bridge: 2.11.1
+  flutter_rust_bridge: ^2.11.1
   freezed_annotation: ^3.1.0
   plugin_platform_interface: ^2.0.2
-  rust_lib_m_security:
-    path: rust_builder
 
 dev_dependencies:
   flutter_test:
@@ -41,13 +39,12 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.example.m_security
-        pluginClass: MSecurityPlugin
+        ffiPlugin: true
       ios:
-        pluginClass: MSecurityPlugin
+        ffiPlugin: true
       linux:
-        pluginClass: MSecurityPlugin
+        ffiPlugin: true
       macos:
-        pluginClass: MSecurityPlugin
+        ffiPlugin: true
       windows:
-        pluginClass: MSecurityPluginCApi
+        ffiPlugin: true

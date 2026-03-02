@@ -1,0 +1,26 @@
+# Override .gitignore for pub.dev publishing.
+# FRB-generated Dart bindings must be included in the published package
+# so consumers don't need to run codegen themselves.
+
+# Exclude development/CI files
+.github/
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Exclude Rust source and build artifacts (compiled via cargokit at build time)
+rust/target/
+
+# Exclude example build artifacts
+example/build/
+example/.dart_tool/
+example/android/.gradle/
+example/ios/Pods/
+example/macos/Pods/
+
+# Exclude cargokit build artifacts
+cargokit/build_tool/.dart_tool/
+
+# Do NOT exclude lib/src/rust/ — these generated files are needed by consumers

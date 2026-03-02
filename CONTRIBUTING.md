@@ -91,7 +91,7 @@ M-Security/
 │           ├── traits.rs       # Encryption, Hasher, Kdf traits
 │           ├── error.rs        # CryptoError enum
 │           └── rng.rs          # Random number generation
-├── rust_builder/               # Rust build system integration
+├── cargokit/                   # Rust build system integration (Cargokit)
 ├── integration_test/           # Dart integration tests
 ├── example/                    # Flutter example app
 └── .github/workflows/          # CI pipeline
