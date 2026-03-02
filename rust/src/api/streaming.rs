@@ -232,6 +232,133 @@ pub(crate) fn encrypt_file_impl(
     Ok(())
 }
 
+/// Compress-then-encrypt a file using streaming chunks.
+///
+/// Each chunk is: compress(64KB) → encrypt(compressed) → write.
+/// The header stores the compression algorithm so decrypt knows how to decompress.
+/// If `should_skip_compression` returns true, compression is silently skipped.
+#[cfg(feature = "compression")]
+pub(crate) fn compress_encrypt_file_impl(
+    cipher: &CipherHandle,
+    compression: &CompressionConfig,
+    input_path: &str,
+    output_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<(), CryptoError> {
+    let algo = algorithm_from_id(cipher.algorithm_id())?;
+
+    // MIME-aware auto-skip: if the file is already compressed, skip compression
+    let effective_algo = if compression.algorithm != CompressionAlgorithm::None
+        && should_skip_compression(input_path)
+    {
+        log::info!(
+            "Skipping compression for '{}' (already-compressed format)",
+            input_path
+        );
+        CompressionAlgorithm::None
+    } else {
+        compression.algorithm
+    };
+
+    let effective_config = CompressionConfig {
+        algorithm: effective_algo,
+        level: compression.level,
+    };
+
+    let input_file = File::open(input_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
+    let file_size = input_file
+        .metadata()
+        .map_err(|e| CryptoError::IoError(format!("Cannot stat input: {e}")))?
+        .len();
+
+    let tmp_path = format!("{output_path}.tmp");
+    let mut guard = TempFileGuard::new(tmp_path.clone());
+
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
+
+    let mut reader = BufReader::new(input_file);
+    let mut writer = ChunkWriter::new(BufWriter::new(output_file));
+
+    writer.write_header(&StreamHeader::new(algo, compression_to_u8(effective_algo)))?;
+
+    let mut enc_chunk = EncryptedChunk::new();
+    let mut read_buf = vec![0u8; CHUNK_SIZE];
+    let mut chunk_index: u64 = 0;
+
+    let total_chunks = if file_size == 0 {
+        1u64
+    } else {
+        let base = file_size.div_ceil(CHUNK_SIZE as u64);
+        if file_size % CHUNK_SIZE as u64 == 0 {
+            base + 1
+        } else {
+            base
+        }
+    };
+
+    loop {
+        let bytes_read = read_full(&mut reader, &mut read_buf)?;
+
+        if bytes_read == 0 {
+            // EOF — emit empty padded final chunk (compressed empty = empty)
+            let compressed = compress(&[], &effective_config)?;
+            let plaintext = pad_last_chunk(&compressed)?;
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
+            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+            writer.write_chunk(&enc_chunk)?;
+            on_progress(1.0);
+            break;
+        }
+
+        if bytes_read < CHUNK_SIZE {
+            // Short read — last chunk
+            let compressed = compress(&read_buf[..bytes_read], &effective_config)?;
+            let plaintext = pad_last_chunk(&compressed)?;
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
+            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+            writer.write_chunk(&enc_chunk)?;
+            on_progress(1.0);
+            break;
+        }
+
+        // Full CHUNK_SIZE read — compress then encrypt as intermediate chunk
+        let compressed = compress(&read_buf[..CHUNK_SIZE], &effective_config)?;
+        let plaintext = pad_last_chunk(&compressed)?;
+        let aad = ChunkAad {
+            index: chunk_index,
+            is_final: false,
+        }
+        .to_bytes();
+        let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+        parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+        writer.write_chunk(&enc_chunk)?;
+
+        chunk_index += 1;
+        on_progress((chunk_index as f64 / total_chunks as f64).min(0.99));
+    }
+
+    finish_file(writer)?;
+
+    fs::rename(&tmp_path, output_path).map_err(|e| {
+        CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
+    })?;
+    guard.defuse();
+
+    Ok(())
+}
+
 /// Decrypt a streaming-encrypted file.
 ///
 /// Writes to a temporary file and renames atomically on success.
@@ -335,6 +462,118 @@ pub(crate) fn decrypt_file_impl(
         .map_err(|e| CryptoError::IoError(format!("Flush failed: {e}")))?;
 
     // Atomic rename — only after flush succeeds
+    drop(out_writer);
+    fs::rename(&tmp_path, output_path).map_err(|e| {
+        CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
+    })?;
+    guard.defuse();
+
+    Ok(())
+}
+
+/// Decrypt-then-decompress a file.
+///
+/// Reads compression algorithm from the file header, then for each chunk:
+/// decrypt → strip padding → decompress → write.
+#[cfg(feature = "compression")]
+pub(crate) fn decrypt_decompress_file_impl(
+    cipher: &CipherHandle,
+    input_path: &str,
+    output_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<(), CryptoError> {
+    let input_file = File::open(input_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
+    let file_size = input_file
+        .metadata()
+        .map_err(|e| CryptoError::IoError(format!("Cannot stat input: {e}")))?
+        .len();
+
+    let tmp_path = format!("{output_path}.tmp");
+    let mut guard = TempFileGuard::new(tmp_path.clone());
+
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
+
+    let mut reader = ChunkReader::new(BufReader::new(input_file));
+    let mut out_writer = BufWriter::new(output_file);
+
+    let header = reader.read_header()?;
+    let expected_algo = algorithm_from_id(cipher.algorithm_id())?;
+    if header.algorithm != expected_algo {
+        return Err(CryptoError::InvalidParameter(format!(
+            "Algorithm mismatch: file uses {:?}, cipher is {}",
+            header.algorithm,
+            cipher.algorithm_id()
+        )));
+    }
+
+    let comp_algo = compression_from_u8(header.compression)?;
+
+    let data_size = file_size.saturating_sub(STREAM_HEADER_SIZE as u64);
+    let estimated_chunks = if data_size > 0 {
+        data_size / ENCRYPTED_CHUNK_SIZE as u64
+    } else {
+        1
+    };
+
+    let mut chunk = EncryptedChunk::new();
+    let mut wire_buf = Vec::with_capacity(ENCRYPTED_CHUNK_SIZE);
+    let mut i: u64 = 0;
+
+    loop {
+        let has_data = reader.read_chunk(&mut chunk)?;
+        if !has_data {
+            return Err(CryptoError::DecryptionFailed);
+        }
+
+        reassemble_into(&chunk, &mut wire_buf);
+
+        // Try is_final=true first (optimistic for last chunk)
+        let aad_final = ChunkAad {
+            index: i,
+            is_final: true,
+        }
+        .to_bytes();
+
+        if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
+            let compressed = strip_last_chunk_padding(&plaintext)?;
+            let real_data = decompress(&compressed, comp_algo)?;
+            out_writer
+                .write_all(&real_data)
+                .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+            on_progress(1.0);
+            break;
+        }
+
+        // Try is_final=false (intermediate chunk)
+        let aad_normal = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
+
+        match cipher.decrypt_raw(&wire_buf, &aad_normal) {
+            Ok(plaintext) => {
+                let compressed = strip_last_chunk_padding(&plaintext)?;
+                let real_data = decompress(&compressed, comp_algo)?;
+                out_writer
+                    .write_all(&real_data)
+                    .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+                i += 1;
+                let progress = i as f64 / estimated_chunks.max(1) as f64;
+                on_progress(progress.min(0.99));
+            }
+            Err(_) => {
+                return Err(CryptoError::DecryptionFailed);
+            }
+        }
+    }
+
+    out_writer
+        .flush()
+        .map_err(|e| CryptoError::IoError(format!("Flush failed: {e}")))?;
+
     drop(out_writer);
     fs::rename(&tmp_path, output_path).map_err(|e| {
         CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
