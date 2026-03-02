@@ -11,6 +11,10 @@
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 
+#[cfg(feature = "compression")]
+use crate::api::compression::{
+    compress, decompress, should_skip_compression, CompressionAlgorithm, CompressionConfig,
+};
 use crate::api::encryption::CipherHandle;
 use crate::api::hashing::HasherHandle;
 use crate::core::error::CryptoError;
@@ -28,6 +32,27 @@ fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
         "chacha20-poly1305" => Ok(StreamAlgorithm::ChaCha20Poly1305),
         other => Err(CryptoError::InvalidParameter(format!(
             "Algorithm '{other}' not supported for streaming"
+        ))),
+    }
+}
+
+#[cfg(feature = "compression")]
+fn compression_to_u8(algo: CompressionAlgorithm) -> u8 {
+    match algo {
+        CompressionAlgorithm::None => 0x00,
+        CompressionAlgorithm::Zstd => 0x01,
+        CompressionAlgorithm::Brotli => 0x02,
+    }
+}
+
+#[cfg(feature = "compression")]
+fn compression_from_u8(byte: u8) -> Result<CompressionAlgorithm, CryptoError> {
+    match byte {
+        0x00 => Ok(CompressionAlgorithm::None),
+        0x01 => Ok(CompressionAlgorithm::Zstd),
+        0x02 => Ok(CompressionAlgorithm::Brotli),
+        other => Err(CryptoError::InvalidParameter(format!(
+            "Unknown compression algorithm byte: {other:#02x}"
         ))),
     }
 }
