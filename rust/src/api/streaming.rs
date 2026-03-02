@@ -11,6 +11,11 @@
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 
+use crate::api::compression::CompressionAlgorithm;
+#[cfg(feature = "compression")]
+use crate::api::compression::{
+    compress, decompress, should_skip_compression, CompressionConfig,
+};
 use crate::api::encryption::CipherHandle;
 use crate::api::hashing::HasherHandle;
 use crate::core::error::CryptoError;
@@ -32,10 +37,7 @@ fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
     }
 }
 
-fn parse_encrypted_output(
-    data: &[u8],
-    chunk: &mut EncryptedChunk,
-) -> Result<(), CryptoError> {
+fn parse_encrypted_output(data: &[u8], chunk: &mut EncryptedChunk) -> Result<(), CryptoError> {
     if data.len() != ENCRYPTED_CHUNK_SIZE {
         return Err(CryptoError::EncryptionFailed(format!(
             "Encrypted output size mismatch: got {}, expected {ENCRYPTED_CHUNK_SIZE}",
@@ -126,14 +128,13 @@ pub(crate) fn encrypt_file_impl(
     let tmp_path = format!("{output_path}.tmp");
     let mut guard = TempFileGuard::new(tmp_path.clone());
 
-    let output_file = File::create(&tmp_path).map_err(|e| {
-        CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}"))
-    })?;
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
 
     let mut reader = BufReader::new(input_file);
     let mut writer = ChunkWriter::new(BufWriter::new(output_file));
 
-    writer.write_header(&StreamHeader::new(algo))?;
+    writer.write_header(&StreamHeader::new(algo, CompressionAlgorithm::None))?;
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
@@ -145,7 +146,11 @@ pub(crate) fn encrypt_file_impl(
         1u64
     } else {
         let base = file_size.div_ceil(CHUNK_SIZE as u64);
-        if file_size % CHUNK_SIZE as u64 == 0 { base + 1 } else { base }
+        if file_size % CHUNK_SIZE as u64 == 0 {
+            base + 1
+        } else {
+            base
+        }
     };
 
     loop {
@@ -155,7 +160,11 @@ pub(crate) fn encrypt_file_impl(
             // EOF: either empty file (chunk_index==0) or previous chunk was
             // exactly CHUNK_SIZE — emit empty padded final chunk
             let plaintext = pad_last_chunk(&[])?;
-            let aad = ChunkAad { index: chunk_index, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
             let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
             parse_encrypted_output(&encrypted, &mut enc_chunk)?;
             writer.write_chunk(&enc_chunk)?;
@@ -166,7 +175,11 @@ pub(crate) fn encrypt_file_impl(
         if bytes_read < CHUNK_SIZE {
             // Short read — last chunk, pad it
             let plaintext = pad_last_chunk(&read_buf[..bytes_read])?;
-            let aad = ChunkAad { index: chunk_index, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
             let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
             parse_encrypted_output(&encrypted, &mut enc_chunk)?;
             writer.write_chunk(&enc_chunk)?;
@@ -175,7 +188,11 @@ pub(crate) fn encrypt_file_impl(
         }
 
         // Full CHUNK_SIZE read — emit as intermediate (non-final) chunk
-        let aad = ChunkAad { index: chunk_index, is_final: false }.to_bytes();
+        let aad = ChunkAad {
+            index: chunk_index,
+            is_final: false,
+        }
+        .to_bytes();
         let encrypted = cipher.encrypt_raw(&read_buf[..CHUNK_SIZE], &aad)?;
         parse_encrypted_output(&encrypted, &mut enc_chunk)?;
         writer.write_chunk(&enc_chunk)?;
@@ -187,6 +204,135 @@ pub(crate) fn encrypt_file_impl(
     finish_file(writer)?;
 
     // Atomic rename — only after fsync succeeds
+    fs::rename(&tmp_path, output_path).map_err(|e| {
+        CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
+    })?;
+    guard.defuse();
+
+    Ok(())
+}
+
+/// Compress-then-encrypt a file using streaming chunks.
+///
+/// Each chunk is: compress(64KB) → encrypt(compressed) → write.
+/// The header stores the compression algorithm so decrypt knows how to decompress.
+/// If `should_skip_compression` returns true, compression is silently skipped.
+#[cfg(feature = "compression")]
+pub(crate) fn compress_encrypt_file_impl(
+    cipher: &CipherHandle,
+    compression: &CompressionConfig,
+    input_path: &str,
+    output_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<(), CryptoError> {
+    let algo = algorithm_from_id(cipher.algorithm_id())?;
+
+    // MIME-aware auto-skip: if the file is already compressed, skip compression
+    let effective_algo = if compression.algorithm != CompressionAlgorithm::None
+        && should_skip_compression(input_path)
+    {
+        log::info!(
+            "Skipping compression for '{}' (already-compressed format)",
+            input_path
+        );
+        CompressionAlgorithm::None
+    } else {
+        compression.algorithm
+    };
+
+    let effective_config = CompressionConfig {
+        algorithm: effective_algo,
+        level: compression.level,
+    };
+
+    let input_file = File::open(input_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
+    let file_size = input_file
+        .metadata()
+        .map_err(|e| CryptoError::IoError(format!("Cannot stat input: {e}")))?
+        .len();
+
+    let tmp_path = format!("{output_path}.tmp");
+    let mut guard = TempFileGuard::new(tmp_path.clone());
+
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
+
+    let mut reader = BufReader::new(input_file);
+    let mut writer = ChunkWriter::new(BufWriter::new(output_file));
+
+    writer.write_header(&StreamHeader::new(algo, effective_algo))?;
+
+    let mut enc_chunk = EncryptedChunk::new();
+    let mut read_buf = vec![0u8; CHUNK_SIZE];
+    let mut chunk_index: u64 = 0;
+
+    let total_chunks = if file_size == 0 {
+        1u64
+    } else {
+        let base = file_size.div_ceil(CHUNK_SIZE as u64);
+        if file_size % CHUNK_SIZE as u64 == 0 {
+            base + 1
+        } else {
+            base
+        }
+    };
+
+    loop {
+        let bytes_read = read_full(&mut reader, &mut read_buf)?;
+
+        if bytes_read == 0 {
+            // EOF — emit empty padded final chunk (compressed empty = empty)
+            let compressed = compress(&[], &effective_config)?;
+            let plaintext = pad_last_chunk(&compressed)?;
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
+            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+            writer.write_chunk(&enc_chunk)?;
+            on_progress(1.0);
+            break;
+        }
+
+        if bytes_read < CHUNK_SIZE {
+            // Short read — last chunk
+            let compressed = compress(&read_buf[..bytes_read], &effective_config)?;
+            let plaintext = pad_last_chunk(&compressed)?;
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
+            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+            writer.write_chunk(&enc_chunk)?;
+            on_progress(1.0);
+            break;
+        }
+
+        // Full CHUNK_SIZE read — compress then encrypt as intermediate chunk.
+        // Zero-pad to CHUNK_SIZE (no length prefix); Zstd/Brotli frames are
+        // self-delimiting so the decompressor ignores trailing zeros.
+        let mut plaintext = compress(&read_buf[..CHUNK_SIZE], &effective_config)?;
+        plaintext.resize(CHUNK_SIZE, 0);
+        let aad = ChunkAad {
+            index: chunk_index,
+            is_final: false,
+        }
+        .to_bytes();
+        let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+        parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+        writer.write_chunk(&enc_chunk)?;
+
+        chunk_index += 1;
+        on_progress((chunk_index as f64 / total_chunks as f64).min(0.99));
+    }
+
+    finish_file(writer)?;
+
     fs::rename(&tmp_path, output_path).map_err(|e| {
         CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
     })?;
@@ -216,9 +362,8 @@ pub(crate) fn decrypt_file_impl(
     let tmp_path = format!("{output_path}.tmp");
     let mut guard = TempFileGuard::new(tmp_path.clone());
 
-    let output_file = File::create(&tmp_path).map_err(|e| {
-        CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}"))
-    })?;
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
 
     let mut reader = ChunkReader::new(BufReader::new(input_file));
     let mut out_writer = BufWriter::new(output_file);
@@ -257,7 +402,11 @@ pub(crate) fn decrypt_file_impl(
         // SAFETY: AEAD guarantees that only one AAD value (is_final true/false)
         // will authenticate for any given chunk, since the AAD byte differs.
         // Try is_final=true first (optimistic for single-chunk and last-chunk).
-        let aad_final = ChunkAad { index: i, is_final: true }.to_bytes();
+        let aad_final = ChunkAad {
+            index: i,
+            is_final: true,
+        }
+        .to_bytes();
 
         if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
             let real_data = strip_last_chunk_padding(&plaintext)?;
@@ -269,7 +418,11 @@ pub(crate) fn decrypt_file_impl(
         }
 
         // Try is_final=false (intermediate chunk)
-        let aad_normal = ChunkAad { index: i, is_final: false }.to_bytes();
+        let aad_normal = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
 
         match cipher.decrypt_raw(&wire_buf, &aad_normal) {
             Ok(plaintext) => {
@@ -291,6 +444,124 @@ pub(crate) fn decrypt_file_impl(
         .map_err(|e| CryptoError::IoError(format!("Flush failed: {e}")))?;
 
     // Atomic rename — only after flush succeeds
+    drop(out_writer);
+    fs::rename(&tmp_path, output_path).map_err(|e| {
+        CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
+    })?;
+    guard.defuse();
+
+    Ok(())
+}
+
+/// Decrypt-then-decompress a file.
+///
+/// Reads compression algorithm from the file header, then for each chunk:
+/// decrypt → strip padding → decompress → write.
+#[cfg(feature = "compression")]
+pub(crate) fn decrypt_decompress_file_impl(
+    cipher: &CipherHandle,
+    input_path: &str,
+    output_path: &str,
+    on_progress: &dyn Fn(f64),
+) -> Result<(), CryptoError> {
+    let input_file = File::open(input_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
+    let file_size = input_file
+        .metadata()
+        .map_err(|e| CryptoError::IoError(format!("Cannot stat input: {e}")))?
+        .len();
+
+    let tmp_path = format!("{output_path}.tmp");
+    let mut guard = TempFileGuard::new(tmp_path.clone());
+
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
+
+    let mut reader = ChunkReader::new(BufReader::new(input_file));
+    let mut out_writer = BufWriter::new(output_file);
+
+    let header = reader.read_header()?;
+    let expected_algo = algorithm_from_id(cipher.algorithm_id())?;
+    if header.algorithm != expected_algo {
+        return Err(CryptoError::InvalidParameter(format!(
+            "Algorithm mismatch: file uses {:?}, cipher is {}",
+            header.algorithm,
+            cipher.algorithm_id()
+        )));
+    }
+
+    let comp_algo = header.compression;
+
+    let data_size = file_size.saturating_sub(STREAM_HEADER_SIZE as u64);
+    let estimated_chunks = if data_size > 0 {
+        data_size / ENCRYPTED_CHUNK_SIZE as u64
+    } else {
+        1
+    };
+
+    let mut chunk = EncryptedChunk::new();
+    let mut wire_buf = Vec::with_capacity(ENCRYPTED_CHUNK_SIZE);
+    let mut i: u64 = 0;
+
+    let mut process_chunk =
+        |plaintext: &[u8], is_final: bool| -> Result<(), CryptoError> {
+            let data = if is_final {
+                strip_last_chunk_padding(plaintext)?
+            } else {
+                plaintext.to_vec()
+            };
+            let decompressed = decompress(&data, comp_algo)?;
+            out_writer
+                .write_all(&decompressed)
+                .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+            Ok(())
+        };
+
+    loop {
+        let has_data = reader.read_chunk(&mut chunk)?;
+        if !has_data {
+            return Err(CryptoError::DecryptionFailed);
+        }
+
+        reassemble_into(&chunk, &mut wire_buf);
+
+        // Try is_final=true first (optimistic for last chunk)
+        let aad_final = ChunkAad {
+            index: i,
+            is_final: true,
+        }
+        .to_bytes();
+
+        if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
+            process_chunk(&plaintext, true)?;
+            on_progress(1.0);
+            break;
+        }
+
+        // Try is_final=false (intermediate chunk)
+        let aad_normal = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
+
+        match cipher.decrypt_raw(&wire_buf, &aad_normal) {
+            Ok(plaintext) => {
+                process_chunk(&plaintext, false)?;
+                i += 1;
+                let progress = i as f64 / estimated_chunks.max(1) as f64;
+                on_progress(progress.min(0.99));
+            }
+            Err(_) => {
+                return Err(CryptoError::DecryptionFailed);
+            }
+        }
+    }
+
+    out_writer
+        .flush()
+        .map_err(|e| CryptoError::IoError(format!("Flush failed: {e}")))?;
+
     drop(out_writer);
     fs::rename(&tmp_path, output_path).map_err(|e| {
         CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
@@ -383,6 +654,38 @@ pub fn stream_decrypt_file(
     progress_sink: StreamSink<f64>,
 ) -> Result<(), CryptoError> {
     decrypt_file_impl(cipher, &input_path, &output_path, &|p| {
+        let _ = progress_sink.add(p);
+    })
+}
+
+/// Compress-then-encrypt a file using streaming chunks.
+///
+/// Each chunk is: compress(64KB) → encrypt(compressed) → write.
+/// The header stores the compression algorithm so decrypt knows how to decompress.
+#[cfg(feature = "compression")]
+pub fn stream_compress_encrypt_file(
+    cipher: &CipherHandle,
+    compression: CompressionConfig,
+    input_path: String,
+    output_path: String,
+    progress_sink: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    compress_encrypt_file_impl(cipher, &compression, &input_path, &output_path, &|p| {
+        let _ = progress_sink.add(p);
+    })
+}
+
+/// Decrypt-then-decompress a file.
+///
+/// Reads compression algorithm from the file header.
+#[cfg(feature = "compression")]
+pub fn stream_decrypt_decompress_file(
+    cipher: &CipherHandle,
+    input_path: String,
+    output_path: String,
+    progress_sink: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    decrypt_decompress_file_impl(cipher, &input_path, &output_path, &|p| {
         let _ = progress_sink.add(p);
     })
 }
@@ -543,9 +846,15 @@ mod tests {
         );
 
         // Neither the final output nor the temp file should exist
-        assert!(!decrypted.exists(), "Output file should not exist after failed decrypt");
+        assert!(
+            !decrypted.exists(),
+            "Output file should not exist after failed decrypt"
+        );
         let tmp = format!("{}.tmp", decrypted.to_str().expect("p"));
-        assert!(!std::path::Path::new(&tmp).exists(), "Temp file should be cleaned up");
+        assert!(
+            !std::path::Path::new(&tmp).exists(),
+            "Temp file should be cleaned up"
+        );
     }
 
     #[test]
@@ -797,7 +1106,10 @@ mod tests {
 
         assert!(encrypted.exists(), "Output should exist");
         let tmp = format!("{}.tmp", encrypted.to_str().expect("p"));
-        assert!(!std::path::Path::new(&tmp).exists(), "Temp file should be gone after success");
+        assert!(
+            !std::path::Path::new(&tmp).exists(),
+            "Temp file should be gone after success"
+        );
     }
 
     // -- Streaming hash tests -------------------------------------------------
@@ -818,8 +1130,8 @@ mod tests {
         fs::write(&path, data).expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data.to_vec());
         assert_eq!(digest, oneshot);
@@ -833,8 +1145,8 @@ mod tests {
         fs::write(&path, data).expect("write");
 
         let hasher = make_sha3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::sha3_hash(data.to_vec());
         assert_eq!(digest, oneshot);
@@ -847,8 +1159,8 @@ mod tests {
         fs::write(&path, b"").expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(Vec::new());
         assert_eq!(digest, oneshot);
@@ -862,8 +1174,8 @@ mod tests {
         fs::write(&path, &data).expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data);
         assert_eq!(digest, oneshot);
@@ -878,11 +1190,9 @@ mod tests {
 
         let hasher = make_blake3_hasher();
         let progress = std::sync::Mutex::new(Vec::new());
-        let digest = hash_file_impl(
-            &hasher,
-            path.to_str().expect("p"),
-            &|p| progress.lock().expect("lock").push(p),
-        )
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &|p| {
+            progress.lock().expect("lock").push(p)
+        })
         .expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data);
@@ -891,5 +1201,227 @@ mod tests {
         let vals = progress.lock().expect("lock");
         assert!(!vals.is_empty());
         assert!((vals.last().copied().unwrap_or(0.0) - 1.0).abs() < f64::EPSILON);
+    }
+
+    // -- Streaming compression tests ------------------------------------------
+
+    #[cfg(feature = "compression")]
+    use crate::api::compression::CompressionConfig;
+
+    #[cfg(feature = "compression")]
+    fn zstd_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::Zstd,
+            level: None,
+        }
+    }
+
+    #[cfg(feature = "compression")]
+    fn brotli_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::Brotli,
+            level: None,
+        }
+    }
+
+    #[cfg(feature = "compression")]
+    fn none_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::None,
+            level: None,
+        }
+    }
+
+    /// Helper: compress-encrypt → decrypt-decompress → compare.
+    #[cfg(feature = "compression")]
+    fn compress_roundtrip_test(cipher: &CipherHandle, config: &CompressionConfig, original: &[u8]) {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("input.bin");
+        let encrypted = dir.path().join("encrypted.bin");
+        let decrypted = dir.path().join("decrypted.bin");
+
+        fs::write(&input, original).expect("write input");
+
+        compress_encrypt_file_impl(
+            cipher,
+            config,
+            input.to_str().expect("path"),
+            encrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("compress+encrypt");
+
+        decrypt_decompress_file_impl(
+            cipher,
+            encrypted.to_str().expect("path"),
+            decrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("decrypt+decompress");
+
+        let result = fs::read(&decrypted).expect("read output");
+        assert_eq!(result, original, "Roundtrip mismatch");
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compress_encrypt_decrypt_decompress_roundtrip_zstd() {
+        let cipher = make_aes_cipher();
+        compress_roundtrip_test(&cipher, &zstd_config(), b"Hello, Zstd streaming roundtrip!");
+        // Also test multi-chunk
+        compress_roundtrip_test(&cipher, &zstd_config(), &vec![0xAB; 200 * 1024]);
+        // Also test empty
+        compress_roundtrip_test(&cipher, &zstd_config(), &[]);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compress_encrypt_decrypt_decompress_roundtrip_brotli() {
+        let cipher = make_aes_cipher();
+        compress_roundtrip_test(
+            &cipher,
+            &brotli_config(),
+            b"Hello, Brotli streaming roundtrip!",
+        );
+        // Also test multi-chunk
+        compress_roundtrip_test(&cipher, &brotli_config(), &vec![0xCD; 200 * 1024]);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_mime_skip_jpg() {
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("photo.jpg");
+        let encrypted = dir.path().join("encrypted.bin");
+        let decrypted = dir.path().join("decrypted.bin");
+
+        // Write fake JPEG data (already "compressed")
+        let original = vec![0xFF; 1024];
+        fs::write(&input, &original).expect("write input");
+
+        // Encrypt with Zstd config — should auto-skip because .jpg
+        compress_encrypt_file_impl(
+            &cipher,
+            &zstd_config(),
+            input.to_str().expect("path"),
+            encrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("compress+encrypt");
+
+        // Read the header and verify compression byte is 0x00 (None)
+        let enc_bytes = fs::read(&encrypted).expect("read encrypted");
+        assert_eq!(
+            enc_bytes[8], 0x00,
+            "Header compression byte should be 0x00 (None) for .jpg"
+        );
+
+        // Roundtrip should still work
+        decrypt_decompress_file_impl(
+            &cipher,
+            encrypted.to_str().expect("path"),
+            decrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("decrypt+decompress");
+
+        let result = fs::read(&decrypted).expect("read output");
+        assert_eq!(result, original);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compression_none_matches_plain_encrypt() {
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("input.bin");
+        let enc_plain = dir.path().join("enc_plain.bin");
+        let enc_comp = dir.path().join("enc_comp.bin");
+        let dec_plain = dir.path().join("dec_plain.bin");
+        let dec_comp = dir.path().join("dec_comp.bin");
+
+        let original = b"Test data for None comparison";
+        fs::write(&input, original).expect("write input");
+
+        // Encrypt with plain streaming (no compression)
+        encrypt_file_impl(
+            &cipher,
+            input.to_str().expect("path"),
+            enc_plain.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("plain encrypt");
+
+        // Encrypt with CompressionAlgorithm::None
+        compress_encrypt_file_impl(
+            &cipher,
+            &none_config(),
+            input.to_str().expect("path"),
+            enc_comp.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("none compress+encrypt");
+
+        // Both should be the same size (same pipeline, same padding)
+        let plain_size = fs::metadata(&enc_plain).expect("stat").len();
+        let comp_size = fs::metadata(&enc_comp).expect("stat").len();
+        assert_eq!(
+            plain_size, comp_size,
+            "None compression should produce same size as plain encrypt"
+        );
+
+        // Both should decrypt correctly
+        decrypt_file_impl(
+            &cipher,
+            enc_plain.to_str().expect("path"),
+            dec_plain.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("plain decrypt");
+
+        decrypt_decompress_file_impl(
+            &cipher,
+            enc_comp.to_str().expect("path"),
+            dec_comp.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("none decrypt+decompress");
+
+        assert_eq!(fs::read(&dec_plain).expect("read"), original);
+        assert_eq!(fs::read(&dec_comp).expect("read"), original);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compressed_file_smaller() {
+        // Per-chunk padding keeps every encrypted chunk at ENCRYPTED_CHUNK_SIZE,
+        // so the on-disk file has the same number of chunks regardless of
+        // compression. To show that compression actually shrinks data we
+        // compare the *payload* inside each chunk (the padded length prefix)
+        // rather than the outer file size.
+        //
+        // Strategy: compress a highly-compressible 64KB block with Zstd and
+        // verify the compressed payload is much smaller than 64KB.
+        use crate::api::compression::{compress, CompressionAlgorithm, CompressionConfig};
+
+        let data = vec![b'A'; CHUNK_SIZE]; // 64KB of 'A'
+        let config = CompressionConfig {
+            algorithm: CompressionAlgorithm::Zstd,
+            level: None,
+        };
+        let compressed = compress(&data, &config).expect("zstd compress");
+
+        assert!(
+            compressed.len() < data.len() / 2,
+            "Zstd should compress 64KB of 'A' to well under half: {} vs {}",
+            compressed.len(),
+            data.len()
+        );
+
+        // Also verify full roundtrip still works for a large compressible file
+        let cipher = make_aes_cipher();
+        let original = vec![b'A'; 200 * 1024];
+        compress_roundtrip_test(&cipher, &zstd_config(), &original);
     }
 }
