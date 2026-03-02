@@ -1,6 +1,10 @@
 # M-Security
 
-A native Rust cryptographic SDK for Flutter. High-performance hashing, authenticated encryption, and key derivation — all implemented in Rust and exposed to Dart via [Flutter Rust Bridge](https://github.com/aspect-build/aspect-cli/issues/flutter_rust_bridge) (FRB).
+[![pub package](https://img.shields.io/pub/v/m_security.svg)](https://pub.dev/packages/m_security)
+[![CI](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml/badge.svg)](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+A native Rust cryptographic SDK for Flutter. High-performance hashing, authenticated encryption, and key derivation — all implemented in Rust and exposed to Dart via [Flutter Rust Bridge](https://cjycode.com/flutter_rust_bridge/) (FRB).
 
 ## Features
 
@@ -17,7 +21,7 @@ A native Rust cryptographic SDK for Flutter. High-performance hashing, authentic
 | Algorithm | Key | Nonce | Tag | Output Format |
 |-----------|-----|-------|-----|---------------|
 | **AES-256-GCM** | 32 B | 12 B (auto) | 16 B | `nonce \|\| ciphertext \|\| tag` |
-| **ChaCha20-Poly1305** | 32 B | 12 B (auto) | `16 B | `nonce \|\| ciphertext \|\| tag` |
+| **ChaCha20-Poly1305** | 32 B | 12 B (auto) | 16 B | `nonce \|\| ciphertext \|\| tag` |
 
 Both ciphers use the same `CipherHandle` interface — create, encrypt, decrypt, generate key.
 

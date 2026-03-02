@@ -10,6 +10,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `new`
 
 /// Create a noop encryption handle (for testing FRB opaque pattern).
+///
+/// # Panics
+/// Panics at runtime unless the `testing` feature is enabled.
+/// **Never** enable the `testing` feature in production builds.
 Future<CipherHandle> createNoopEncryption() =>
     RustLib.instance.api.crateApiEncryptionCreateNoopEncryption();
 
