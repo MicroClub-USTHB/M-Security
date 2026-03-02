@@ -32,10 +32,7 @@ fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
     }
 }
 
-fn parse_encrypted_output(
-    data: &[u8],
-    chunk: &mut EncryptedChunk,
-) -> Result<(), CryptoError> {
+fn parse_encrypted_output(data: &[u8], chunk: &mut EncryptedChunk) -> Result<(), CryptoError> {
     if data.len() != ENCRYPTED_CHUNK_SIZE {
         return Err(CryptoError::EncryptionFailed(format!(
             "Encrypted output size mismatch: got {}, expected {ENCRYPTED_CHUNK_SIZE}",
@@ -126,14 +123,13 @@ pub(crate) fn encrypt_file_impl(
     let tmp_path = format!("{output_path}.tmp");
     let mut guard = TempFileGuard::new(tmp_path.clone());
 
-    let output_file = File::create(&tmp_path).map_err(|e| {
-        CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}"))
-    })?;
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
 
     let mut reader = BufReader::new(input_file);
     let mut writer = ChunkWriter::new(BufWriter::new(output_file));
 
-    writer.write_header(&StreamHeader::new(algo))?;
+    writer.write_header(&StreamHeader::new(algo, 0))?;
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
@@ -145,7 +141,11 @@ pub(crate) fn encrypt_file_impl(
         1u64
     } else {
         let base = file_size.div_ceil(CHUNK_SIZE as u64);
-        if file_size % CHUNK_SIZE as u64 == 0 { base + 1 } else { base }
+        if file_size % CHUNK_SIZE as u64 == 0 {
+            base + 1
+        } else {
+            base
+        }
     };
 
     loop {
@@ -155,7 +155,11 @@ pub(crate) fn encrypt_file_impl(
             // EOF: either empty file (chunk_index==0) or previous chunk was
             // exactly CHUNK_SIZE — emit empty padded final chunk
             let plaintext = pad_last_chunk(&[])?;
-            let aad = ChunkAad { index: chunk_index, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
             let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
             parse_encrypted_output(&encrypted, &mut enc_chunk)?;
             writer.write_chunk(&enc_chunk)?;
@@ -166,7 +170,11 @@ pub(crate) fn encrypt_file_impl(
         if bytes_read < CHUNK_SIZE {
             // Short read — last chunk, pad it
             let plaintext = pad_last_chunk(&read_buf[..bytes_read])?;
-            let aad = ChunkAad { index: chunk_index, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: chunk_index,
+                is_final: true,
+            }
+            .to_bytes();
             let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
             parse_encrypted_output(&encrypted, &mut enc_chunk)?;
             writer.write_chunk(&enc_chunk)?;
@@ -175,7 +183,11 @@ pub(crate) fn encrypt_file_impl(
         }
 
         // Full CHUNK_SIZE read — emit as intermediate (non-final) chunk
-        let aad = ChunkAad { index: chunk_index, is_final: false }.to_bytes();
+        let aad = ChunkAad {
+            index: chunk_index,
+            is_final: false,
+        }
+        .to_bytes();
         let encrypted = cipher.encrypt_raw(&read_buf[..CHUNK_SIZE], &aad)?;
         parse_encrypted_output(&encrypted, &mut enc_chunk)?;
         writer.write_chunk(&enc_chunk)?;
@@ -216,9 +228,8 @@ pub(crate) fn decrypt_file_impl(
     let tmp_path = format!("{output_path}.tmp");
     let mut guard = TempFileGuard::new(tmp_path.clone());
 
-    let output_file = File::create(&tmp_path).map_err(|e| {
-        CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}"))
-    })?;
+    let output_file = File::create(&tmp_path)
+        .map_err(|e| CryptoError::IoError(format!("Cannot create output '{tmp_path}': {e}")))?;
 
     let mut reader = ChunkReader::new(BufReader::new(input_file));
     let mut out_writer = BufWriter::new(output_file);
@@ -257,7 +268,11 @@ pub(crate) fn decrypt_file_impl(
         // SAFETY: AEAD guarantees that only one AAD value (is_final true/false)
         // will authenticate for any given chunk, since the AAD byte differs.
         // Try is_final=true first (optimistic for single-chunk and last-chunk).
-        let aad_final = ChunkAad { index: i, is_final: true }.to_bytes();
+        let aad_final = ChunkAad {
+            index: i,
+            is_final: true,
+        }
+        .to_bytes();
 
         if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
             let real_data = strip_last_chunk_padding(&plaintext)?;
@@ -269,7 +284,11 @@ pub(crate) fn decrypt_file_impl(
         }
 
         // Try is_final=false (intermediate chunk)
-        let aad_normal = ChunkAad { index: i, is_final: false }.to_bytes();
+        let aad_normal = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
 
         match cipher.decrypt_raw(&wire_buf, &aad_normal) {
             Ok(plaintext) => {
@@ -543,9 +562,15 @@ mod tests {
         );
 
         // Neither the final output nor the temp file should exist
-        assert!(!decrypted.exists(), "Output file should not exist after failed decrypt");
+        assert!(
+            !decrypted.exists(),
+            "Output file should not exist after failed decrypt"
+        );
         let tmp = format!("{}.tmp", decrypted.to_str().expect("p"));
-        assert!(!std::path::Path::new(&tmp).exists(), "Temp file should be cleaned up");
+        assert!(
+            !std::path::Path::new(&tmp).exists(),
+            "Temp file should be cleaned up"
+        );
     }
 
     #[test]
@@ -797,7 +822,10 @@ mod tests {
 
         assert!(encrypted.exists(), "Output should exist");
         let tmp = format!("{}.tmp", encrypted.to_str().expect("p"));
-        assert!(!std::path::Path::new(&tmp).exists(), "Temp file should be gone after success");
+        assert!(
+            !std::path::Path::new(&tmp).exists(),
+            "Temp file should be gone after success"
+        );
     }
 
     // -- Streaming hash tests -------------------------------------------------
@@ -818,8 +846,8 @@ mod tests {
         fs::write(&path, data).expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data.to_vec());
         assert_eq!(digest, oneshot);
@@ -833,8 +861,8 @@ mod tests {
         fs::write(&path, data).expect("write");
 
         let hasher = make_sha3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::sha3_hash(data.to_vec());
         assert_eq!(digest, oneshot);
@@ -847,8 +875,8 @@ mod tests {
         fs::write(&path, b"").expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(Vec::new());
         assert_eq!(digest, oneshot);
@@ -862,8 +890,8 @@ mod tests {
         fs::write(&path, &data).expect("write");
 
         let hasher = make_blake3_hasher();
-        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress)
-            .expect("hash");
+        let digest =
+            hash_file_impl(&hasher, path.to_str().expect("p"), &noop_progress).expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data);
         assert_eq!(digest, oneshot);
@@ -878,11 +906,9 @@ mod tests {
 
         let hasher = make_blake3_hasher();
         let progress = std::sync::Mutex::new(Vec::new());
-        let digest = hash_file_impl(
-            &hasher,
-            path.to_str().expect("p"),
-            &|p| progress.lock().expect("lock").push(p),
-        )
+        let digest = hash_file_impl(&hasher, path.to_str().expect("p"), &|p| {
+            progress.lock().expect("lock").push(p)
+        })
         .expect("hash");
 
         let oneshot = crate::api::hashing::blake3_hash(data);
