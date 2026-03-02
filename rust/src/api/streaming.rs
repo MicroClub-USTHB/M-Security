@@ -36,27 +36,6 @@ fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
     }
 }
 
-#[cfg(feature = "compression")]
-fn compression_to_u8(algo: CompressionAlgorithm) -> u8 {
-    match algo {
-        CompressionAlgorithm::None => 0x00,
-        CompressionAlgorithm::Zstd => 0x01,
-        CompressionAlgorithm::Brotli => 0x02,
-    }
-}
-
-#[cfg(feature = "compression")]
-fn compression_from_u8(byte: u8) -> Result<CompressionAlgorithm, CryptoError> {
-    match byte {
-        0x00 => Ok(CompressionAlgorithm::None),
-        0x01 => Ok(CompressionAlgorithm::Zstd),
-        0x02 => Ok(CompressionAlgorithm::Brotli),
-        other => Err(CryptoError::InvalidParameter(format!(
-            "Unknown compression algorithm byte: {other:#02x}"
-        ))),
-    }
-}
-
 fn parse_encrypted_output(data: &[u8], chunk: &mut EncryptedChunk) -> Result<(), CryptoError> {
     if data.len() != ENCRYPTED_CHUNK_SIZE {
         return Err(CryptoError::EncryptionFailed(format!(
@@ -281,7 +260,7 @@ pub(crate) fn compress_encrypt_file_impl(
     let mut reader = BufReader::new(input_file);
     let mut writer = ChunkWriter::new(BufWriter::new(output_file));
 
-    writer.write_header(&StreamHeader::new(algo, compression_to_u8(effective_algo)))?;
+    writer.write_header(&StreamHeader::new(algo, effective_algo.to_u8()))?;
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
@@ -508,7 +487,7 @@ pub(crate) fn decrypt_decompress_file_impl(
         )));
     }
 
-    let comp_algo = compression_from_u8(header.compression)?;
+    let comp_algo = CompressionAlgorithm::from_u8(header.compression)?;
 
     let data_size = file_size.saturating_sub(STREAM_HEADER_SIZE as u64);
     let estimated_chunks = if data_size > 0 {

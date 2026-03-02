@@ -16,6 +16,30 @@ pub enum CompressionAlgorithm {
     None,
 }
 
+impl CompressionAlgorithm {
+    /// Serialize to the byte stored in the stream header.
+    pub fn to_u8(self) -> u8 {
+        match self {
+            Self::None => 0x00,
+            Self::Zstd => 0x01,
+            Self::Brotli => 0x02,
+        }
+    }
+
+    /// Deserialize from the byte stored in the stream header.
+    #[cfg(feature = "compression")]
+    pub fn from_u8(byte: u8) -> Result<Self, CryptoError> {
+        match byte {
+            0x00 => Ok(Self::None),
+            0x01 => Ok(Self::Zstd),
+            0x02 => Ok(Self::Brotli),
+            other => Err(CryptoError::InvalidParameter(format!(
+                "Unknown compression algorithm byte: {other:#04x}"
+            ))),
+        }
+    }
+}
+
 /// Configuration for a compress operation.
 #[derive(Debug, Clone)]
 pub struct CompressionConfig {
