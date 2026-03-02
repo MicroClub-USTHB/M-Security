@@ -3,7 +3,7 @@
 //! These wrap zstd and brotli in a uniform interface that accepts incremental
 //! input and appends compressed/decompressed bytes to an output buffer.
 
-use std::io::{Read, Write};
+use std::io::Write;
 
 use crate::api::compression::CompressionAlgorithm;
 use crate::core::error::CryptoError;
@@ -234,36 +234,49 @@ impl CompressorOp for BrotliCompressor {
 }
 
 struct BrotliDecompressor {
-    // Accumulate compressed bytes, decompress on finish.
-    // Brotli's streaming decompressor (Decompressor<R: Read>) needs a
-    // contiguous Read source, so we buffer then decompress.
-    buf: Vec<u8>,
+    // DecompressorWriter: write compressed bytes IN, decompressed bytes go to
+    // the inner Vec<u8>. Truly streaming — no whole-file buffering.
+    inner: Option<brotli::DecompressorWriter<Vec<u8>>>,
 }
 
 impl BrotliDecompressor {
     fn new() -> Self {
         Self {
-            buf: Vec::with_capacity(64 * 1024),
+            inner: Some(brotli::DecompressorWriter::new(
+                Vec::with_capacity(64 * 1024),
+                4096,
+            )),
         }
     }
 }
 
 impl DecompressorOp for BrotliDecompressor {
-    fn decompress_chunk(&mut self, input: &[u8], _out: &mut Vec<u8>) -> Result<(), CryptoError> {
-        self.buf.extend_from_slice(input);
+    fn decompress_chunk(&mut self, input: &[u8], out: &mut Vec<u8>) -> Result<(), CryptoError> {
+        let w = self.inner.as_mut().ok_or_else(|| {
+            CryptoError::CompressionFailed("Brotli decompressor already finished".into())
+        })?;
+        w.write_all(input)
+            .map_err(|e| CryptoError::CompressionFailed(format!("Brotli decompress: {e}")))?;
+        // Drain decompressed bytes that appeared in the inner Vec
+        let inner_vec = w.get_ref();
+        if !inner_vec.is_empty() {
+            out.extend_from_slice(inner_vec);
+            w.get_mut().clear();
+        }
         Ok(())
     }
 
     fn finish(&mut self, out: &mut Vec<u8>) -> Result<(), CryptoError> {
-        if self.buf.is_empty() {
-            return Ok(());
+        let w = self.inner.take().ok_or_else(|| {
+            CryptoError::CompressionFailed("Brotli decompressor already finished".into())
+        })?;
+        // into_inner() flushes remaining decompressed data to the inner Vec
+        let remaining = w.into_inner().map_err(|_| {
+            CryptoError::CompressionFailed("Brotli decompressor flush failed".into())
+        })?;
+        if !remaining.is_empty() {
+            out.extend_from_slice(&remaining);
         }
-        let mut reader =
-            brotli::Decompressor::new(std::io::Cursor::new(&self.buf), 4096);
-        reader
-            .read_to_end(out)
-            .map_err(|e| CryptoError::CompressionFailed(format!("Brotli decompress: {e}")))?;
-        self.buf.clear();
         Ok(())
     }
 }
