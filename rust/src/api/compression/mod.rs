@@ -3,6 +3,8 @@
 #[cfg(feature = "compression")]
 pub mod brotli_impl;
 #[cfg(feature = "compression")]
+pub mod streaming;
+#[cfg(feature = "compression")]
 pub mod zstd_impl;
 
 use crate::core::error::CryptoError;

@@ -13,9 +13,7 @@ use std::io::{BufReader, BufWriter, Read, Write};
 
 use crate::api::compression::CompressionAlgorithm;
 #[cfg(feature = "compression")]
-use crate::api::compression::{
-    compress, decompress, should_skip_compression, CompressionConfig,
-};
+use crate::api::compression::{should_skip_compression, CompressionConfig};
 use crate::api::encryption::CipherHandle;
 use crate::api::hashing::HasherHandle;
 use crate::core::error::CryptoError;
@@ -212,11 +210,14 @@ pub(crate) fn encrypt_file_impl(
     Ok(())
 }
 
-/// Compress-then-encrypt a file using streaming chunks.
+/// Stream-compress, then chunk the compressed stream.
 ///
-/// Each chunk is: compress(64KB) → encrypt(compressed) → write.
-/// The header stores the compression algorithm so decrypt knows how to decompress.
-/// If `should_skip_compression` returns true, compression is silently skipped.
+/// Read input → feed to a streaming compressor → buffer compressed bytes →
+/// when buffer >= CHUNK_SIZE, encrypt as intermediate chunk → at EOF,
+/// finish compressor, pad only the remainder as the final chunk.
+///
+/// Compressed data fills 64KB buckets naturally. A file that compresses 50%
+/// produces half as many encrypted chunks.
 #[cfg(feature = "compression")]
 pub(crate) fn compress_encrypt_file_impl(
     cipher: &CipherHandle,
@@ -225,9 +226,10 @@ pub(crate) fn compress_encrypt_file_impl(
     output_path: &str,
     on_progress: &dyn Fn(f64),
 ) -> Result<(), CryptoError> {
+    use crate::api::compression::streaming::new_compressor;
+
     let algo = algorithm_from_id(cipher.algorithm_id())?;
 
-    // MIME-aware auto-skip: if the file is already compressed, skip compression
     let effective_algo = if compression.algorithm != CompressionAlgorithm::None
         && should_skip_compression(input_path)
     {
@@ -240,10 +242,7 @@ pub(crate) fn compress_encrypt_file_impl(
         compression.algorithm
     };
 
-    let effective_config = CompressionConfig {
-        algorithm: effective_algo,
-        level: compression.level,
-    };
+    let level = compression.level;
 
     let input_file = File::open(input_path)
         .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
@@ -265,71 +264,69 @@ pub(crate) fn compress_encrypt_file_impl(
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
+    let mut comp_buf = Vec::with_capacity(CHUNK_SIZE * 2);
     let mut chunk_index: u64 = 0;
+    let mut bytes_fed: u64 = 0;
 
-    let total_chunks = if file_size == 0 {
-        1u64
-    } else {
-        let base = file_size.div_ceil(CHUNK_SIZE as u64);
-        if file_size % CHUNK_SIZE as u64 == 0 {
-            base + 1
-        } else {
-            base
-        }
-    };
+    let mut compressor = new_compressor(effective_algo, level)?;
 
+    // Helper: encrypt and emit all full CHUNK_SIZE segments from comp_buf
+    let flush_full_chunks =
+        |comp_buf: &mut Vec<u8>,
+         chunk_index: &mut u64,
+         enc_chunk: &mut EncryptedChunk,
+         writer: &mut ChunkWriter<BufWriter<File>>|
+         -> Result<(), CryptoError> {
+            while comp_buf.len() >= CHUNK_SIZE {
+                let aad = ChunkAad {
+                    index: *chunk_index,
+                    is_final: false,
+                }
+                .to_bytes();
+                let encrypted = cipher.encrypt_raw(&comp_buf[..CHUNK_SIZE], &aad)?;
+                parse_encrypted_output(&encrypted, enc_chunk)?;
+                writer.write_chunk(enc_chunk)?;
+
+                comp_buf.drain(..CHUNK_SIZE);
+                *chunk_index += 1;
+            }
+            Ok(())
+        };
+
+    // Feed input through compressor
     loop {
         let bytes_read = read_full(&mut reader, &mut read_buf)?;
-
         if bytes_read == 0 {
-            // EOF — emit empty padded final chunk (compressed empty = empty)
-            let compressed = compress(&[], &effective_config)?;
-            let plaintext = pad_last_chunk(&compressed)?;
-            let aad = ChunkAad {
-                index: chunk_index,
-                is_final: true,
-            }
-            .to_bytes();
-            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
-            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
-            writer.write_chunk(&enc_chunk)?;
-            on_progress(1.0);
             break;
         }
 
-        if bytes_read < CHUNK_SIZE {
-            // Short read — last chunk
-            let compressed = compress(&read_buf[..bytes_read], &effective_config)?;
-            let plaintext = pad_last_chunk(&compressed)?;
-            let aad = ChunkAad {
-                index: chunk_index,
-                is_final: true,
-            }
-            .to_bytes();
-            let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
-            parse_encrypted_output(&encrypted, &mut enc_chunk)?;
-            writer.write_chunk(&enc_chunk)?;
-            on_progress(1.0);
-            break;
-        }
+        compressor.compress_chunk(&read_buf[..bytes_read], &mut comp_buf)?;
+        bytes_fed += bytes_read as u64;
 
-        // Full CHUNK_SIZE read — compress then encrypt as intermediate chunk.
-        // Zero-pad to CHUNK_SIZE (no length prefix); Zstd/Brotli frames are
-        // self-delimiting so the decompressor ignores trailing zeros.
-        let mut plaintext = compress(&read_buf[..CHUNK_SIZE], &effective_config)?;
-        plaintext.resize(CHUNK_SIZE, 0);
-        let aad = ChunkAad {
-            index: chunk_index,
-            is_final: false,
-        }
-        .to_bytes();
-        let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
-        parse_encrypted_output(&encrypted, &mut enc_chunk)?;
-        writer.write_chunk(&enc_chunk)?;
+        flush_full_chunks(&mut comp_buf, &mut chunk_index, &mut enc_chunk, &mut writer)?;
 
-        chunk_index += 1;
-        on_progress((chunk_index as f64 / total_chunks as f64).min(0.99));
+        if file_size > 0 {
+            on_progress((bytes_fed as f64 / file_size as f64).min(0.99));
+        }
     }
+
+    // Finish the compressor — flushes any buffered data
+    compressor.finish(&mut comp_buf)?;
+
+    // Emit remaining full chunks from the final flush
+    flush_full_chunks(&mut comp_buf, &mut chunk_index, &mut enc_chunk, &mut writer)?;
+
+    // Pad the remainder (or empty if perfectly aligned) as the final chunk
+    let plaintext = pad_last_chunk(&comp_buf)?;
+    let aad = ChunkAad {
+        index: chunk_index,
+        is_final: true,
+    }
+    .to_bytes();
+    let encrypted = cipher.encrypt_raw(&plaintext, &aad)?;
+    parse_encrypted_output(&encrypted, &mut enc_chunk)?;
+    writer.write_chunk(&enc_chunk)?;
+    on_progress(1.0);
 
     finish_file(writer)?;
 
@@ -453,10 +450,12 @@ pub(crate) fn decrypt_file_impl(
     Ok(())
 }
 
-/// Decrypt-then-decompress a file.
+/// Decrypt then stream-decompress a file.
 ///
-/// Reads compression algorithm from the file header, then for each chunk:
-/// decrypt → strip padding → decompress → write.
+/// Reads compression algorithm from the file header, then decrypts each
+/// chunk and feeds the compressed bytes through a streaming decompressor.
+/// Intermediate chunks are raw compressed segments; only the final chunk
+/// has length-prefix padding.
 #[cfg(feature = "compression")]
 pub(crate) fn decrypt_decompress_file_impl(
     cipher: &CipherHandle,
@@ -464,6 +463,8 @@ pub(crate) fn decrypt_decompress_file_impl(
     output_path: &str,
     on_progress: &dyn Fn(f64),
 ) -> Result<(), CryptoError> {
+    use crate::api::compression::streaming::new_decompressor;
+
     let input_file = File::open(input_path)
         .map_err(|e| CryptoError::IoError(format!("Cannot open input '{input_path}': {e}")))?;
     let file_size = input_file
@@ -501,21 +502,9 @@ pub(crate) fn decrypt_decompress_file_impl(
 
     let mut chunk = EncryptedChunk::new();
     let mut wire_buf = Vec::with_capacity(ENCRYPTED_CHUNK_SIZE);
+    let mut decomp_buf = Vec::with_capacity(CHUNK_SIZE * 2);
+    let mut decompressor = new_decompressor(comp_algo)?;
     let mut i: u64 = 0;
-
-    let mut process_chunk =
-        |plaintext: &[u8], is_final: bool| -> Result<(), CryptoError> {
-            let data = if is_final {
-                strip_last_chunk_padding(plaintext)?
-            } else {
-                plaintext.to_vec()
-            };
-            let decompressed = decompress(&data, comp_algo)?;
-            out_writer
-                .write_all(&decompressed)
-                .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
-            Ok(())
-        };
 
     loop {
         let has_data = reader.read_chunk(&mut chunk)?;
@@ -533,12 +522,22 @@ pub(crate) fn decrypt_decompress_file_impl(
         .to_bytes();
 
         if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
-            process_chunk(&plaintext, true)?;
+            let data = strip_last_chunk_padding(&plaintext)?;
+            if !data.is_empty() {
+                decompressor.decompress_chunk(&data, &mut decomp_buf)?;
+            }
+            decompressor.finish(&mut decomp_buf)?;
+            if !decomp_buf.is_empty() {
+                out_writer
+                    .write_all(&decomp_buf)
+                    .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+                decomp_buf.clear();
+            }
             on_progress(1.0);
             break;
         }
 
-        // Try is_final=false (intermediate chunk)
+        // Try is_final=false (intermediate chunk — full CHUNK_SIZE of compressed data)
         let aad_normal = ChunkAad {
             index: i,
             is_final: false,
@@ -547,7 +546,13 @@ pub(crate) fn decrypt_decompress_file_impl(
 
         match cipher.decrypt_raw(&wire_buf, &aad_normal) {
             Ok(plaintext) => {
-                process_chunk(&plaintext, false)?;
+                decompressor.decompress_chunk(&plaintext, &mut decomp_buf)?;
+                if !decomp_buf.is_empty() {
+                    out_writer
+                        .write_all(&decomp_buf)
+                        .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+                    decomp_buf.clear();
+                }
                 i += 1;
                 let progress = i as f64 / estimated_chunks.max(1) as f64;
                 on_progress(progress.min(0.99));
@@ -1268,10 +1273,14 @@ mod tests {
     fn test_compress_encrypt_decrypt_decompress_roundtrip_zstd() {
         let cipher = make_aes_cipher();
         compress_roundtrip_test(&cipher, &zstd_config(), b"Hello, Zstd streaming roundtrip!");
-        // Also test multi-chunk
+        // Multi-chunk
         compress_roundtrip_test(&cipher, &zstd_config(), &vec![0xAB; 200 * 1024]);
-        // Also test empty
+        // Empty
         compress_roundtrip_test(&cipher, &zstd_config(), &[]);
+        // Exact chunk boundary
+        compress_roundtrip_test(&cipher, &zstd_config(), &vec![0xFE; CHUNK_SIZE]);
+        // Exact multi-chunk boundary
+        compress_roundtrip_test(&cipher, &zstd_config(), &vec![0xFE; CHUNK_SIZE * 3]);
     }
 
     #[cfg(feature = "compression")]
@@ -1283,8 +1292,12 @@ mod tests {
             &brotli_config(),
             b"Hello, Brotli streaming roundtrip!",
         );
-        // Also test multi-chunk
+        // Multi-chunk
         compress_roundtrip_test(&cipher, &brotli_config(), &vec![0xCD; 200 * 1024]);
+        // Empty
+        compress_roundtrip_test(&cipher, &brotli_config(), &[]);
+        // Exact chunk boundary
+        compress_roundtrip_test(&cipher, &brotli_config(), &vec![0xFE; CHUNK_SIZE]);
     }
 
     #[cfg(feature = "compression")]
@@ -1394,34 +1407,60 @@ mod tests {
 
     #[cfg(feature = "compression")]
     #[test]
-    fn test_compressed_file_smaller() {
-        // Per-chunk padding keeps every encrypted chunk at ENCRYPTED_CHUNK_SIZE,
-        // so the on-disk file has the same number of chunks regardless of
-        // compression. To show that compression actually shrinks data we
-        // compare the *payload* inside each chunk (the padded length prefix)
-        // rather than the outer file size.
-        //
-        // Strategy: compress a highly-compressible 64KB block with Zstd and
-        // verify the compressed payload is much smaller than 64KB.
-        use crate::api::compression::{compress, CompressionAlgorithm, CompressionConfig};
+    fn test_compressed_file_fewer_chunks() {
+        // With stream-compress-then-chunk, compressible data should produce
+        // fewer encrypted chunks than plain encryption would.
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
 
-        let data = vec![b'A'; CHUNK_SIZE]; // 64KB of 'A'
-        let config = CompressionConfig {
-            algorithm: CompressionAlgorithm::Zstd,
-            level: None,
-        };
-        let compressed = compress(&data, &config).expect("zstd compress");
+        // 4 × CHUNK_SIZE of highly compressible data
+        let original = vec![b'A'; CHUNK_SIZE * 4];
+        let input = dir.path().join("input.bin");
+        let enc_plain = dir.path().join("enc_plain.bin");
+        let enc_comp = dir.path().join("enc_comp.bin");
+        let decrypted = dir.path().join("decrypted.bin");
+
+        fs::write(&input, &original).expect("write");
+
+        // Plain encryption: 4 full chunks + 1 empty final = 5 chunks
+        encrypt_file_impl(
+            &cipher,
+            input.to_str().expect("p"),
+            enc_plain.to_str().expect("p"),
+            &noop_progress,
+        )
+        .expect("plain encrypt");
+
+        let plain_size = fs::metadata(&enc_plain).expect("stat").len() as usize;
+        let plain_chunks = (plain_size - STREAM_HEADER_SIZE) / ENCRYPTED_CHUNK_SIZE;
+
+        // Compressed encryption: should produce far fewer chunks
+        compress_encrypt_file_impl(
+            &cipher,
+            &zstd_config(),
+            input.to_str().expect("p"),
+            enc_comp.to_str().expect("p"),
+            &noop_progress,
+        )
+        .expect("compress+encrypt");
+
+        let comp_size = fs::metadata(&enc_comp).expect("stat").len() as usize;
+        let comp_chunks = (comp_size - STREAM_HEADER_SIZE) / ENCRYPTED_CHUNK_SIZE;
 
         assert!(
-            compressed.len() < data.len() / 2,
-            "Zstd should compress 64KB of 'A' to well under half: {} vs {}",
-            compressed.len(),
-            data.len()
+            comp_chunks < plain_chunks,
+            "Compressed should use fewer chunks: {comp_chunks} vs {plain_chunks}"
         );
 
-        // Also verify full roundtrip still works for a large compressible file
-        let cipher = make_aes_cipher();
-        let original = vec![b'A'; 200 * 1024];
-        compress_roundtrip_test(&cipher, &zstd_config(), &original);
+        // Roundtrip still works
+        decrypt_decompress_file_impl(
+            &cipher,
+            enc_comp.to_str().expect("p"),
+            decrypted.to_str().expect("p"),
+            &noop_progress,
+        )
+        .expect("decrypt+decompress");
+
+        assert_eq!(fs::read(&decrypted).expect("read"), original);
     }
 }
