@@ -313,9 +313,11 @@ pub(crate) fn compress_encrypt_file_impl(
             break;
         }
 
-        // Full CHUNK_SIZE read — compress then encrypt as intermediate chunk
-        let compressed = compress(&read_buf[..CHUNK_SIZE], &effective_config)?;
-        let plaintext = pad_last_chunk(&compressed)?;
+        // Full CHUNK_SIZE read — compress then encrypt as intermediate chunk.
+        // Zero-pad to CHUNK_SIZE (no length prefix); Zstd/Brotli frames are
+        // self-delimiting so the decompressor ignores trailing zeros.
+        let mut plaintext = compress(&read_buf[..CHUNK_SIZE], &effective_config)?;
+        plaintext.resize(CHUNK_SIZE, 0);
         let aad = ChunkAad {
             index: chunk_index,
             is_final: false,
@@ -502,8 +504,12 @@ pub(crate) fn decrypt_decompress_file_impl(
     let mut i: u64 = 0;
 
     let mut process_chunk =
-        |plaintext: &[u8]| -> Result<(), CryptoError> {
-            let data = strip_last_chunk_padding(plaintext)?;
+        |plaintext: &[u8], is_final: bool| -> Result<(), CryptoError> {
+            let data = if is_final {
+                strip_last_chunk_padding(plaintext)?
+            } else {
+                plaintext.to_vec()
+            };
             let decompressed = decompress(&data, comp_algo)?;
             out_writer
                 .write_all(&decompressed)
@@ -527,7 +533,7 @@ pub(crate) fn decrypt_decompress_file_impl(
         .to_bytes();
 
         if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
-            process_chunk(&plaintext)?;
+            process_chunk(&plaintext, true)?;
             on_progress(1.0);
             break;
         }
@@ -541,7 +547,7 @@ pub(crate) fn decrypt_decompress_file_impl(
 
         match cipher.decrypt_raw(&wire_buf, &aad_normal) {
             Ok(plaintext) => {
-                process_chunk(&plaintext)?;
+                process_chunk(&plaintext, false)?;
                 i += 1;
                 let progress = i as f64 / estimated_chunks.max(1) as f64;
                 on_progress(progress.min(0.99));

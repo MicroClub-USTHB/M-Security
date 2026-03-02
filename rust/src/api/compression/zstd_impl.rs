@@ -24,6 +24,10 @@ pub fn compress(data: &[u8], level: i32) -> Result<Vec<u8>, CryptoError> {
 }
 
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-    zstd::decode_all(std::io::Cursor::new(data))
+    // Find the exact size of the first compressed frame so trailing
+    // zero-padding (used in streaming chunks) is ignored.
+    let frame_size = zstd::zstd_safe::find_frame_compressed_size(data)
+        .map_err(|e| CryptoError::CompressionFailed(format!("Bad zstd frame: {e}")))?;
+    zstd::decode_all(std::io::Cursor::new(&data[..frame_size]))
         .map_err(|e| CryptoError::CompressionFailed(e.to_string()))
 }
