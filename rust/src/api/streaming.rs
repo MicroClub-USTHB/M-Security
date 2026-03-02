@@ -670,6 +670,38 @@ pub fn stream_decrypt_file(
     })
 }
 
+/// Compress-then-encrypt a file using streaming chunks.
+///
+/// Each chunk is: compress(64KB) → encrypt(compressed) → write.
+/// The header stores the compression algorithm so decrypt knows how to decompress.
+#[cfg(feature = "compression")]
+pub fn stream_compress_encrypt_file(
+    cipher: &CipherHandle,
+    compression: CompressionConfig,
+    input_path: String,
+    output_path: String,
+    progress_sink: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    compress_encrypt_file_impl(cipher, &compression, &input_path, &output_path, &|p| {
+        let _ = progress_sink.add(p);
+    })
+}
+
+/// Decrypt-then-decompress a file.
+///
+/// Reads compression algorithm from the file header.
+#[cfg(feature = "compression")]
+pub fn stream_decrypt_decompress_file(
+    cipher: &CipherHandle,
+    input_path: String,
+    output_path: String,
+    progress_sink: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    decrypt_decompress_file_impl(cipher, &input_path, &output_path, &|p| {
+        let _ = progress_sink.add(p);
+    })
+}
+
 /// Hash a file using streaming 64KB chunks — feeds data only, does NOT finalize.
 ///
 /// Reads raw file bytes (no encryption padding) and feeds them to the hasher.
