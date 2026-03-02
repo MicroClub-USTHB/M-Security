@@ -1214,4 +1214,234 @@ mod tests {
         assert!(!vals.is_empty());
         assert!((vals.last().copied().unwrap_or(0.0) - 1.0).abs() < f64::EPSILON);
     }
+
+    // -- Streaming compression tests ------------------------------------------
+
+    #[cfg(feature = "compression")]
+    use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
+
+    #[cfg(feature = "compression")]
+    fn zstd_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::Zstd,
+            level: None,
+        }
+    }
+
+    #[cfg(feature = "compression")]
+    fn brotli_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::Brotli,
+            level: None,
+        }
+    }
+
+    #[cfg(feature = "compression")]
+    fn none_config() -> CompressionConfig {
+        CompressionConfig {
+            algorithm: CompressionAlgorithm::None,
+            level: None,
+        }
+    }
+
+    /// Helper: compress-encrypt → decrypt-decompress → compare.
+    #[cfg(feature = "compression")]
+    fn compress_roundtrip_test(cipher: &CipherHandle, config: &CompressionConfig, original: &[u8]) {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("input.bin");
+        let encrypted = dir.path().join("encrypted.bin");
+        let decrypted = dir.path().join("decrypted.bin");
+
+        fs::write(&input, original).expect("write input");
+
+        compress_encrypt_file_impl(
+            cipher,
+            config,
+            input.to_str().expect("path"),
+            encrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("compress+encrypt");
+
+        decrypt_decompress_file_impl(
+            cipher,
+            encrypted.to_str().expect("path"),
+            decrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("decrypt+decompress");
+
+        let result = fs::read(&decrypted).expect("read output");
+        assert_eq!(result, original, "Roundtrip mismatch");
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compress_encrypt_decrypt_decompress_roundtrip_zstd() {
+        let cipher = make_aes_cipher();
+        compress_roundtrip_test(&cipher, &zstd_config(), b"Hello, Zstd streaming roundtrip!");
+        // Also test multi-chunk
+        compress_roundtrip_test(&cipher, &zstd_config(), &vec![0xAB; 200 * 1024]);
+        // Also test empty
+        compress_roundtrip_test(&cipher, &zstd_config(), &[]);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compress_encrypt_decrypt_decompress_roundtrip_brotli() {
+        let cipher = make_aes_cipher();
+        compress_roundtrip_test(
+            &cipher,
+            &brotli_config(),
+            b"Hello, Brotli streaming roundtrip!",
+        );
+        // Also test multi-chunk
+        compress_roundtrip_test(&cipher, &brotli_config(), &vec![0xCD; 200 * 1024]);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_mime_skip_jpg() {
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("photo.jpg");
+        let encrypted = dir.path().join("encrypted.bin");
+        let decrypted = dir.path().join("decrypted.bin");
+
+        // Write fake JPEG data (already "compressed")
+        let original = vec![0xFF; 1024];
+        fs::write(&input, &original).expect("write input");
+
+        // Encrypt with Zstd config — should auto-skip because .jpg
+        compress_encrypt_file_impl(
+            &cipher,
+            &zstd_config(),
+            input.to_str().expect("path"),
+            encrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("compress+encrypt");
+
+        // Read the header and verify compression byte is 0x00 (None)
+        let enc_bytes = fs::read(&encrypted).expect("read encrypted");
+        assert_eq!(
+            enc_bytes[8], 0x00,
+            "Header compression byte should be 0x00 (None) for .jpg"
+        );
+
+        // Roundtrip should still work
+        decrypt_decompress_file_impl(
+            &cipher,
+            encrypted.to_str().expect("path"),
+            decrypted.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("decrypt+decompress");
+
+        let result = fs::read(&decrypted).expect("read output");
+        assert_eq!(result, original);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compression_none_matches_plain_encrypt() {
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("input.bin");
+        let enc_plain = dir.path().join("enc_plain.bin");
+        let enc_comp = dir.path().join("enc_comp.bin");
+        let dec_plain = dir.path().join("dec_plain.bin");
+        let dec_comp = dir.path().join("dec_comp.bin");
+
+        let original = b"Test data for None comparison";
+        fs::write(&input, original).expect("write input");
+
+        // Encrypt with plain streaming (no compression)
+        encrypt_file_impl(
+            &cipher,
+            input.to_str().expect("path"),
+            enc_plain.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("plain encrypt");
+
+        // Encrypt with CompressionAlgorithm::None
+        compress_encrypt_file_impl(
+            &cipher,
+            &none_config(),
+            input.to_str().expect("path"),
+            enc_comp.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("none compress+encrypt");
+
+        // Both should be the same size (same pipeline, same padding)
+        let plain_size = fs::metadata(&enc_plain).expect("stat").len();
+        let comp_size = fs::metadata(&enc_comp).expect("stat").len();
+        assert_eq!(
+            plain_size, comp_size,
+            "None compression should produce same size as plain encrypt"
+        );
+
+        // Both should decrypt correctly
+        decrypt_file_impl(
+            &cipher,
+            enc_plain.to_str().expect("path"),
+            dec_plain.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("plain decrypt");
+
+        decrypt_decompress_file_impl(
+            &cipher,
+            enc_comp.to_str().expect("path"),
+            dec_comp.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("none decrypt+decompress");
+
+        assert_eq!(fs::read(&dec_plain).expect("read"), original);
+        assert_eq!(fs::read(&dec_comp).expect("read"), original);
+    }
+
+    #[cfg(feature = "compression")]
+    #[test]
+    fn test_compressed_file_smaller() {
+        let cipher = make_aes_cipher();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let input = dir.path().join("input.txt");
+        let enc_plain = dir.path().join("enc_plain.bin");
+        let enc_zstd = dir.path().join("enc_zstd.bin");
+
+        // Highly compressible: 200KB of repeated 'A'
+        let original = vec![b'A'; 200 * 1024];
+        fs::write(&input, &original).expect("write input");
+
+        // Encrypt without compression
+        encrypt_file_impl(
+            &cipher,
+            input.to_str().expect("path"),
+            enc_plain.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("plain encrypt");
+
+        // Encrypt with Zstd compression
+        compress_encrypt_file_impl(
+            &cipher,
+            &zstd_config(),
+            input.to_str().expect("path"),
+            enc_zstd.to_str().expect("path"),
+            &noop_progress,
+        )
+        .expect("zstd compress+encrypt");
+
+        let plain_size = fs::metadata(&enc_plain).expect("stat").len();
+        let zstd_size = fs::metadata(&enc_zstd).expect("stat").len();
+
+        assert!(
+            zstd_size < plain_size,
+            "Compressed output ({zstd_size}) should be smaller than plain ({plain_size})"
+        );
+    }
 }
