@@ -5,7 +5,6 @@ pub mod brotli_impl;
 #[cfg(feature = "compression")]
 pub mod zstd_impl;
 
-#[cfg(feature = "compression")]
 use crate::core::error::CryptoError;
 
 /// Which compression algorithm to use.
@@ -27,7 +26,6 @@ impl CompressionAlgorithm {
     }
 
     /// Deserialize from the byte stored in the stream header.
-    #[cfg(feature = "compression")]
     pub fn from_u8(byte: u8) -> Result<Self, CryptoError> {
         match byte {
             0x00 => Ok(Self::None),

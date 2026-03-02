@@ -11,9 +11,10 @@
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 
+use crate::api::compression::CompressionAlgorithm;
 #[cfg(feature = "compression")]
 use crate::api::compression::{
-    compress, decompress, should_skip_compression, CompressionAlgorithm, CompressionConfig,
+    compress, decompress, should_skip_compression, CompressionConfig,
 };
 use crate::api::encryption::CipherHandle;
 use crate::api::hashing::HasherHandle;
@@ -133,7 +134,7 @@ pub(crate) fn encrypt_file_impl(
     let mut reader = BufReader::new(input_file);
     let mut writer = ChunkWriter::new(BufWriter::new(output_file));
 
-    writer.write_header(&StreamHeader::new(algo, 0))?;
+    writer.write_header(&StreamHeader::new(algo, CompressionAlgorithm::None))?;
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
@@ -260,7 +261,7 @@ pub(crate) fn compress_encrypt_file_impl(
     let mut reader = BufReader::new(input_file);
     let mut writer = ChunkWriter::new(BufWriter::new(output_file));
 
-    writer.write_header(&StreamHeader::new(algo, effective_algo.to_u8()))?;
+    writer.write_header(&StreamHeader::new(algo, effective_algo))?;
 
     let mut enc_chunk = EncryptedChunk::new();
     let mut read_buf = vec![0u8; CHUNK_SIZE];
@@ -487,7 +488,7 @@ pub(crate) fn decrypt_decompress_file_impl(
         )));
     }
 
-    let comp_algo = CompressionAlgorithm::from_u8(header.compression)?;
+    let comp_algo = header.compression;
 
     let data_size = file_size.saturating_sub(STREAM_HEADER_SIZE as u64);
     let estimated_chunks = if data_size > 0 {
@@ -499,6 +500,16 @@ pub(crate) fn decrypt_decompress_file_impl(
     let mut chunk = EncryptedChunk::new();
     let mut wire_buf = Vec::with_capacity(ENCRYPTED_CHUNK_SIZE);
     let mut i: u64 = 0;
+
+    let mut process_chunk =
+        |plaintext: &[u8]| -> Result<(), CryptoError> {
+            let data = strip_last_chunk_padding(plaintext)?;
+            let decompressed = decompress(&data, comp_algo)?;
+            out_writer
+                .write_all(&decompressed)
+                .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+            Ok(())
+        };
 
     loop {
         let has_data = reader.read_chunk(&mut chunk)?;
@@ -516,11 +527,7 @@ pub(crate) fn decrypt_decompress_file_impl(
         .to_bytes();
 
         if let Ok(plaintext) = cipher.decrypt_raw(&wire_buf, &aad_final) {
-            let compressed = strip_last_chunk_padding(&plaintext)?;
-            let real_data = decompress(&compressed, comp_algo)?;
-            out_writer
-                .write_all(&real_data)
-                .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+            process_chunk(&plaintext)?;
             on_progress(1.0);
             break;
         }
@@ -534,11 +541,7 @@ pub(crate) fn decrypt_decompress_file_impl(
 
         match cipher.decrypt_raw(&wire_buf, &aad_normal) {
             Ok(plaintext) => {
-                let compressed = strip_last_chunk_padding(&plaintext)?;
-                let real_data = decompress(&compressed, comp_algo)?;
-                out_writer
-                    .write_all(&real_data)
-                    .map_err(|e| CryptoError::IoError(format!("Write failed: {e}")))?;
+                process_chunk(&plaintext)?;
                 i += 1;
                 let progress = i as f64 / estimated_chunks.max(1) as f64;
                 on_progress(progress.min(0.99));
@@ -1197,7 +1200,7 @@ mod tests {
     // -- Streaming compression tests ------------------------------------------
 
     #[cfg(feature = "compression")]
-    use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
+    use crate::api::compression::CompressionConfig;
 
     #[cfg(feature = "compression")]
     fn zstd_config() -> CompressionConfig {
