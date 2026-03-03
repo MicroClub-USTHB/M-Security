@@ -29,6 +29,9 @@ pub enum CryptoError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 
+    #[error("Compression failed: {0}")]
+    CompressionFailed(String),
+
     #[error("Authentication failed")]
     AuthenticationFailed,
 }

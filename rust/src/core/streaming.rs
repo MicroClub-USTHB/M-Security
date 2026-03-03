@@ -6,6 +6,7 @@
 
 use std::io::{Read, Write};
 
+use crate::api::compression::CompressionAlgorithm;
 use crate::core::error::CryptoError;
 use crate::core::format::Algorithm;
 
@@ -97,14 +98,16 @@ impl TryFrom<Algorithm> for StreamAlgorithm {
 pub struct StreamHeader {
     pub version: u16,
     pub algorithm: StreamAlgorithm,
-    // 8 reserved bytes (zeroed) — replaces chunk_count
+    pub compression: CompressionAlgorithm,
+    // 7 reserved bytes (zeroed) — replaces chunk_count
 }
 
 impl StreamHeader {
-    pub fn new(algorithm: StreamAlgorithm) -> Self {
+    pub fn new(algorithm: StreamAlgorithm, compression: CompressionAlgorithm) -> Self {
         Self {
             version: STREAM_VERSION,
             algorithm,
+            compression,
         }
     }
 
@@ -113,7 +116,8 @@ impl StreamHeader {
         buf[0..4].copy_from_slice(STREAM_MAGIC);
         buf[4..6].copy_from_slice(&self.version.to_le_bytes());
         buf[6..8].copy_from_slice(&self.algorithm.to_u16().to_le_bytes());
-        // bytes 8..16 stay zeroed (reserved)
+        buf[8] = self.compression.to_u8();
+        // bytes 9..16 stay zeroed (reserved)
         buf
     }
 
@@ -140,7 +144,13 @@ impl StreamHeader {
 
         let algorithm = StreamAlgorithm::from_u16(u16::from_le_bytes([data[6], data[7]]))?;
 
-        Ok(Self { version, algorithm })
+        let compression = CompressionAlgorithm::from_u8(data[8])?;
+
+        Ok(Self {
+            version,
+            algorithm,
+            compression,
+        })
     }
 }
 
@@ -325,10 +335,7 @@ fn read_exact_or_eof<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<bool, st
                 }
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::UnexpectedEof,
-                    format!(
-                        "Truncated chunk: read {offset} of {} bytes",
-                        buf.len()
-                    ),
+                    format!("Truncated chunk: read {offset} of {} bytes", buf.len()),
                 ));
             }
             Ok(n) => {
@@ -364,9 +371,9 @@ impl<W: Write> ChunkWriter<W> {
 
     /// Write the 16-byte stream header.
     pub fn write_header(&mut self, header: &StreamHeader) -> Result<(), CryptoError> {
-        self.writer.write_all(&header.to_bytes()).map_err(|e| {
-            CryptoError::IoError(format!("Failed to write stream header: {e}"))
-        })
+        self.writer
+            .write_all(&header.to_bytes())
+            .map_err(|e| CryptoError::IoError(format!("Failed to write stream header: {e}")))
     }
 
     /// Write one encrypted chunk in a single I/O call.
@@ -423,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_header_roundtrip() {
-        let header = StreamHeader::new(StreamAlgorithm::AesGcm);
+        let header = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None);
         let bytes = header.to_bytes();
 
         assert_eq!(bytes.len(), STREAM_HEADER_SIZE);
@@ -435,7 +442,7 @@ mod tests {
         assert_eq!(header, parsed);
 
         // Also test ChaCha20 variant
-        let header2 = StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305);
+        let header2 = StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305, CompressionAlgorithm::None);
         let bytes2 = header2.to_bytes();
         let parsed2 = StreamHeader::from_bytes(&bytes2).expect("parse failed");
         assert_eq!(header2, parsed2);
@@ -447,7 +454,7 @@ mod tests {
 
         {
             let mut writer = ChunkWriter::new(&mut output);
-            let header = StreamHeader::new(StreamAlgorithm::AesGcm);
+            let header = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None);
             writer.write_header(&header).expect("write header");
 
             let chunk = EncryptedChunk {
@@ -482,7 +489,7 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305))
+                .write_header(&StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305, CompressionAlgorithm::None))
                 .expect("write header");
 
             for i in 0..num_chunks {
@@ -516,7 +523,7 @@ mod tests {
 
     #[test]
     fn test_bad_magic_rejected() {
-        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm).to_bytes();
+        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         bytes[0] = b'X';
         let result = StreamHeader::from_bytes(&bytes);
         assert!(result.is_err());
@@ -568,7 +575,7 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm))
+                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
                 .expect("write header");
 
             // Simulate 3 chunks — last one would be "short" in plaintext,
@@ -597,8 +604,7 @@ mod tests {
         assert_eq!(padded.len(), CHUNK_SIZE);
 
         // Length prefix
-        let stored_len =
-            u32::from_le_bytes([padded[0], padded[1], padded[2], padded[3]]) as usize;
+        let stored_len = u32::from_le_bytes([padded[0], padded[1], padded[2], padded[3]]) as usize;
         assert_eq!(stored_len, 100);
 
         // Real data follows prefix
@@ -657,7 +663,7 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm))
+                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
                 .expect("write header");
 
             let chunk = EncryptedChunk {
@@ -688,7 +694,7 @@ mod tests {
 
     #[test]
     fn test_unsupported_version_rejected() {
-        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm).to_bytes();
+        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         bytes[4] = 0xFF; // bad version (LE low byte)
         bytes[5] = 0x00;
         let result = StreamHeader::from_bytes(&bytes);
@@ -742,7 +748,7 @@ mod tests {
         let output = Vec::new();
         let mut writer = ChunkWriter::new(output);
         writer
-            .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm))
+            .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
             .expect("write header");
 
         let recovered = writer.finish().expect("finish");
@@ -751,7 +757,7 @@ mod tests {
 
     #[test]
     fn test_reader_into_inner() {
-        let data = StreamHeader::new(StreamAlgorithm::AesGcm).to_bytes();
+        let data = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         let cursor = Cursor::new(data.to_vec());
         let mut reader = ChunkReader::new(cursor);
         reader.read_header().expect("read header");
@@ -774,7 +780,7 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm))
+                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
                 .expect("header");
 
             for i in 0u8..3 {
