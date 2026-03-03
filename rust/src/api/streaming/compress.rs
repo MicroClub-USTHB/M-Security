@@ -3,7 +3,7 @@
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
 
-use crate::api::compression::streaming::{new_compressor, new_decompressor};
+use crate::core::compression::streaming::{new_compressor, new_decompressor};
 use crate::api::compression::{should_skip_compression, CompressionAlgorithm, CompressionConfig};
 use crate::api::encryption::CipherHandle;
 use crate::core::error::CryptoError;

@@ -48,7 +48,7 @@ pub fn new_compressor(
             super::brotli_impl::validate_level(level)?;
             Ok(Box::new(BrotliCompressor::new(level)))
         }
-        CompressionAlgorithm::None => Ok(Box::new(PassthroughCodec)),
+        CompressionAlgorithm::None => Ok(Box::new(PassthroughCodec {})),
     }
 }
 
@@ -58,13 +58,13 @@ pub fn new_decompressor(
     match algo {
         CompressionAlgorithm::Zstd => Ok(Box::new(ZstdDecompressor::new()?)),
         CompressionAlgorithm::Brotli => Ok(Box::new(BrotliDecompressor::new())),
-        CompressionAlgorithm::None => Ok(Box::new(PassthroughCodec)),
+        CompressionAlgorithm::None => Ok(Box::new(PassthroughCodec {})),
     }
 }
 
 // -- Passthrough (CompressionAlgorithm::None) ---------------------------------
 
-struct PassthroughCodec;
+struct PassthroughCodec {}
 
 impl CompressorOp for PassthroughCodec {
     fn compress_chunk(&mut self, input: &[u8], out: &mut Vec<u8>) -> Result<(), CryptoError> {

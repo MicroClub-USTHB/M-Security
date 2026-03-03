@@ -1,11 +1,7 @@
 //! Compression API module — Zstd, Brotli, and MIME-aware skip.
 
-#[cfg(feature = "compression")]
-pub mod brotli_impl;
-#[cfg(feature = "compression")]
-pub mod streaming;
-#[cfg(feature = "compression")]
-pub mod zstd_impl;
+// Internal compression implementations live in core/compression/
+// to avoid FRB codegen scanning them.
 
 use crate::core::error::CryptoError;
 
@@ -54,6 +50,7 @@ pub struct CompressionConfig {
 /// Compress a byte buffer according to `config`.
 #[cfg(feature = "compression")]
 pub fn compress(data: &[u8], config: &CompressionConfig) -> Result<Vec<u8>, CryptoError> {
+    use crate::core::compression::{brotli_impl, zstd_impl};
     match config.algorithm {
         CompressionAlgorithm::Zstd => {
             let level = config.level.unwrap_or(zstd_impl::DEFAULT_LEVEL);
@@ -77,6 +74,7 @@ pub fn compress(data: &[u8], config: &CompressionConfig) -> Result<Vec<u8>, Cryp
 /// Decompress a byte buffer produced by the given algorithm.
 #[cfg(feature = "compression")]
 pub fn decompress(data: &[u8], algorithm: CompressionAlgorithm) -> Result<Vec<u8>, CryptoError> {
+    use crate::core::compression::{brotli_impl, zstd_impl};
     match algorithm {
         CompressionAlgorithm::Zstd => zstd_impl::decompress(data),
         CompressionAlgorithm::Brotli => brotli_impl::decompress(data),
@@ -86,6 +84,8 @@ pub fn decompress(data: &[u8], algorithm: CompressionAlgorithm) -> Result<Vec<u8
 
 /// Returns `true` when the file extension indicates already-compressed data.
 pub fn should_skip_compression(file_path: &str) -> bool {
+    use std::path::Path;
+
     const SKIP: &[&str] = &[
         // images
         "jpg", "jpeg", "png", "gif", "webp",
@@ -97,9 +97,9 @@ pub fn should_skip_compression(file_path: &str) -> bool {
         "zip", "gz", "bz2", "xz", "zst", "br", "7z", "rar",
     ];
 
-    file_path
-        .rsplit('.')
-        .next()
+    Path::new(file_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
         .map(|ext| SKIP.contains(&ext.to_ascii_lowercase().as_str()))
         .unwrap_or(false)
 }
