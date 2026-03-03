@@ -7,6 +7,11 @@ use std::io::Write;
 
 use crate::api::compression::CompressionAlgorithm;
 use crate::core::error::CryptoError;
+use crate::core::streaming::CHUNK_SIZE;
+
+// 16 MiB per chunk — a 64KB compressed chunk expanding beyond this
+// ratio (256:1) is almost certainly a decompression bomb.
+const MAX_DECOMP_PER_CHUNK: usize = CHUNK_SIZE * 256;
 
 // -- Compressor trait ---------------------------------------------------------
 
@@ -157,6 +162,7 @@ impl DecompressorOp for ZstdDecompressor<'_> {
     fn decompress_chunk(&mut self, input: &[u8], out: &mut Vec<u8>) -> Result<(), CryptoError> {
         use zstd::stream::raw::Operation;
 
+        let start_len = out.len();
         let mut src = input;
         loop {
             let prev_len = out.len();
@@ -167,6 +173,11 @@ impl DecompressorOp for ZstdDecompressor<'_> {
                 .map_err(|e| CryptoError::CompressionFailed(format!("Zstd decompress: {e}")))?;
             out.truncate(prev_len + status.bytes_written);
             src = &src[status.bytes_read..];
+            if out.len() - start_len > MAX_DECOMP_PER_CHUNK {
+                return Err(CryptoError::CompressionFailed(
+                    "Decompression output exceeded safety limit".into(),
+                ));
+            }
             if src.is_empty() {
                 break;
             }
@@ -255,6 +266,7 @@ impl DecompressorOp for BrotliDecompressor {
         let w = self.inner.as_mut().ok_or_else(|| {
             CryptoError::CompressionFailed("Brotli decompressor already finished".into())
         })?;
+        let start_len = out.len();
         w.write_all(input)
             .map_err(|e| CryptoError::CompressionFailed(format!("Brotli decompress: {e}")))?;
         // Drain decompressed bytes that appeared in the inner Vec
@@ -262,6 +274,11 @@ impl DecompressorOp for BrotliDecompressor {
         if !inner_vec.is_empty() {
             out.extend_from_slice(inner_vec);
             w.get_mut().clear();
+        }
+        if out.len() - start_len > MAX_DECOMP_PER_CHUNK {
+            return Err(CryptoError::CompressionFailed(
+                "Decompression output exceeded safety limit".into(),
+            ));
         }
         Ok(())
     }
