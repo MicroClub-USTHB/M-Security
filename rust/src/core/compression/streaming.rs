@@ -307,15 +307,15 @@ mod tests {
         let input = b"Hello zstd streaming compression! ".repeat(1000);
         let mut compressed = Vec::new();
 
-        let mut c = new_compressor(CompressionAlgorithm::Zstd, None).unwrap();
-        c.compress_chunk(&input[..500], &mut compressed).unwrap();
-        c.compress_chunk(&input[500..], &mut compressed).unwrap();
-        c.finish(&mut compressed).unwrap();
+        let mut c = new_compressor(CompressionAlgorithm::Zstd, None).expect("zstd compressor");
+        c.compress_chunk(&input[..500], &mut compressed).expect("compress chunk 1");
+        c.compress_chunk(&input[500..], &mut compressed).expect("compress chunk 2");
+        c.finish(&mut compressed).expect("finish compress");
 
         let mut decompressed = Vec::new();
-        let mut d = new_decompressor(CompressionAlgorithm::Zstd).unwrap();
-        d.decompress_chunk(&compressed, &mut decompressed).unwrap();
-        d.finish(&mut decompressed).unwrap();
+        let mut d = new_decompressor(CompressionAlgorithm::Zstd).expect("zstd decompressor");
+        d.decompress_chunk(&compressed, &mut decompressed).expect("decompress");
+        d.finish(&mut decompressed).expect("finish decompress");
 
         assert_eq!(decompressed, input);
     }
@@ -325,15 +325,15 @@ mod tests {
         let input = b"Hello brotli streaming compression! ".repeat(1000);
         let mut compressed = Vec::new();
 
-        let mut c = new_compressor(CompressionAlgorithm::Brotli, None).unwrap();
-        c.compress_chunk(&input[..500], &mut compressed).unwrap();
-        c.compress_chunk(&input[500..], &mut compressed).unwrap();
-        c.finish(&mut compressed).unwrap();
+        let mut c = new_compressor(CompressionAlgorithm::Brotli, None).expect("brotli compressor");
+        c.compress_chunk(&input[..500], &mut compressed).expect("compress chunk 1");
+        c.compress_chunk(&input[500..], &mut compressed).expect("compress chunk 2");
+        c.finish(&mut compressed).expect("finish compress");
 
         let mut decompressed = Vec::new();
-        let mut d = new_decompressor(CompressionAlgorithm::Brotli).unwrap();
-        d.decompress_chunk(&compressed, &mut decompressed).unwrap();
-        d.finish(&mut decompressed).unwrap();
+        let mut d = new_decompressor(CompressionAlgorithm::Brotli).expect("brotli decompressor");
+        d.decompress_chunk(&compressed, &mut decompressed).expect("decompress");
+        d.finish(&mut decompressed).expect("finish decompress");
 
         assert_eq!(decompressed, input);
     }
@@ -343,15 +343,15 @@ mod tests {
         let input = b"passthrough data";
         let mut out = Vec::new();
 
-        let mut c = new_compressor(CompressionAlgorithm::None, None).unwrap();
-        c.compress_chunk(input, &mut out).unwrap();
-        c.finish(&mut out).unwrap();
+        let mut c = new_compressor(CompressionAlgorithm::None, None).expect("none compressor");
+        c.compress_chunk(input, &mut out).expect("compress");
+        c.finish(&mut out).expect("finish compress");
         assert_eq!(out, input);
 
         let mut dec_out = Vec::new();
-        let mut d = new_decompressor(CompressionAlgorithm::None).unwrap();
-        d.decompress_chunk(&out, &mut dec_out).unwrap();
-        d.finish(&mut dec_out).unwrap();
+        let mut d = new_decompressor(CompressionAlgorithm::None).expect("none decompressor");
+        d.decompress_chunk(&out, &mut dec_out).expect("decompress");
+        d.finish(&mut dec_out).expect("finish decompress");
         assert_eq!(dec_out, input);
     }
 
@@ -363,15 +363,15 @@ mod tests {
             CompressionAlgorithm::None,
         ] {
             let mut compressed = Vec::new();
-            let mut c = new_compressor(algo, None).unwrap();
-            c.finish(&mut compressed).unwrap();
+            let mut c = new_compressor(algo, None).expect("compressor");
+            c.finish(&mut compressed).expect("finish compress");
 
             let mut decompressed = Vec::new();
-            let mut d = new_decompressor(algo).unwrap();
+            let mut d = new_decompressor(algo).expect("decompressor");
             if !compressed.is_empty() {
-                d.decompress_chunk(&compressed, &mut decompressed).unwrap();
+                d.decompress_chunk(&compressed, &mut decompressed).expect("decompress");
             }
-            d.finish(&mut decompressed).unwrap();
+            d.finish(&mut decompressed).expect("finish decompress");
             assert!(decompressed.is_empty(), "algo={algo:?}");
         }
     }
