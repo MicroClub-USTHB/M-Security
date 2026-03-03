@@ -100,11 +100,12 @@ pub(crate) fn decrypt_file_impl(
         on_progress((i as f64 / estimated_chunks.max(1) as f64).min(0.99));
     }
 
-    out_writer
-        .flush()
+    let file = out_writer
+        .into_inner()
         .map_err(|e| CryptoError::IoError(format!("Flush failed: {e}")))?;
-
-    drop(out_writer);
+    file.sync_all()
+        .map_err(|e| CryptoError::IoError(format!("Failed to fsync: {e}")))?;
+    drop(file);
     fs::rename(&tmp_path, output_path).map_err(|e| {
         CryptoError::IoError(format!("Cannot rename '{tmp_path}' → '{output_path}': {e}"))
     })?;
