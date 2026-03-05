@@ -1,8 +1,11 @@
 //! Encrypted Virtual File System — .vault container format and operations.
 
-pub mod format;
-pub mod segment;
-pub mod wal;
+#[allow(dead_code)]
+mod format;
+#[allow(dead_code)]
+mod segment;
+#[allow(dead_code)]
+mod wal;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;

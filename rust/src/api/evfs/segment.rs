@@ -5,6 +5,8 @@ use sha2::Sha256;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
+use flutter_rust_bridge::frb;
+
 use crate::core::error::CryptoError;
 use crate::core::format::Algorithm;
 use crate::core::secret::SecretBuffer;
@@ -35,6 +37,7 @@ const IO_CHUNK_SIZE: usize = 64 * 1024;
 // ---------------------------------------------------------------------------
 
 /// Derived sub-keys from the master key. All fields use SecretBuffer (ZeroizeOnDrop).
+#[frb(ignore)]
 pub struct VaultKeys {
     pub cipher_key: SecretBuffer,
     pub nonce_key: SecretBuffer,
@@ -254,6 +257,7 @@ pub(super) fn aead_decrypt_with_stored_nonce(
 // ---------------------------------------------------------------------------
 
 /// Parameters for segment encrypt/decrypt operations.
+#[frb(ignore)]
 pub struct SegmentCryptoParams<'a> {
     pub cipher_key: &'a [u8],
     pub nonce_key: &'a [u8],

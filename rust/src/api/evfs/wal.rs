@@ -1,5 +1,7 @@
 //! Write-ahead log, crash recovery, and file locking.
 
+use flutter_rust_bridge::frb;
+
 use crate::core::error::CryptoError;
 use fs4::fs_std::FileExt;
 use std::fs::File;
@@ -27,6 +29,7 @@ const MAX_SNAPSHOT_SIZE: usize = 256 * 1024;
 /// WAL operation types (for logging/diagnostics).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+#[frb(ignore)]
 pub enum WalOp {
     WriteSegment = 0x01,
     DeleteSegment = 0x02,
@@ -57,6 +60,7 @@ impl WalOp {
 ///
 /// CRC32 covers `op || data_len || data` (everything before the CRC field).
 #[derive(Debug, Clone)]
+#[frb(ignore)]
 pub struct WalEntry {
     pub op: WalOp,
     /// Encrypted index bytes captured before the mutation.
@@ -176,6 +180,7 @@ impl WalEntry {
 /// `committed = false`. After the mutation completes the entry is marked
 /// committed. On recovery any uncommitted entry triggers restoration of the
 /// old index snapshot.
+#[frb(ignore)]
 pub struct WriteAheadLog {
     file: File,
 }
@@ -293,6 +298,7 @@ impl WriteAheadLog {
 /// The lock is held for as long as the `VaultLock` exists. Dropping without
 /// calling `release()` still releases the OS flock (the `File` is closed),
 /// but the `.lock` file on disk is only cleaned up by `release()`.
+#[frb(ignore)]
 pub struct VaultLock {
     // Held open to keep the flock alive.
     lock_file: File,

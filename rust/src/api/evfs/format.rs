@@ -1,5 +1,7 @@
 //! On-disk `.vault` format: header, segment index, free-region list, layout constants.
 
+use flutter_rust_bridge::frb;
+
 use crate::api::compression::CompressionAlgorithm;
 use crate::core::error::CryptoError;
 
@@ -54,6 +56,7 @@ pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
 ///
 /// Layout: `[MAGIC(4)] [VERSION(1)] [ALGORITHM(1)] [FLAGS(2)] [RESERVED(24)]`
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[frb(ignore)]
 pub struct VaultHeader {
     pub version: u8,
     /// AEAD algorithm ID (reuses `core::format::Algorithm` byte values).
@@ -114,6 +117,7 @@ impl VaultHeader {
 
 /// A free region in the data area available for reuse.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[frb(ignore)]
 pub struct FreeRegion {
     /// Byte offset relative to data region start.
     pub offset: u64,
@@ -126,6 +130,7 @@ pub struct FreeRegion {
 
 /// Segment index entry — one per stored segment.
 #[derive(Debug, Clone)]
+#[frb(ignore)]
 pub struct SegmentEntry {
     /// Segment name (1–255 bytes UTF-8).
     pub name: String,
@@ -176,6 +181,7 @@ impl SegmentEntry {
 /// Tracks live segments, freed regions for space reclamation, and the
 /// append cursor (`next_free_offset`) for when no free region fits.
 #[derive(Debug, Clone)]
+#[frb(ignore)]
 pub struct SegmentIndex {
     pub entries: Vec<SegmentEntry>,
     /// Sorted by offset, adjacent regions merged.
