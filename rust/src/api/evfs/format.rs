@@ -23,13 +23,17 @@ pub const PRIMARY_INDEX_OFFSET: u64 = VAULT_HEADER_SIZE as u64;
 pub const DATA_REGION_OFFSET: u64 = PRIMARY_INDEX_OFFSET + INDEX_PAD_SIZE as u64;
 
 /// Shadow index offset depends on vault capacity.
-pub fn shadow_index_offset(capacity: u64) -> u64 {
-    DATA_REGION_OFFSET + capacity
+pub fn shadow_index_offset(capacity: u64) -> Result<u64, CryptoError> {
+    DATA_REGION_OFFSET
+        .checked_add(capacity)
+        .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 /// WAL region starts after the shadow index.
-pub fn wal_region_offset(capacity: u64) -> u64 {
-    shadow_index_offset(capacity) + INDEX_PAD_SIZE as u64
+pub fn wal_region_offset(capacity: u64) -> Result<u64, CryptoError> {
+    shadow_index_offset(capacity)?
+        .checked_add(INDEX_PAD_SIZE as u64)
+        .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +326,22 @@ impl SegmentIndex {
         let mut off = 0;
         let entry_count = read_u32(data, &mut off)? as usize;
         let free_count = read_u32(data, &mut off)? as usize;
+
+        // Sanity-cap: the smallest possible entry is ~59 bytes (1-byte name),
+        // free region is 16 bytes. Reject clearly corrupted counts early.
+        let max_entries = INDEX_PAD_SIZE / 59;
+        let max_free = INDEX_PAD_SIZE / 16;
+        if entry_count > max_entries {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "entry count {entry_count} exceeds maximum {max_entries}"
+            )));
+        }
+        if free_count > max_free {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "free region count {free_count} exceeds maximum {max_free}"
+            )));
+        }
+
         let next_free_offset = read_u64(data, &mut off)?;
         let capacity = read_u64(data, &mut off)?;
         let next_generation = read_u64(data, &mut off)?;
@@ -329,6 +349,11 @@ impl SegmentIndex {
         let mut entries = Vec::with_capacity(entry_count);
         for _ in 0..entry_count {
             let name_len = read_u16(data, &mut off)? as usize;
+            if name_len == 0 || name_len > MAX_SEGMENT_NAME_LEN {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "invalid segment name length: {name_len}"
+                )));
+            }
             let name_bytes = read_bytes(data, &mut off, name_len)?;
             let name = String::from_utf8(name_bytes).map_err(|_| {
                 CryptoError::VaultCorrupted("segment name is not valid UTF-8".into())
@@ -369,6 +394,18 @@ impl SegmentIndex {
 
     // -- lookup / mutation --------------------------------------------------
 
+    /// Add a segment entry. Rejects duplicate names.
+    pub fn add(&mut self, entry: SegmentEntry) -> Result<(), CryptoError> {
+        if self.entries.iter().any(|e| e.name == entry.name) {
+            return Err(CryptoError::InvalidParameter(format!(
+                "duplicate segment name: {}",
+                entry.name
+            )));
+        }
+        self.entries.push(entry);
+        Ok(())
+    }
+
     pub fn find(&self, name: &str) -> Option<&SegmentEntry> {
         self.entries.iter().find(|e| e.name == name)
     }
@@ -396,6 +433,12 @@ impl SegmentIndex {
     /// Strategy: best-fit search in `free_regions` first (smallest region
     /// that fits), then fall back to appending at `next_free_offset`.
     pub fn allocate(&mut self, size: u64) -> Result<u64, CryptoError> {
+        if size == 0 {
+            return Err(CryptoError::InvalidParameter(
+                "cannot allocate zero bytes".into(),
+            ));
+        }
+
         // Best-fit search in free list
         let best = self
             .free_regions
@@ -418,15 +461,21 @@ impl SegmentIndex {
             return Ok(offset);
         }
 
-        // Fall back to append
-        if self.next_free_offset + size > self.capacity {
+        // Fall back to append (checked arithmetic to prevent overflow)
+        let end = self.next_free_offset.checked_add(size).ok_or(
+            CryptoError::VaultFull {
+                needed: size,
+                available: self.capacity.saturating_sub(self.next_free_offset),
+            },
+        )?;
+        if end > self.capacity {
             return Err(CryptoError::VaultFull {
                 needed: size,
                 available: self.capacity.saturating_sub(self.next_free_offset),
             });
         }
         let offset = self.next_free_offset;
-        self.next_free_offset += size;
+        self.next_free_offset = end;
         Ok(offset)
     }
 
@@ -536,14 +585,14 @@ mod tests {
 
     fn make_test_index() -> SegmentIndex {
         let mut idx = SegmentIndex::new(1024 * 1024);
-        idx.entries.push(
+        idx.add(
             SegmentEntry::new("hello.txt", 0, 4096, 1, dummy_checksum(0xAA), CompressionAlgorithm::Zstd)
                 .expect("entry"),
-        );
-        idx.entries.push(
+        ).expect("add");
+        idx.add(
             SegmentEntry::new("photo.jpg", 4096, 8192, 2, dummy_checksum(0xBB), CompressionAlgorithm::None)
                 .expect("entry"),
-        );
+        ).expect("add");
         idx.free_regions.push(FreeRegion { offset: 12288, size: 2048 });
         idx.next_free_offset = 14336;
         idx.next_generation = 3;
@@ -835,8 +884,8 @@ mod tests {
         assert_eq!(DATA_REGION_OFFSET, PRIMARY_INDEX_OFFSET + INDEX_PAD_SIZE as u64);
 
         let cap = 10 * 1024 * 1024; // 10MB
-        let shadow = shadow_index_offset(cap);
-        let wal = wal_region_offset(cap);
+        let shadow = shadow_index_offset(cap).expect("shadow");
+        let wal = wal_region_offset(cap).expect("wal");
 
         // Shadow index after data region
         assert_eq!(shadow, DATA_REGION_OFFSET + cap);
@@ -848,5 +897,33 @@ mod tests {
         assert!(PRIMARY_INDEX_OFFSET < DATA_REGION_OFFSET);
         assert!(DATA_REGION_OFFSET < shadow);
         assert!(shadow < wal);
+    }
+
+    #[test]
+    fn test_layout_overflow() {
+        assert!(shadow_index_offset(u64::MAX).is_err());
+        assert!(wal_region_offset(u64::MAX).is_err());
+    }
+
+    // -- Zero-size allocation -----------------------------------------------
+
+    #[test]
+    fn test_allocate_zero_rejected() {
+        let mut idx = SegmentIndex::new(1024);
+        assert!(idx.allocate(0).is_err());
+    }
+
+    // -- Duplicate names ----------------------------------------------------
+
+    #[test]
+    fn test_add_duplicate_name_rejected() {
+        let mut idx = SegmentIndex::new(1024);
+        let e1 = SegmentEntry::new("dup", 0, 64, 0, dummy_checksum(0), CompressionAlgorithm::None)
+            .expect("entry");
+        let e2 = SegmentEntry::new("dup", 64, 64, 1, dummy_checksum(1), CompressionAlgorithm::None)
+            .expect("entry");
+        idx.add(e1).expect("first add");
+        assert!(idx.add(e2).is_err());
+        assert_eq!(idx.entries.len(), 1);
     }
 }
