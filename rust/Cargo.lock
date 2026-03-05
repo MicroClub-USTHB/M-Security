@@ -965,6 +965,7 @@ dependencies = [
  "rand",
  "sha2",
  "sha3",
+ "subtle",
  "tempfile",
  "thiserror",
  "zeroize",
