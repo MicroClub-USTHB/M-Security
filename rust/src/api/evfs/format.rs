@@ -798,7 +798,7 @@ mod tests {
         let mut idx = SegmentIndex::new(100);
         idx.next_free_offset = 80;
 
-        let err = idx.allocate(50).unwrap_err();
+        let err = idx.allocate(50).expect_err("should be VaultFull");
         match err {
             CryptoError::VaultFull { needed, available } => {
                 assert_eq!(needed, 50);
@@ -894,9 +894,8 @@ mod tests {
         assert_eq!(wal, shadow + INDEX_PAD_SIZE as u64);
 
         // No overlapping regions
-        assert!(PRIMARY_INDEX_OFFSET < DATA_REGION_OFFSET);
-        assert!(DATA_REGION_OFFSET < shadow);
-        assert!(shadow < wal);
+        assert!(shadow > DATA_REGION_OFFSET);
+        assert!(wal > shadow);
     }
 
     #[test]
