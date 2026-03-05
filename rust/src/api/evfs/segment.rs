@@ -214,6 +214,42 @@ fn aead_decrypt_chacha(
 }
 
 // ---------------------------------------------------------------------------
+// AEAD helpers for vault API (random nonce, stored nonce)
+// ---------------------------------------------------------------------------
+
+/// Encrypt with a random nonce. Returns `nonce || ciphertext || tag`.
+pub(super) fn aead_encrypt_random_nonce(
+    key: &[u8],
+    plaintext: &[u8],
+    aad: &[u8],
+    algorithm: Algorithm,
+) -> Result<Vec<u8>, CryptoError> {
+    use rand::{rngs::OsRng, RngCore};
+    let mut nonce = vec![0u8; NONCE_LEN];
+    OsRng.fill_bytes(&mut nonce);
+    let ct_tag = aead_encrypt(key, &nonce, plaintext, aad, algorithm)?;
+    let mut output = Vec::with_capacity(NONCE_LEN + ct_tag.len());
+    output.extend_from_slice(&nonce);
+    output.extend_from_slice(&ct_tag);
+    Ok(output)
+}
+
+/// Decrypt data where the nonce is stored as a prefix.
+/// Input: `nonce || ciphertext || tag`.
+pub(super) fn aead_decrypt_with_stored_nonce(
+    key: &[u8],
+    encrypted: &[u8],
+    aad: &[u8],
+    algorithm: Algorithm,
+) -> Result<Vec<u8>, CryptoError> {
+    if encrypted.len() < NONCE_LEN + TAG_LEN {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+    let (nonce, ct_tag) = encrypted.split_at(NONCE_LEN);
+    aead_decrypt(key, nonce, ct_tag, aad, algorithm)
+}
+
+// ---------------------------------------------------------------------------
 // Segment encrypt / decrypt
 // ---------------------------------------------------------------------------
 

@@ -18,9 +18,12 @@ pub const MAX_SEGMENT_NAME_LEN: usize = 255;
 /// 64KB supports approximately 200 segments + free regions.
 pub const INDEX_PAD_SIZE: usize = 64 * 1024;
 
+/// Encrypted index size on disk: padded plaintext + AEAD nonce (12) + tag (16).
+pub const ENCRYPTED_INDEX_SIZE: usize = INDEX_PAD_SIZE + 12 + 16;
+
 /// Vault file layout offsets.
 pub const PRIMARY_INDEX_OFFSET: u64 = VAULT_HEADER_SIZE as u64;
-pub const DATA_REGION_OFFSET: u64 = PRIMARY_INDEX_OFFSET + INDEX_PAD_SIZE as u64;
+pub const DATA_REGION_OFFSET: u64 = PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64;
 
 /// Shadow index offset depends on vault capacity.
 pub fn shadow_index_offset(capacity: u64) -> Result<u64, CryptoError> {
@@ -32,8 +35,15 @@ pub fn shadow_index_offset(capacity: u64) -> Result<u64, CryptoError> {
 /// WAL region starts after the shadow index.
 pub fn wal_region_offset(capacity: u64) -> Result<u64, CryptoError> {
     shadow_index_offset(capacity)?
-        .checked_add(INDEX_PAD_SIZE as u64)
+        .checked_add(ENCRYPTED_INDEX_SIZE as u64)
         .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
+}
+
+/// Total vault file size: header + 2 encrypted indices + data capacity.
+pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
+    let base = VAULT_HEADER_SIZE as u64 + 2 * ENCRYPTED_INDEX_SIZE as u64;
+    base.checked_add(capacity)
+        .ok_or_else(|| CryptoError::InvalidParameter("vault size overflows".into()))
 }
 
 // ---------------------------------------------------------------------------
@@ -881,7 +891,7 @@ mod tests {
         assert_eq!(PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE as u64);
 
         // Data region after primary index
-        assert_eq!(DATA_REGION_OFFSET, PRIMARY_INDEX_OFFSET + INDEX_PAD_SIZE as u64);
+        assert_eq!(DATA_REGION_OFFSET, PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64);
 
         let cap = 10 * 1024 * 1024; // 10MB
         let shadow = shadow_index_offset(cap).expect("shadow");
@@ -891,7 +901,7 @@ mod tests {
         assert_eq!(shadow, DATA_REGION_OFFSET + cap);
 
         // WAL after shadow index
-        assert_eq!(wal, shadow + INDEX_PAD_SIZE as u64);
+        assert_eq!(wal, shadow + ENCRYPTED_INDEX_SIZE as u64);
 
         // No overlapping regions
         assert!(shadow > DATA_REGION_OFFSET);
