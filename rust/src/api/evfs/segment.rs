@@ -3,6 +3,7 @@
 use hkdf::Hkdf;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
+use zeroize::Zeroize;
 
 use crate::core::error::CryptoError;
 use crate::core::format::Algorithm;
@@ -42,6 +43,12 @@ pub struct VaultKeys {
 
 /// Derive three domain-separated sub-keys from a master key via HKDF-SHA256.
 pub fn derive_vault_keys(master_key: &[u8]) -> Result<VaultKeys, CryptoError> {
+    if master_key.is_empty() {
+        return Err(CryptoError::InvalidKeyLength {
+            expected: 32,
+            actual: 0,
+        });
+    }
     let hk = Hkdf::<Sha256>::new(None, master_key);
 
     let mut cipher_key = SecretBuffer::from_size(SUB_KEY_LEN);
@@ -242,7 +249,7 @@ pub fn encrypt_segment(
     };
 
     // Compress
-    let data = if effective_algo != CompressionAlgorithm::None {
+    let mut data = if effective_algo != CompressionAlgorithm::None {
         compression::compress(
             plaintext,
             &CompressionConfig {
@@ -261,7 +268,9 @@ pub fn encrypt_segment(
         params.generation,
         NONCE_LEN,
     )?;
-    let ct_tag = aead_encrypt(params.cipher_key, &nonce, &data, &[], params.algorithm)?;
+    let result = aead_encrypt(params.cipher_key, &nonce, &data, &[], params.algorithm);
+    data.zeroize();
+    let ct_tag = result?;
 
     // Wire format: nonce || ciphertext || tag
     let mut output = Vec::with_capacity(NONCE_LEN + ct_tag.len());
@@ -313,14 +322,16 @@ pub fn decrypt_segment(
 
 /// Encrypt the segment index using the index sub-key.
 ///
-/// Uses a fixed info string for nonce derivation so the index can be
-/// decrypted without knowing any segment metadata.
+/// `generation` is the `SegmentIndex.next_generation` value at the time of
+/// writing. It is included in nonce derivation so that every index write
+/// produces a unique nonce (preventing nonce reuse on repeated saves).
 pub fn encrypt_index(
     index_key: &[u8],
     algorithm: Algorithm,
+    generation: u64,
     plaintext: &[u8],
 ) -> Result<Vec<u8>, CryptoError> {
-    let nonce = derive_index_nonce(index_key)?;
+    let nonce = derive_index_nonce(index_key, generation)?;
     let ct_tag = aead_encrypt(index_key, &nonce, plaintext, &[], algorithm)?;
 
     let mut output = Vec::with_capacity(NONCE_LEN + ct_tag.len());
@@ -330,23 +341,37 @@ pub fn encrypt_index(
 }
 
 /// Decrypt the segment index using the index sub-key.
+///
+/// `generation` must match the value used during encryption.
 pub fn decrypt_index(
     index_key: &[u8],
     algorithm: Algorithm,
+    generation: u64,
     encrypted: &[u8],
 ) -> Result<Vec<u8>, CryptoError> {
     if encrypted.len() < NONCE_LEN + TAG_LEN {
         return Err(CryptoError::AuthenticationFailed);
     }
-    let (nonce, ct_tag) = encrypted.split_at(NONCE_LEN);
-    aead_decrypt(index_key, nonce, ct_tag, &[], algorithm)
+    let (stored_nonce, ct_tag) = encrypted.split_at(NONCE_LEN);
+
+    // Verify nonce matches the expected derivation
+    let expected_nonce = derive_index_nonce(index_key, generation)?;
+    if stored_nonce.ct_ne(&expected_nonce).into() {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+
+    aead_decrypt(index_key, stored_nonce, ct_tag, &[], algorithm)
 }
 
-fn derive_index_nonce(index_key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+fn derive_index_nonce(index_key: &[u8], generation: u64) -> Result<Vec<u8>, CryptoError> {
     let hk = Hkdf::<Sha256>::from_prk(index_key)
         .map_err(|_| CryptoError::KdfFailed("index_key too short for HKDF-PRK".into()))?;
+    // info = fixed domain || generation(LE)
+    let mut info = Vec::with_capacity(INDEX_NONCE_INFO.len() + 8);
+    info.extend_from_slice(INDEX_NONCE_INFO);
+    info.extend_from_slice(&generation.to_le_bytes());
     let mut nonce = vec![0u8; NONCE_LEN];
-    hk.expand(INDEX_NONCE_INFO, &mut nonce)
+    hk.expand(&info, &mut nonce)
         .map_err(|_| CryptoError::KdfFailed("HKDF expand failed for index nonce".into()))?;
     Ok(nonce)
 }
@@ -434,6 +459,11 @@ mod tests {
     }
 
     // -- Key derivation -----------------------------------------------------
+
+    #[test]
+    fn test_derive_vault_keys_empty_master_rejected() {
+        assert!(derive_vault_keys(&[]).is_err());
+    }
 
     #[test]
     fn test_derive_vault_keys_deterministic() {
@@ -678,14 +708,44 @@ mod tests {
         let plaintext = b"index payload bytes for testing roundtrip";
 
         let encrypted =
-            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, plaintext)
+            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
                 .expect("encrypt");
 
         let decrypted =
-            decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, &encrypted)
+            decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, &encrypted)
                 .expect("decrypt");
 
         assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_index_wrong_generation_fails() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let plaintext = b"index data";
+
+        let encrypted =
+            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 5, plaintext)
+                .expect("encrypt");
+
+        // Decrypt with wrong generation
+        let result = decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 6, &encrypted);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_index_nonce_unique_per_generation() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let plaintext = b"same index data";
+
+        let enc0 =
+            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
+                .expect("encrypt gen 0");
+        let enc1 =
+            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 1, plaintext)
+                .expect("encrypt gen 1");
+
+        // Nonce (first 12 bytes) must differ
+        assert_ne!(&enc0[..NONCE_LEN], &enc1[..NONCE_LEN]);
     }
 
     // -- Checksums ----------------------------------------------------------
