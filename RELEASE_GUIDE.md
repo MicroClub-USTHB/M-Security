@@ -29,7 +29,7 @@ git checkout -b release/vX.Y.Z
 
 ### 2. Update Version Numbers
 
-Update the version in these files:
+Update the version in **all** of these files:
 
 **`pubspec.yaml`** (root):
 ```yaml
@@ -40,6 +40,16 @@ version: X.Y.Z
 ```toml
 [package]
 version = "X.Y.Z"
+```
+
+**`ios/m_security.podspec`**:
+```ruby
+s.version = 'X.Y.Z'
+```
+
+**`macos/m_security.podspec`**:
+```ruby
+s.version = 'X.Y.Z'
 ```
 
 ### 3. Update CHANGELOG.md
@@ -120,7 +130,7 @@ Using the GitHub CLI:
 ```bash
 gh release create vX.Y.Z \
   --title "vX.Y.Z" \
-  --notes-file CHANGELOG_EXCERPT.md
+  --generate-notes
 ```
 
 Or via the GitHub web UI:
@@ -204,13 +214,17 @@ Use this checklist when preparing a release:
 
 - [ ] Version updated in `pubspec.yaml`
 - [ ] Version updated in `rust/Cargo.toml`
+- [ ] Version updated in `ios/m_security.podspec`
+- [ ] Version updated in `macos/m_security.podspec`
 - [ ] CHANGELOG.md updated with release date
 - [ ] All Rust tests pass (`cargo test`)
 - [ ] Clippy clean (`cargo clippy -- -D warnings`)
+- [ ] FRB codegen runs cleanly (`flutter_rust_bridge_codegen generate`)
 - [ ] Dart analysis clean (`dart analyze`)
 - [ ] Integration tests pass
 - [ ] CI pipeline passes on the PR
 - [ ] PR merged to `main`
+- [ ] Dry-run publish passes (`dart pub publish --dry-run`)
 - [ ] Git tag created and pushed
 - [ ] GitHub Release created
 - [ ] Published to pub.dev (`dart pub publish`)
