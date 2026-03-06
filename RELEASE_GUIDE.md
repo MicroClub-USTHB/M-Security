@@ -6,9 +6,9 @@ This document describes how to create a new release of M-Security after merging 
 
 M-Security follows [Semantic Versioning](https://semver.org/) (SemVer):
 
-- **MAJOR** (`X.0.0`) — Breaking API changes (e.g., removing a function, changing a return type).
-- **MINOR** (`0.X.0`) — New features, backward-compatible (e.g., adding a new cipher or hash algorithm).
-- **PATCH** (`0.0.X`) — Bug fixes and patches, backward-compatible (e.g., fixing edge case in encryption).
+- **MAJOR** (`X.0.0`): Breaking API changes (e.g., removing a function, changing a return type).
+- **MINOR** (`0.X.0`): New features, backward-compatible (e.g., adding a new cipher or hash algorithm).
+- **PATCH** (`0.0.X`): Bug fixes and patches, backward-compatible (e.g., fixing edge case in encryption).
 
 For pre-release versions, append a suffix: `0.2.0-dev.1`, `1.0.0-beta.1`.
 
@@ -70,12 +70,12 @@ Move the `## Unreleased` section content under a new version header with the cur
 ```
 
 Follow [Keep a Changelog](https://keepachangelog.com/) format with these categories:
-- **Added** — New features
-- **Changed** — Changes to existing functionality
-- **Deprecated** — Features that will be removed in future versions
-- **Removed** — Removed features
-- **Fixed** — Bug fixes
-- **Security** — Vulnerability fixes
+- **Added**: New features
+- **Changed**: Changes to existing functionality
+- **Deprecated**: Features that will be removed in future versions
+- **Removed**: Removed features
+- **Fixed**: Bug fixes
+- **Security**: Vulnerability fixes
 
 ### 4. Run All Checks
 
@@ -147,7 +147,7 @@ Or via the GitHub web UI:
 > **First-time setup**: Ensure you are authenticated with `dart pub login` and that the package publisher is configured on pub.dev. See [Verified Publishers](https://dart.dev/tools/pub/verified-publishers).
 
 ```bash
-# Dry run first — review what will be published
+# Dry run first: review what will be published
 dart pub publish --dry-run
 
 # If everything looks good, publish
@@ -155,7 +155,7 @@ dart pub publish
 ```
 
 **Important notes:**
-- Publishing is **permanent** — you cannot unpublish a version (only retract within 7 days).
+- Publishing is **permanent**. You cannot unpublish a version (only retract within 7 days).
 - Ensure `lib/src/rust/` generated files are included (they are needed by consumers).
 - The `.pubignore` or `.gitignore` controls which files are excluded from the published package.
 - Verify the package size is under 100 MB (gzip) / 256 MB (uncompressed).
