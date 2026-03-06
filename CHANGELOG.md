@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Fixed published package missing `rust/src/frb_generated.rs`, which caused Rust compilation to fail for consumers.
+
 ## 0.1.0
 
 Initial release of M-Security, a native Rust cryptographic SDK for Flutter.

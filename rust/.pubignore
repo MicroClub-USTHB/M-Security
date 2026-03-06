@@ -1,0 +1,3 @@
+# Override rust/.gitignore for pub.dev publishing.
+# frb_generated.rs must be included so the Rust crate compiles for consumers.
+/target

@@ -33,7 +33,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.1.0
+  m_security: ^0.1.1
 ```
 
 Then run:

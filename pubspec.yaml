@@ -3,7 +3,7 @@ description: >-
   A high-performance cryptographic SDK for Flutter powered by native Rust via FFI.
   Provides authenticated encryption (AES-256-GCM, ChaCha20-Poly1305), modern hashing
   (BLAKE3, SHA-3, Argon2id), and key derivation (HKDF-SHA256) with secure memory management.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/MicroClub-USTHB/M-Security
 repository: https://github.com/MicroClub-USTHB/M-Security
 issue_tracker: https://github.com/MicroClub-USTHB/M-Security/issues
