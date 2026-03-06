@@ -9,6 +9,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// One-shot HKDF-SHA256: extract + expand in a single call.
 /// Returns `output_len` bytes of derived key material.
+///
+/// # Security
+/// Input key material (`ikm`, `salt`) is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned `Vec<u8>`.
 Uint8List hkdfDerive({
   required List<int> ikm,
   Uint8List? salt,
@@ -22,10 +26,18 @@ Uint8List hkdfDerive({
 );
 
 /// HKDF-Extract: produce a pseudorandom key (PRK) from input key material.
+///
+/// # Security
+/// Input key material (`ikm`, `salt`) is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned PRK.
 Uint8List hkdfExtract({required List<int> ikm, Uint8List? salt}) =>
     RustLib.instance.api.crateApiKdfHkdfHkdfExtract(ikm: ikm, salt: salt);
 
 /// HKDF-Expand: expand a PRK into `output_len` bytes of derived key material.
+///
+/// # Security
+/// The input PRK is zeroed before the function returns.
+/// The caller is responsible for zeroizing the returned key material.
 Future<Uint8List> hkdfExpand({
   required List<int> prk,
   required List<int> info,
