@@ -35,6 +35,15 @@ argon2 = "0.5"
 hkdf = "0.12"
 sha2 = "0.10"
 
+# Constant-time comparison
+subtle = "2.6"
+
+# CRC32 for WAL integrity
+crc32fast = "1.4"
+
+# Advisory file locking
+fs4 = "0.12"
+
 # Compression
 zstd = { version = "0.13", optional = true }
 brotli = { version = "7.0", optional = true }

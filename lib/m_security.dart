@@ -5,3 +5,4 @@ export 'src/kdf/hkdf.dart';
 export 'src/rust/frb_generated.dart' show RustLib;
 export 'src/streaming/streaming_service.dart';
 export 'src/compression/compression_service.dart';
+export 'src/evfs/vault_service.dart';
