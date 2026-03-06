@@ -1,24 +1,16 @@
 //! Encrypted Virtual File System — .vault container format and operations.
 
-#[allow(dead_code)]
-mod format;
-#[allow(dead_code)]
-mod segment;
-#[allow(dead_code)]
-mod wal;
-
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
+use crate::core::evfs::format::{
+    self, SegmentEntry, SegmentIndex, VaultHeader, DATA_REGION_OFFSET, ENCRYPTED_INDEX_SIZE,
+    PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
+};
+use crate::core::evfs::segment::{self, SegmentCryptoParams, VaultKeys};
+use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
 use flutter_rust_bridge::frb;
 use zeroize::Zeroize;
-
-use self::format::{
-    SegmentEntry, SegmentIndex, VaultHeader, DATA_REGION_OFFSET, ENCRYPTED_INDEX_SIZE,
-    PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
-};
-use self::segment::{SegmentCryptoParams, VaultKeys};
-use self::wal::{VaultLock, WalOp, WriteAheadLog};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
