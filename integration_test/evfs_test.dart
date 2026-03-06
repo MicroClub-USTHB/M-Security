@@ -310,7 +310,7 @@ void main() {
       // Check again
       final after = await VaultService.capacity(handle: handle);
       expect(after.usedBytes, greaterThan(before.usedBytes));
-      expect(after.freeListBytes, lessThan(before.freeListBytes));
+      expect(after.unallocatedBytes, lessThan(before.unallocatedBytes));
 
       // Total should remain the same
       expect(after.totalBytes, before.totalBytes);
