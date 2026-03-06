@@ -33,7 +33,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.0.1
+  m_security: ^0.1.0
 ```
 
 Then run:
@@ -277,7 +277,7 @@ flutter test integration_test/hkdf_test.dart
 
 ## Roadmap
 
-v0.0.1 ships the cryptographic foundation. The following features are planned for future releases:
+v0.1.0 ships the cryptographic foundation. The following features are planned for future releases:
 
 | Feature | Description | Status |
 |---------|-------------|--------|

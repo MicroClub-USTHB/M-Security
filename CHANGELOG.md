@@ -1,4 +1,4 @@
-## 0.0.1
+## 0.1.0
 
 Initial release of M-Security — a native Rust cryptographic SDK for Flutter.
 
