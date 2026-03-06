@@ -26,7 +26,6 @@
 // Section: imports
 
 use crate::api::encryption::*;
-use crate::api::evfs::segment::*;
 use crate::api::evfs::*;
 use crate::api::hashing::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
@@ -41,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 207943834;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 623065910;
 
 // Section: executor
 
@@ -292,41 +291,6 @@ fn wire__crate__api__compression__compression_algorithm_to_u8_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Result::<_, ()>::Ok(
                         crate::api::compression::CompressionAlgorithm::to_u8(api_that),
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__compute_checksum_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "compute_checksum",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_data = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok(
-                        crate::api::evfs::segment::compute_checksum(&api_data),
                     )?;
                     Ok(output_ok)
                 })())
@@ -589,181 +553,6 @@ fn wire__crate__api__encryption__decrypt_impl(
         },
     )
 }
-fn wire__crate__api__evfs__segment__decrypt_index_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "decrypt_index",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_index_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_algorithm = <crate::core::format::Algorithm>::sse_decode(&mut deserializer);
-            let api_generation = <u64>::sse_decode(&mut deserializer);
-            let api_encrypted = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::segment::decrypt_index(
-                        &api_index_key,
-                        api_algorithm,
-                        api_generation,
-                        &api_encrypted,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__decrypt_segment_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "decrypt_segment",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_params = <RustOpaqueMoi<
-                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                    Lifetimeable<SegmentCryptoParams<'static>>,
-                >,
-            >>::sse_decode(&mut deserializer);
-            let api_encrypted = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_compression =
-                <crate::api::compression::CompressionAlgorithm>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let mut api_params_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_params,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_params_guard = Some(api_params.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_params_guard = api_params_guard.unwrap();
-                    let output_ok = crate::api::evfs::segment::decrypt_segment(
-                        &*&api_params_guard,
-                        &api_encrypted,
-                        api_compression,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__derive_segment_nonce_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "derive_segment_nonce",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_nonce_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_segment_index = <u64>::sse_decode(&mut deserializer);
-            let api_generation = <u64>::sse_decode(&mut deserializer);
-            let api_nonce_len = <usize>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::segment::derive_segment_nonce(
-                        &api_nonce_key,
-                        api_segment_index,
-                        api_generation,
-                        api_nonce_len,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__derive_vault_keys_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "derive_vault_keys",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_master_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::segment::derive_vault_keys(&api_master_key)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__encryption__encrypt_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -814,109 +603,6 @@ fn wire__crate__api__encryption__encrypt_impl(
                         &*api_cipher_guard,
                         api_plaintext,
                         api_aad,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__encrypt_index_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "encrypt_index",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_index_key = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_algorithm = <crate::core::format::Algorithm>::sse_decode(&mut deserializer);
-            let api_generation = <u64>::sse_decode(&mut deserializer);
-            let api_plaintext = <Vec<u8>>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::segment::encrypt_index(
-                        &api_index_key,
-                        api_algorithm,
-                        api_generation,
-                        &api_plaintext,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__encrypt_segment_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "encrypt_segment",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_params = <RustOpaqueMoi<
-                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                    Lifetimeable<SegmentCryptoParams<'static>>,
-                >,
-            >>::sse_decode(&mut deserializer);
-            let api_plaintext = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_segment_name = <String>::sse_decode(&mut deserializer);
-            let api_compression =
-                <crate::api::compression::CompressionConfig>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let mut api_params_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_params,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_params_guard = Some(api_params.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_params_guard = api_params_guard.unwrap();
-                    let output_ok = crate::api::evfs::segment::encrypt_segment(
-                        &*&api_params_guard,
-                        &api_plaintext,
-                        &api_segment_name,
-                        &api_compression,
                     )?;
                     Ok(output_ok)
                 })())
@@ -1416,114 +1102,6 @@ fn wire__crate__api__kdf__hkdf__hkdf_extract_impl(
         },
     )
 }
-fn wire__crate__api__evfs__segment__preallocate_vault_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "preallocate_vault",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_file = <RustOpaqueMoi<
-                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<File>,
-            >>::sse_decode(&mut deserializer);
-            let api_total_size = <u64>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let mut api_file_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_file, 0, true,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_file_guard = Some(api_file.lockable_decode_sync_ref_mut()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let mut api_file_guard = api_file_guard.unwrap();
-                    let output_ok = crate::api::evfs::segment::preallocate_vault(
-                        &mut *api_file_guard,
-                        api_total_size,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__segment__secure_erase_region_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "secure_erase_region",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_file = <RustOpaqueMoi<
-                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<File>,
-            >>::sse_decode(&mut deserializer);
-            let api_offset = <u64>::sse_decode(&mut deserializer);
-            let api_size = <u64>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let mut api_file_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_file, 0, true,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_file_guard = Some(api_file.lockable_decode_sync_ref_mut()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let mut api_file_guard = api_file_guard.unwrap();
-                    let output_ok = crate::api::evfs::segment::secure_erase_region(
-                        &mut *api_file_guard,
-                        api_offset,
-                        api_size,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__hashing__sha3_hash_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1551,39 +1129,6 @@ fn wire__crate__api__hashing__sha3_hash_impl(
             move |context| {
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Result::<_, ()>::Ok(crate::api::hashing::sha3_hash(api_data))?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__format__shadow_index_offset_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "shadow_index_offset",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_capacity = <u64>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::format::shadow_index_offset(api_capacity)?;
                     Ok(output_ok)
                 })())
             }
@@ -1930,39 +1475,6 @@ fn wire__crate__api__streaming__stream_hash_file_impl(
                         api_file_path,
                         api_progress_sink,
                     )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__format__total_vault_size_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "total_vault_size",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_capacity = <u64>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::format::total_vault_size(api_capacity)?;
                     Ok(output_ok)
                 })())
             }
@@ -2346,108 +1858,6 @@ fn wire__crate__api__evfs__vault_write_impl(
         },
     )
 }
-fn wire__crate__api__evfs__segment__verify_checksum_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "verify_checksum",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_data = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_expected = <[u8; 32]>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok(
-                        crate::api::evfs::segment::verify_checksum(&api_data, &api_expected),
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__wal__wal_op_from_byte_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "wal_op_from_byte",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_b = <u8>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::wal::WalOp::from_byte(api_b)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__evfs__format__wal_region_offset_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "wal_region_offset",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_capacity = <u64>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::format::wal_region_offset(api_capacity)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 
 // Section: related_funcs
 
@@ -2455,15 +1865,7 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<File>
-);
-flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>
-);
-flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-        Lifetimeable<SegmentCryptoParams<'static>>,
-    >
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>
@@ -2476,18 +1878,6 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <String>::sse_decode(deserializer);
         return flutter_rust_bridge::for_generated::anyhow::anyhow!("{}", inner);
-    }
-}
-
-impl SseDecode for RustAutoOpaqueMoi<Lifetimeable<SegmentCryptoParams<'static>>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >>::sse_decode(deserializer);
-        return flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_decode(inner);
     }
 }
 
@@ -2531,30 +1921,8 @@ impl SseDecode
     }
 }
 
-impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<File>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <usize>::sse_decode(deserializer);
-        return decode_rust_opaque_moi(inner);
-    }
-}
-
 impl SseDecode
     for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
-{
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <usize>::sse_decode(deserializer);
-        return decode_rust_opaque_moi(inner);
-    }
-}
-
-impl SseDecode
-    for RustOpaqueMoi<
-        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-            Lifetimeable<SegmentCryptoParams<'static>>,
-        >,
-    >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2586,19 +1954,6 @@ impl SseDecode for String {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <Vec<u8>>::sse_decode(deserializer);
         return String::from_utf8(inner).unwrap();
-    }
-}
-
-impl SseDecode for crate::core::format::Algorithm {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i32>::sse_decode(deserializer);
-        return match inner {
-            0 => crate::core::format::Algorithm::AesGcm,
-            1 => crate::core::format::Algorithm::ChaCha20Poly1305,
-            2 => crate::core::format::Algorithm::XChaCha20Poly1305,
-            _ => unreachable!("Invalid variant for Algorithm: {}", inner),
-        };
     }
 }
 
@@ -2792,24 +2147,6 @@ impl SseDecode for Option<Vec<u8>> {
     }
 }
 
-impl SseDecode for (Vec<u8>, crate::api::compression::CompressionAlgorithm) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_field0 = <Vec<u8>>::sse_decode(deserializer);
-        let mut var_field1 =
-            <crate::api::compression::CompressionAlgorithm>::sse_decode(deserializer);
-        return (var_field0, var_field1);
-    }
-}
-
-impl SseDecode for crate::core::secret::SecretBuffer {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_inner = <Vec<u8>>::sse_decode(deserializer);
-        return crate::core::secret::SecretBuffer { inner: var_inner };
-    }
-}
-
 impl SseDecode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2821,14 +2158,6 @@ impl SseDecode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u8().unwrap()
-    }
-}
-
-impl SseDecode for [u8; 32] {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <Vec<u8>>::sse_decode(deserializer);
-        return flutter_rust_bridge::for_generated::from_vec_to_array(inner);
     }
 }
 
@@ -2858,33 +2187,6 @@ impl SseDecode for crate::api::evfs::VaultCapacityInfo {
             free_list_bytes: var_freeListBytes,
             unallocated_bytes: var_unallocatedBytes,
             segment_count: var_segmentCount,
-        };
-    }
-}
-
-impl SseDecode for crate::api::evfs::segment::VaultKeys {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_cipherKey = <crate::core::secret::SecretBuffer>::sse_decode(deserializer);
-        let mut var_nonceKey = <crate::core::secret::SecretBuffer>::sse_decode(deserializer);
-        let mut var_indexKey = <crate::core::secret::SecretBuffer>::sse_decode(deserializer);
-        return crate::api::evfs::segment::VaultKeys {
-            cipher_key: var_cipherKey,
-            nonce_key: var_nonceKey,
-            index_key: var_indexKey,
-        };
-    }
-}
-
-impl SseDecode for crate::api::evfs::wal::WalOp {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i32>::sse_decode(deserializer);
-        return match inner {
-            0 => crate::api::evfs::wal::WalOp::WriteSegment,
-            1 => crate::api::evfs::wal::WalOp::DeleteSegment,
-            2 => crate::api::evfs::wal::WalOp::UpdateIndex,
-            _ => unreachable!("Invalid variant for WalOp: {}", inner),
         };
     }
 }
@@ -2927,158 +2229,97 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__evfs__segment__compute_checksum_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        9 => {
+        8 => {
             wire__crate__api__encryption__create_aes256_gcm_impl(port, ptr, rust_vec_len, data_len)
         }
-        10 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__encryption__create_chacha20_poly1305_impl(
+        9 => wire__crate__api__hashing__create_blake3_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__encryption__create_chacha20_poly1305_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__encryption__create_noop_encryption_impl(
+        11 => wire__crate__api__encryption__create_noop_encryption_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__compression__decompress_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
-        16 => {
-            wire__crate__api__evfs__segment__decrypt_index_impl(port, ptr, rust_vec_len, data_len)
-        }
-        17 => {
-            wire__crate__api__evfs__segment__decrypt_segment_impl(port, ptr, rust_vec_len, data_len)
-        }
-        18 => wire__crate__api__evfs__segment__derive_segment_nonce_impl(
+        12 => wire__crate__api__hashing__create_sha3_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__compression__decompress_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__encryption__decrypt_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__encryption__encryption_algorithm_id_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__evfs__segment__derive_vault_keys_impl(
+        17 => wire__crate__api__encryption__generate_aes256_gcm_key_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__encryption__encrypt_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        19 => wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        20 => wire__crate__api__encryption__chacha20__generate_chacha_key_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         21 => {
-            wire__crate__api__evfs__segment__encrypt_index_impl(port, ptr, rust_vec_len, data_len)
-        }
-        22 => {
-            wire__crate__api__evfs__segment__encrypt_segment_impl(port, ptr, rust_vec_len, data_len)
-        }
-        23 => wire__crate__api__encryption__encryption_algorithm_id_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        24 => wire__crate__api__encryption__generate_aes256_gcm_key_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        25 => wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        26 => wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        27 => wire__crate__api__encryption__chacha20__generate_chacha_key_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        28 => {
             wire__crate__api__hashing__hasher_algorithm_id_impl(port, ptr, rust_vec_len, data_len)
         }
-        29 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__kdf__hkdf__hkdf_expand_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__evfs__segment__preallocate_vault_impl(
+        22 => wire__crate__api__hashing__hasher_finalize_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__hashing__hasher_reset_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__hashing__hasher_update_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__kdf__hkdf__hkdf_expand_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__compression__should_skip_compression_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        36 => wire__crate__api__evfs__segment__secure_erase_region_impl(
+        30 => wire__crate__api__streaming__stream_compress_encrypt_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        37 => wire__crate__api__hashing__sha3_hash_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__evfs__format__shadow_index_offset_impl(
+        31 => wire__crate__api__streaming__stream_decrypt_decompress_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        39 => wire__crate__api__compression__should_skip_compression_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        40 => wire__crate__api__streaming__stream_compress_encrypt_file_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        41 => wire__crate__api__streaming__stream_decrypt_decompress_file_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        42 => {
+        32 => {
             wire__crate__api__streaming__stream_decrypt_file_impl(port, ptr, rust_vec_len, data_len)
         }
-        43 => {
+        33 => {
             wire__crate__api__streaming__stream_encrypt_file_impl(port, ptr, rust_vec_len, data_len)
         }
-        44 => wire__crate__api__streaming__stream_hash_file_impl(port, ptr, rust_vec_len, data_len),
-        45 => {
-            wire__crate__api__evfs__format__total_vault_size_impl(port, ptr, rust_vec_len, data_len)
-        }
-        46 => wire__crate__api__evfs__vault_capacity_impl(port, ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__evfs__vault_close_impl(port, ptr, rust_vec_len, data_len),
-        48 => wire__crate__api__evfs__vault_create_impl(port, ptr, rust_vec_len, data_len),
-        49 => wire__crate__api__evfs__vault_delete_impl(port, ptr, rust_vec_len, data_len),
-        50 => wire__crate__api__evfs__vault_list_impl(port, ptr, rust_vec_len, data_len),
-        51 => wire__crate__api__evfs__vault_open_impl(port, ptr, rust_vec_len, data_len),
-        52 => wire__crate__api__evfs__vault_read_impl(port, ptr, rust_vec_len, data_len),
-        53 => wire__crate__api__evfs__vault_write_impl(port, ptr, rust_vec_len, data_len),
-        54 => {
-            wire__crate__api__evfs__segment__verify_checksum_impl(port, ptr, rust_vec_len, data_len)
-        }
-        55 => wire__crate__api__evfs__wal__wal_op_from_byte_impl(port, ptr, rust_vec_len, data_len),
-        56 => wire__crate__api__evfs__format__wal_region_offset_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
+        34 => wire__crate__api__streaming__stream_hash_file_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__evfs__vault_capacity_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__evfs__vault_close_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__evfs__vault_create_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__evfs__vault_delete_impl(port, ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__evfs__vault_list_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__evfs__vault_open_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__evfs__vault_read_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__evfs__vault_write_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3091,8 +2332,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        32 => wire__crate__api__kdf__hkdf__hkdf_derive_impl(ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__kdf__hkdf__hkdf_extract_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__kdf__hkdf__hkdf_derive_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__kdf__hkdf__hkdf_extract_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3144,28 +2385,6 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<VaultHandle>> for VaultHandle 
     }
 }
 
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::core::format::Algorithm {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            Self::AesGcm => 0.into_dart(),
-            Self::ChaCha20Poly1305 => 1.into_dart(),
-            Self::XChaCha20Poly1305 => 2.into_dart(),
-            _ => unreachable!(),
-        }
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::core::format::Algorithm
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::core::format::Algorithm>
-    for crate::core::format::Algorithm
-{
-    fn into_into_dart(self) -> crate::core::format::Algorithm {
-        self
-    }
-}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::hashing::argon2::Argon2Preset {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -3292,23 +2511,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::core::error::CryptoError>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::core::secret::SecretBuffer {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [self.inner.into_into_dart().into_dart()].into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::core::secret::SecretBuffer
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::core::secret::SecretBuffer>
-    for crate::core::secret::SecretBuffer
-{
-    fn into_into_dart(self) -> crate::core::secret::SecretBuffer {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::evfs::VaultCapacityInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -3332,66 +2534,11 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::VaultCapacityInfo>
         self
     }
 }
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::evfs::segment::VaultKeys {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.cipher_key.into_into_dart().into_dart(),
-            self.nonce_key.into_into_dart().into_dart(),
-            self.index_key.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::evfs::segment::VaultKeys
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::segment::VaultKeys>
-    for crate::api::evfs::segment::VaultKeys
-{
-    fn into_into_dart(self) -> crate::api::evfs::segment::VaultKeys {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::evfs::wal::WalOp {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            Self::WriteSegment => 0.into_dart(),
-            Self::DeleteSegment => 1.into_dart(),
-            Self::UpdateIndex => 2.into_dart(),
-            _ => unreachable!(),
-        }
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::evfs::wal::WalOp {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::wal::WalOp>
-    for crate::api::evfs::wal::WalOp
-{
-    fn into_into_dart(self) -> crate::api::evfs::wal::WalOp {
-        self
-    }
-}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(format!("{:?}", self), serializer);
-    }
-}
-
-impl SseEncode for RustAutoOpaqueMoi<Lifetimeable<SegmentCryptoParams<'static>>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >>::sse_encode(
-            flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_encode(self),
-            serializer,
-        );
     }
 }
 
@@ -3427,32 +2574,8 @@ impl SseEncode
     }
 }
 
-impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<File>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        let (ptr, size) = self.sse_encode_raw();
-        <usize>::sse_encode(ptr, serializer);
-        <i32>::sse_encode(size, serializer);
-    }
-}
-
 impl SseEncode
     for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
-{
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        let (ptr, size) = self.sse_encode_raw();
-        <usize>::sse_encode(ptr, serializer);
-        <i32>::sse_encode(size, serializer);
-    }
-}
-
-impl SseEncode
-    for RustOpaqueMoi<
-        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-            Lifetimeable<SegmentCryptoParams<'static>>,
-        >,
-    >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3484,23 +2607,6 @@ impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
-    }
-}
-
-impl SseEncode for crate::core::format::Algorithm {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(
-            match self {
-                crate::core::format::Algorithm::AesGcm => 0,
-                crate::core::format::Algorithm::ChaCha20Poly1305 => 1,
-                crate::core::format::Algorithm::XChaCha20Poly1305 => 2,
-                _ => {
-                    unimplemented!("");
-                }
-            },
-            serializer,
-        );
     }
 }
 
@@ -3681,21 +2787,6 @@ impl SseEncode for Option<Vec<u8>> {
     }
 }
 
-impl SseEncode for (Vec<u8>, crate::api::compression::CompressionAlgorithm) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<u8>>::sse_encode(self.0, serializer);
-        <crate::api::compression::CompressionAlgorithm>::sse_encode(self.1, serializer);
-    }
-}
-
-impl SseEncode for crate::core::secret::SecretBuffer {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<u8>>::sse_encode(self.inner, serializer);
-    }
-}
-
 impl SseEncode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3707,19 +2798,6 @@ impl SseEncode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u8(self).unwrap();
-    }
-}
-
-impl SseEncode for [u8; 32] {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<u8>>::sse_encode(
-            {
-                let boxed: Box<[_]> = Box::new(self);
-                boxed.into_vec()
-            },
-            serializer,
-        );
     }
 }
 
@@ -3749,32 +2827,6 @@ impl SseEncode for crate::api::evfs::VaultCapacityInfo {
     }
 }
 
-impl SseEncode for crate::api::evfs::segment::VaultKeys {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <crate::core::secret::SecretBuffer>::sse_encode(self.cipher_key, serializer);
-        <crate::core::secret::SecretBuffer>::sse_encode(self.nonce_key, serializer);
-        <crate::core::secret::SecretBuffer>::sse_encode(self.index_key, serializer);
-    }
-}
-
-impl SseEncode for crate::api::evfs::wal::WalOp {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(
-            match self {
-                crate::api::evfs::wal::WalOp::WriteSegment => 0,
-                crate::api::evfs::wal::WalOp::DeleteSegment => 1,
-                crate::api::evfs::wal::WalOp::UpdateIndex => 2,
-                _ => {
-                    unimplemented!("");
-                }
-            },
-            serializer,
-        );
-    }
-}
-
 #[cfg(not(target_family = "wasm"))]
 mod io {
     // This file is automatically generated, so please do not edit it.
@@ -3784,7 +2836,6 @@ mod io {
 
     use super::*;
     use crate::api::encryption::*;
-    use crate::api::evfs::segment::*;
     use crate::api::evfs::*;
     use crate::api::hashing::*;
     use flutter_rust_bridge::for_generated::byteorder::{
@@ -3812,20 +2863,6 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFile(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< File>>::increment_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFile(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< File>>::decrement_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
         ptr: *const std::ffi::c_void,
     ) {
@@ -3837,28 +2874,6 @@ mod io {
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>::decrement_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLifetimeableSegmentCryptoParamsstatic(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >::increment_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLifetimeableSegmentCryptoParamsstatic(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >::decrement_strong_count(ptr as _);
     }
 
     #[unsafe(no_mangle)]
@@ -3888,7 +2903,6 @@ mod web {
 
     use super::*;
     use crate::api::encryption::*;
-    use crate::api::evfs::segment::*;
     use crate::api::evfs::*;
     use crate::api::hashing::*;
     use flutter_rust_bridge::for_generated::byteorder::{
@@ -3918,20 +2932,6 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFile(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< File>>::increment_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
-    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFile(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< File>>::decrement_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
     pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
         ptr: *const std::ffi::c_void,
     ) {
@@ -3943,28 +2943,6 @@ mod web {
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>::decrement_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
-    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLifetimeableSegmentCryptoParamsstatic(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >::increment_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
-    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLifetimeableSegmentCryptoParamsstatic(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Lifetimeable<SegmentCryptoParams<'static>>,
-            >,
-        >::decrement_strong_count(ptr as _);
     }
 
     #[wasm_bindgen]
