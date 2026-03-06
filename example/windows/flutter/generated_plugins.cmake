@@ -3,11 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  m_security
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  rust_lib_m_security
+  m_security
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

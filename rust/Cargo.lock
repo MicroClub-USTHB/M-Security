@@ -730,6 +730,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "m_security"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "argon2",
+ "blake3",
+ "brotli",
+ "chacha20poly1305",
+ "crc32fast",
+ "flutter_rust_bridge",
+ "fs4",
+ "hex",
+ "hkdf",
+ "log",
+ "rand",
+ "sha2",
+ "sha3",
+ "subtle",
+ "tempfile",
+ "thiserror",
+ "zeroize",
+ "zstd",
+]
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -967,31 +992,6 @@ name = "regex-syntax"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
-
-[[package]]
-name = "rust_lib_m_security"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "argon2",
- "blake3",
- "brotli",
- "chacha20poly1305",
- "crc32fast",
- "flutter_rust_bridge",
- "fs4",
- "hex",
- "hkdf",
- "log",
- "rand",
- "sha2",
- "sha3",
- "subtle",
- "tempfile",
- "thiserror",
- "zeroize",
- "zstd",
-]
 
 [[package]]
 name = "rustc-demangle"

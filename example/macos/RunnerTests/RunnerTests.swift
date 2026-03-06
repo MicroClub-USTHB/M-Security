@@ -1,28 +1,11 @@
-import Cocoa
-import FlutterMacOS
 import XCTest
-
-
-@testable import m_security
-
-// This demonstrates a simple unit test of the Swift portion of this plugin's implementation.
-//
-// See https://developer.apple.com/documentation/xctest for more information about using XCTest.
 
 class RunnerTests: XCTestCase {
 
-  func testGetPlatformVersion() {
-    let plugin = MSecurityPlugin()
-
-    let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
-
-    let resultExpectation = expectation(description: "result block must be called.")
-    plugin.handle(call) { result in
-      XCTAssertEqual(result as! String,
-                     "macOS " + ProcessInfo.processInfo.operatingSystemVersionString)
-      resultExpectation.fulfill()
-    }
-    waitForExpectations(timeout: 1)
+  func testPluginLoads() {
+    // M-Security uses FFI (not method channels), so there is no Swift plugin class to test.
+    // Cryptographic functionality is validated via Dart integration tests.
+    XCTAssertTrue(true)
   }
 
 }

@@ -1,5 +1,5 @@
 [package]
-name = "rust_lib_m_security"
+name = "m_security"
 version = "0.1.0"
 edition = "2021"
 
