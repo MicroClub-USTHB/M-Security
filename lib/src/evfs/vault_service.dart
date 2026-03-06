@@ -11,26 +11,22 @@ class VaultService {
 
   /// Create a new vault file.
   ///
-  /// [key] must be 32 bytes (aes-256)
-  ///
+  /// [algorithm] must be "aes-256-gcm" or "chacha20-poly1305".
   static Future<rust_evfs.VaultHandle> create({
     required String path,
     required Uint8List key,
     required String algorithm,
     required int capacityBytes,
-  })  {
-    
-      return  rust_evfs.vaultCreate(
-        path: path,
-        key: key,
-        algorithm: algorithm,
-        capacityBytes: BigInt.from(capacityBytes),
-      );
+  }) {
+    return rust_evfs.vaultCreate(
+      path: path,
+      key: key,
+      algorithm: algorithm,
+      capacityBytes: BigInt.from(capacityBytes),
+    );
   }
 
-
   /// Open an existing vault (runs WAL recovery if needed).
-  /// Automatically runs wal recovery if needed
   static Future<rust_evfs.VaultHandle> open({
     required String path,
     required Uint8List key,
@@ -81,7 +77,6 @@ class VaultService {
   }
 
   /// Get vault capacity info.
-  /// Returns a map with keys
   static Future<rust_evfs.VaultCapacityInfo> capacity({
     required rust_evfs.VaultHandle handle,
   }) {
