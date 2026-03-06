@@ -5,6 +5,7 @@
 
 pub mod compression;
 pub mod error;
+pub mod evfs;
 pub mod format;
 pub mod rng;
 pub mod secret;

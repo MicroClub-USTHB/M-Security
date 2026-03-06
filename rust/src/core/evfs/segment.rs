@@ -218,7 +218,7 @@ fn aead_decrypt_chacha(
 // ---------------------------------------------------------------------------
 
 /// Encrypt with a random nonce. Returns `nonce || ciphertext || tag`.
-pub(super) fn aead_encrypt_random_nonce(
+pub fn aead_encrypt_random_nonce(
     key: &[u8],
     plaintext: &[u8],
     aad: &[u8],
@@ -236,7 +236,7 @@ pub(super) fn aead_encrypt_random_nonce(
 
 /// Decrypt data where the nonce is stored as a prefix.
 /// Input: `nonce || ciphertext || tag`.
-pub(super) fn aead_decrypt_with_stored_nonce(
+pub fn aead_decrypt_with_stored_nonce(
     key: &[u8],
     encrypted: &[u8],
     aad: &[u8],
