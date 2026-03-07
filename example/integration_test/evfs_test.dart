@@ -197,14 +197,16 @@ void main() {
       await VaultService.write(handle: handle, name: 'big.bin', data: hugeData);
 
       //Try to write another big file ->should fail
-      expect(
-        () async => await VaultService.write(
+      try {
+        await VaultService.write(
           handle: handle,
           name: 'big2.bin',
           data: hugeData,
-        ),
-        throwsA(predicate((e) => e.toString().contains('VaultFull'))),
-      );
+        );
+        fail('Expected VaultFull error');
+      } catch (e) {
+        expect(e.toString(), contains('vaultFull'));
+      }
 
       await VaultService.close(handle: handle);
     });
@@ -243,7 +245,7 @@ void main() {
       //try to open again without closing first
       expect(
         () async => await VaultService.open(path: path, key: key),
-        throwsA(predicate((e) => e.toString().contains('VaultLocked'))),
+        throwsA(predicate((e) => e.toString().contains('vaultLocked'))),
       );
 
       await VaultService.close(handle: handle);
@@ -282,7 +284,7 @@ void main() {
       //returns all segments
       final names = await VaultService.list(handle: handle);
 
-      expect(names, contains(['a.txt', 'b.txt', 'c.txt']));
+      expect(names, containsAll(['a.txt', 'b.txt', 'c.txt']));
 
       await VaultService.close(handle: handle);
     });
@@ -490,8 +492,8 @@ void main() {
       final file = File(path);
       final bytes = await file.readAsBytes();
 
-      // Flip a bit somewhere in the data region (not header)
-      bytes[1000] ^= 0xFF;
+      // Flip a byte in the data region (starts at offset 65568 = 32B header + 64KB index)
+      bytes[65600] ^= 0xFF;
 
       await file.writeAsBytes(bytes);
 
