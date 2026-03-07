@@ -7,7 +7,7 @@ use crate::core::traits::Encryption;
 
 /// A no-op cipher that returns data unchanged.
 /// Used to validate FRB opaque handle pattern works.
-#[frb(opaque)] // must be opaque to maintain SecretBuffer guanrantees.
+#[frb(ignore)]
 pub struct NoopEncryption {}
 
 impl Encryption for NoopEncryption {

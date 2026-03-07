@@ -4,20 +4,23 @@
 [![CI](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml/badge.svg)](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A native Rust security SDK for Flutter, providing high-performance cryptographic services, secure memory management, and (coming soon) an encrypted virtual file system. All operations run in Rust through [Flutter Rust Bridge](https://cjycode.com/flutter_rust_bridge/). No Dart-level crypto, no platform channels.
+A native Rust security SDK for Flutter, providing high-performance cryptographic services, streaming encryption with compression, an encrypted virtual file system (EVFS), and secure memory management. All operations run in Rust through [Flutter Rust Bridge](https://cjycode.com/flutter_rust_bridge/). No Dart-level crypto, no platform channels.
 
 Built and maintained by the **Dev Department** of [MicroClub](https://github.com/MicroClub-USTHB), the computer science club at USTHB (University of Science and Technology Houari Boumediene, Algiers).
 
 ## Features
 
-| Category | Algorithm | Highlights |
-|----------|-----------|------------|
+| Category | Algorithm / Feature | Highlights |
+|----------|---------------------|------------|
 | **AEAD Encryption** | AES-256-GCM | Industry-standard, hardware-accelerated on most CPUs |
 | | ChaCha20-Poly1305 | Optimized for mobile (no AES hardware needed) |
+| **Streaming Encryption** | AES-256-GCM / ChaCha20 | Chunk-based processing with progress callbacks |
+| **Compression** | Zstd, Brotli | Configurable levels, integrated into streaming and EVFS |
 | **Hashing** | BLAKE3 | Ultra-fast, one-shot and streaming |
 | | SHA-3-256 (Keccak) | NIST-standard, one-shot and streaming |
 | **Password Hashing** | Argon2id | PHC winner, Mobile and Desktop presets |
 | **Key Derivation** | HKDF-SHA256 | RFC 5869, extract-then-expand with domain separation |
+| **Encrypted VFS (EVFS)** | `.vault` container | Named segments, WAL recovery, shadow index, secure deletion |
 
 **Security by design:**
 - All key material lives in Rust behind opaque handles; raw keys never cross FFI
@@ -33,7 +36,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.1.1
+  m_security: ^0.3.0
 ```
 
 Then run:
@@ -156,6 +159,53 @@ final derived = await MHKDF.expand(prk: prk, info: infoBytes, outputLen: 32);
 
 Output length must be between 1 and 8160 bytes (RFC 5869 limit for SHA-256: 255 * 32).
 
+### Streaming Encryption
+
+```dart
+import 'package:m_security/src/rust/api/streaming.dart';
+
+// Encrypt a file in chunks with progress
+final encrypted = await streamEncrypt(
+  plaintext: largeData,
+  algorithm: StreamAlgorithm.aes256Gcm,
+  compression: CompressionAlgorithm.zstd,
+  compressionLevel: 3,
+  onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+);
+
+// Decrypt
+final decrypted = await streamDecrypt(
+  ciphertext: encrypted,
+  algorithm: StreamAlgorithm.aes256Gcm,
+  compression: CompressionAlgorithm.zstd,
+);
+```
+
+### Encrypted Virtual File System (EVFS)
+
+```dart
+import 'package:m_security/m_security.dart';
+
+// Create a vault
+final vault = VaultService();
+await vault.create(path: '/path/to/my.vault', sizeBytes: 10 * 1024 * 1024);
+
+// Write a segment (with optional compression)
+await vault.writeSegment(
+  name: 'secret.txt',
+  data: utf8.encode('confidential'),
+  compression: CompressionAlgorithm.zstd,
+);
+
+// Read it back
+final data = await vault.readSegment(name: 'secret.txt');
+
+// List segments, delete, close
+final segments = await vault.listSegments();
+await vault.deleteSegment(name: 'secret.txt');
+await vault.close();
+```
+
 ### BLAKE3 & SHA-3-256 Hashing
 
 For one-shot and streaming hashing, use the lower-level FFI API directly:
@@ -254,14 +304,10 @@ hkdf_expand(prk, info, output_len)          -> Result<Vec<u8>>
 cd rust && cargo test
 ```
 
-**Dart integration tests** (44 tests across all features, requires a running device/simulator):
+**Dart integration tests** (63 tests across all features, requires a running device/simulator):
 ```bash
 cd example
-flutter test integration_test/aes_gcm_test.dart
-flutter test integration_test/chacha20_test.dart
-flutter test integration_test/hashing_test.dart
-flutter test integration_test/argon2_test.dart
-flutter test integration_test/hkdf_test.dart
+flutter test integration_test/
 ```
 
 ## Tech Stack
@@ -273,20 +319,19 @@ flutter test integration_test/hkdf_test.dart
 | Dart SDK | ^3.10.8 |
 | Flutter SDK | >=3.3.0 |
 
-**Rust crates:** `aes-gcm` 0.10, `chacha20poly1305` 0.10, `blake3` 1.8, `sha3` 0.10, `argon2` 0.5, `hkdf` 0.12, `zeroize` 1.8
+**Rust crates:** `aes-gcm` 0.10, `chacha20poly1305` 0.10, `blake3` 1.8, `sha3` 0.10, `argon2` 0.5, `hkdf` 0.12, `zstd` 0.13, `brotli` 7.0, `zeroize` 1.8
 
 ## Roadmap
 
-v0.1.0 ships the cryptographic foundation. The following features are planned for future releases:
-
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Zero-copy stream processing** | Process large files (2 GB+) in 64 KB chunks via Rust pointers, keeping RAM usage constant regardless of file size | Planned |
-| **Compression + encryption pipeline** | `Raw Data -> Zstd/Brotli -> AES-GCM/ChaCha20`. Reduces disk usage and increases entropy before encryption | Planned |
-| **Encrypted Virtual File System (EVFS)** | Single `.vault` container with random-access decryption of individual segments, isolated from filesystem exploration | Planned |
-| **Secure shredding** | Multi-pass overwrite (random noise patterns) before deleting file pointers, preventing forensic recovery | Planned |
-| **Stealth storage** | Ephemeral secrets (API tokens) held in Rust-managed memory with derived-path obfuscation to resist memory dump extraction | Planned |
-| **Hardware key wrap** | Master key generated in Rust, wrap key stored in Secure Enclave (iOS) / KeyStore (Android), unlocked via biometric authentication | Planned |
+| **Streaming encryption** | Process large files in chunks with progress callbacks | v0.3.0 |
+| **Compression pipeline** | Zstd/Brotli compression integrated into streaming and EVFS | v0.3.0 |
+| **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0 |
+| **EVFS v2: Defrag & resize** | Online defragmentation and vault resizing | Planned |
+| **EVFS v2: Key rotation** | Re-encrypt vault with new master key | Planned |
+| **Stealth storage** | Ephemeral secrets in Rust-managed memory with derived-path obfuscation | Planned |
+| **Hardware key wrap** | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock | Planned |
 
 ## Contributing
 

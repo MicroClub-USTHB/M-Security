@@ -115,7 +115,7 @@ void main() {
 
       expect(
         () => MHKDF.derive(ikm: ikm, salt: salt, info: info, outputLen: 0),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
 

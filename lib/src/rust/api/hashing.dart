@@ -7,7 +7,7 @@ import '../core/error.dart';
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `new`
+// These functions are ignored because they are not marked as `pub`: `finalize_raw`, `new`, `reset_raw`, `update_raw`
 
 /// Create a BLAKE3 hasher handle.
 Future<HasherHandle> createBlake3() =>

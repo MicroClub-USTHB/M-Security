@@ -29,8 +29,23 @@ pub enum CryptoError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 
+    #[error("Compression failed: {0}")]
+    CompressionFailed(String),
+
     #[error("Authentication failed")]
     AuthenticationFailed,
+
+    #[error("Vault full: need {needed} bytes, {available} available")]
+    VaultFull { needed: u64, available: u64 },
+
+    #[error("Vault locked by another process")]
+    VaultLocked,
+
+    #[error("Segment not found: {0}")]
+    SegmentNotFound(String),
+
+    #[error("Vault corrupted: {0}")]
+    VaultCorrupted(String),
 }
 
 impl From<std::io::Error> for CryptoError {
