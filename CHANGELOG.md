@@ -1,3 +1,15 @@
+## 0.3.0 - 2026-03-07
+
+### Added
+- **Streaming encryption/decryption.** Chunk-based AES-256-GCM and ChaCha20-Poly1305 with progress callbacks.
+- **Compression.** Zstd and Brotli support with configurable levels, integrated into streaming and EVFS.
+- **Encrypted Virtual File System (EVFS).** `.vault` container with named segments, WAL crash recovery, shadow index, capacity management, and secure deletion.
+- **HKDF key derivation.** HMAC-based extract-and-expand with SHA-256/SHA-512.
+- **Example app.** Full-featured Flutter demo covering all library APIs (hash, encrypt, KDF, streaming, compression, vault).
+
+### Fixed
+- Integration test reliability improvements (async race conditions, matcher corrections).
+
 ## 0.1.1
 
 - Fixed published package missing `rust/src/frb_generated.rs`, which caused Rust compilation to fail for consumers.
