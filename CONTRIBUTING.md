@@ -16,12 +16,12 @@ Thank you for your interest in contributing to M-Security! This project is built
 
 ## Project Vision
 
-M-Security aims to be a complete security toolkit for Flutter. The current release (v0.1.0) provides the cryptographic foundation. Future releases will build on top of it:
+M-Security aims to be a complete security toolkit for Flutter. The current release (v0.3.0) includes the cryptographic foundation, streaming encryption, compression, and an encrypted virtual file system. Future releases will continue building on top of it:
 
-1. **Cryptographic primitives** (v0.1.0, current): AEAD encryption, hashing, password hashing, key derivation
-2. **Memory and performance**: Zero-copy stream processing (64 KB chunks for large files), stealth storage for ephemeral secrets in Rust-managed memory
-3. **Secure storage**: Encrypted Virtual File System (`.vault` container with random-access decryption), compression-then-encryption pipeline (Zstd/Brotli + AEAD), secure file shredding
-4. **Hardware integration**: Key wrap with Secure Enclave (iOS) / KeyStore (Android), biometric unlock flow (FaceID/Fingerprint), native Swift/Kotlin bridge layer
+1. **Cryptographic primitives** (v0.1.0): AEAD encryption, hashing, password hashing, key derivation
+2. **Streaming, compression, and EVFS** (v0.3.0, current): Chunk-based streaming encryption with progress callbacks, Zstd/Brotli compression pipeline, `.vault` container with named segments, WAL crash recovery, shadow index, and secure deletion
+3. **Stealth storage** (planned): Ephemeral secrets in Rust-managed memory with derived-path obfuscation
+4. **Hardware integration** (planned): Key wrap with Secure Enclave (iOS) / KeyStore (Android), biometric unlock flow (FaceID/Fingerprint), native Swift/Kotlin bridge layer
 
 Contributions to any of these areas are welcome. If you want to work on an upcoming feature, open an issue first to discuss the approach.
 
