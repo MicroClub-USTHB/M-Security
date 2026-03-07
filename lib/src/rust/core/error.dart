@@ -26,6 +26,17 @@ sealed class CryptoError with _$CryptoError implements FrbException {
   const factory CryptoError.ioError(String field0) = CryptoError_IoError;
   const factory CryptoError.invalidParameter(String field0) =
       CryptoError_InvalidParameter;
+  const factory CryptoError.compressionFailed(String field0) =
+      CryptoError_CompressionFailed;
   const factory CryptoError.authenticationFailed() =
       CryptoError_AuthenticationFailed;
+  const factory CryptoError.vaultFull({
+    required BigInt needed,
+    required BigInt available,
+  }) = CryptoError_VaultFull;
+  const factory CryptoError.vaultLocked() = CryptoError_VaultLocked;
+  const factory CryptoError.segmentNotFound(String field0) =
+      CryptoError_SegmentNotFound;
+  const factory CryptoError.vaultCorrupted(String field0) =
+      CryptoError_VaultCorrupted;
 }
