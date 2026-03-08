@@ -22,12 +22,14 @@ class CompressionService {
       algorithm: CompressionAlgorithm.zstd,
     ),
   }) {
-    return _guardedStream(() => rust_streaming.streamCompressEncryptFile(
-      cipher: cipher,
-      compression: config,
-      inputPath: inputPath,
-      outputPath: outputPath,
-    ));
+    return _guardedStream(
+      () => rust_streaming.streamCompressEncryptFile(
+        cipher: cipher,
+        compression: config,
+        inputPath: inputPath,
+        outputPath: outputPath,
+      ),
+    );
   }
 
   /// Decrypt then decompress a file.
@@ -37,31 +39,36 @@ class CompressionService {
     required String outputPath,
     required rust_encryption.CipherHandle cipher,
   }) {
-    return _guardedStream(() => rust_streaming.streamDecryptDecompressFile(
-      cipher: cipher,
-      inputPath: inputPath,
-      outputPath: outputPath,
-    ));
+    return _guardedStream(
+      () => rust_streaming.streamDecryptDecompressFile(
+        cipher: cipher,
+        inputPath: inputPath,
+        outputPath: outputPath,
+      ),
+    );
   }
 
   static Stream<double> _guardedStream(Stream<double> Function() factory) {
     final controller = StreamController<double>();
-    runZonedGuarded(() {
-      factory().listen(
-        controller.add,
-        onError: controller.addError,
-        onDone: () {
-          Future(() {
-            if (!controller.isClosed) controller.close();
-          });
-        },
-      );
-    }, (error, stack) {
-      if (!controller.isClosed) {
-        controller.addError(error, stack);
-        controller.close();
-      }
-    });
+    runZonedGuarded(
+      () {
+        factory().listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: () {
+            Future(() {
+              if (!controller.isClosed) controller.close();
+            });
+          },
+        );
+      },
+      (error, stack) {
+        if (!controller.isClosed) {
+          controller.addError(error, stack);
+          controller.close();
+        }
+      },
+    );
     return controller.stream;
   }
 }

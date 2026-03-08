@@ -26,14 +26,8 @@ class MHKDF {
 
   /// Performs HKDF-Extract.
   /// Produces a pseudorandom key (PRK) from input key material.
-  static Uint8List extract({
-    required Uint8List ikm,
-    Uint8List? salt,
-  }) {
-    return rust_hkdf.hkdfExtract(
-      ikm: ikm,
-      salt: salt ?? Uint8List(0),
-    );
+  static Uint8List extract({required Uint8List ikm, Uint8List? salt}) {
+    return rust_hkdf.hkdfExtract(ikm: ikm, salt: salt ?? Uint8List(0));
   }
 
   /// Performs HKDF-Expand.
@@ -58,7 +52,9 @@ class MHKDF {
     // SHA-256 HKDF max: 255 * 32 = 8160
     if (outputLen > 8160) {
       throw ArgumentError.value(
-        outputLen, 'outputLen', 'must be <= 8160 bytes (RFC 5869 limit for SHA-256)',
+        outputLen,
+        'outputLen',
+        'must be <= 8160 bytes (RFC 5869 limit for SHA-256)',
       );
     }
   }

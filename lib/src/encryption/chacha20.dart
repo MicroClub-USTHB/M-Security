@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:m_security/src/rust/api/encryption.dart' as rust_encryption;
 
 class Chacha20Service {
-
   rust_encryption.CipherHandle? _cipher;
 
   Future<void> initWithRandomKey() async {
@@ -14,7 +13,9 @@ class Chacha20Service {
   Future<Uint8List> encrypt(Uint8List plaintext, {Uint8List? aad}) async {
     final cipher = _cipher;
     if (cipher == null) {
-      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
+      throw StateError(
+        'Cipher not initialized. Call initWithRandomKey() first.',
+      );
     }
 
     return rust_encryption.encrypt(
@@ -27,7 +28,9 @@ class Chacha20Service {
   Future<Uint8List> decrypt(Uint8List ciphertext, {Uint8List? aad}) async {
     final cipher = _cipher;
     if (cipher == null) {
-      throw StateError('Cipher not initialized. Call initWithRandomKey() first.');
+      throw StateError(
+        'Cipher not initialized. Call initWithRandomKey() first.',
+      );
     }
 
     return rust_encryption.decrypt(
