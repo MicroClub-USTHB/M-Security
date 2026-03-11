@@ -45,6 +45,7 @@ pub struct VaultCapacityInfo {
 }
 
 /// Result of a vault defragmentation operation.
+#[frb(non_opaque)]
 pub struct DefragResult {
     /// Number of segments that were physically moved on disk.
     pub segments_moved: u32,
@@ -1485,7 +1486,7 @@ mod tests {
         // Simulate crash mid-defrag: write uncommitted WAL entry
         {
             let mut wal = WriteAheadLog::open(&path).expect("wal");
-            wal.begin(WalOp::UpdateIndex, &pre_defrag_index)
+            wal.begin(WalOp::WriteSegment, &pre_defrag_index)
                 .expect("begin");
             // Don't commit — simulates crash during defrag
         }
