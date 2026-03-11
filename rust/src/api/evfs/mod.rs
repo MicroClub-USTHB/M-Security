@@ -44,6 +44,17 @@ pub struct VaultCapacityInfo {
     pub segment_count: usize,
 }
 
+/// Result of a vault defragmentation operation.
+#[frb(non_opaque)]
+pub struct DefragResult {
+    /// Number of segments that were physically moved on disk.
+    pub segments_moved: u32,
+    /// Bytes of free-list space reclaimed into contiguous unallocated space.
+    pub bytes_reclaimed: u64,
+    /// Number of scattered free regions before defragmentation.
+    pub free_regions_before: u32,
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -443,6 +454,126 @@ pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
         unallocated_bytes: unallocated,
         segment_count: handle.index.entries.len(),
     }
+}
+
+/// Defragment the vault: compact all segments toward the data region start,
+/// coalesce free space into a single contiguous block at the end.
+///
+/// Each segment move is individually WAL-protected for crash safety.
+/// Encrypted bytes are copied as-is (no re-encryption). The free tail
+/// is secure-erased with CSPRNG after all moves complete.
+#[cfg(feature = "compression")]
+pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, CryptoError> {
+    let free_regions_before = handle.index.free_regions.len() as u32;
+    let bytes_reclaimed = handle.index.free_list_bytes();
+
+    // Nothing to defrag — already compact
+    if !handle.index.needs_defrag() {
+        return Ok(DefragResult {
+            segments_moved: 0,
+            bytes_reclaimed: 0,
+            free_regions_before: 0,
+        });
+    }
+
+    // Compute move plan from the core index logic
+    let moves = handle.index.plan_defrag();
+    let segments_moved = moves.len() as u32;
+
+    for m in &moves {
+        // --- WAL-protected move ---
+
+        // Journal current encrypted index before mutation
+        let old_encrypted_index =
+            read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+        handle
+            .wal
+            .begin(WalOp::WriteSegment, &old_encrypted_index)?;
+
+        // Read encrypted segment bytes from old offset
+        let read_len = usize::try_from(m.size).map_err(|_| {
+            CryptoError::VaultCorrupted(format!(
+                "segment size {} exceeds platform address space",
+                m.size
+            ))
+        })?;
+        handle
+            .file
+            .seek(SeekFrom::Start(DATA_REGION_OFFSET + m.old_offset))?;
+        let mut buf = vec![0u8; read_len];
+        handle.file.read_exact(&mut buf)?;
+
+        // Write to new target offset and fsync
+        handle
+            .file
+            .seek(SeekFrom::Start(DATA_REGION_OFFSET + m.new_offset))?;
+        handle.file.write_all(&buf)?;
+        buf.zeroize(); // defense in depth: wipe ciphertext from heap
+        handle.file.sync_all()?;
+
+        // Update entry offset in index (generation, checksum, etc. stay the same)
+        handle.index.apply_move(m.entry_index, m.new_offset);
+
+        // Flush index to primary + shadow
+        flush_index(
+            &mut handle.file,
+            &handle.index,
+            &handle.keys,
+            handle.algorithm,
+            handle.index.capacity,
+        )?;
+
+        // WAL commit — move is now durable
+        handle.wal.commit()?;
+
+        // Secure-erase non-overlapping tail of old region (stale ciphertext).
+        // Done AFTER commit so crash-recovery never points to erased data.
+        let erase_start = std::cmp::max(m.new_offset + m.size, m.old_offset);
+        let erase_end = m.old_offset + m.size;
+        if erase_end > erase_start {
+            segment::secure_erase_region(
+                &mut handle.file,
+                DATA_REGION_OFFSET + erase_start,
+                erase_end - erase_start,
+            )?;
+        }
+
+        // Checkpoint WAL — truncate history for faster recovery
+        handle.wal.checkpoint()?;
+    }
+
+    // --- Post-compaction cleanup ---
+
+    // Finalize: clear free_regions, set next_free_offset = sum of all sizes
+    let packed_end = handle.index.used_bytes();
+    handle.index.complete_defrag();
+
+    // Flush the cleaned-up index
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+    )?;
+
+    // Secure-erase the free tail (CSPRNG overwrite + fsync)
+    if packed_end < handle.index.capacity {
+        segment::secure_erase_region(
+            &mut handle.file,
+            DATA_REGION_OFFSET + packed_end,
+            handle.index.capacity - packed_end,
+        )?;
+    }
+
+    // Checkpoint WAL (clear history)
+    handle.wal.checkpoint()?;
+
+    Ok(DefragResult {
+        segments_moved,
+        bytes_reclaimed,
+        free_regions_before,
+    })
 }
 
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
@@ -1195,6 +1326,364 @@ mod tests {
         let mut handle = vault_open(path, test_key()).expect("open via shadow");
         let data = vault_read(&mut handle, "doc.txt".into()).expect("read");
         assert_eq!(data, b"shadow test");
+
+        vault_close(handle).expect("close");
+    }
+
+    // -- Defragmentation ----------------------------------------------------
+
+    #[test]
+    fn test_defragment_basic() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 200], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 200], None).expect("B");
+        vault_write(&mut handle, "c.txt".into(), vec![0xCC; 200], None).expect("C");
+
+        let c_offset_before = handle.index.find("c.txt").expect("C").offset;
+
+        // Delete B — creates free region between A and C
+        vault_delete(&mut handle, "b.txt".into()).expect("del B");
+        assert_eq!(handle.index.free_regions.len(), 1);
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 1); // C moved left
+        assert_eq!(result.free_regions_before, 1);
+        assert!(result.bytes_reclaimed > 0);
+
+        // Free list should be empty, all free space is unallocated
+        let cap = vault_capacity(&handle);
+        assert_eq!(cap.free_list_bytes, 0);
+        assert!(cap.unallocated_bytes > 0);
+        assert_eq!(cap.segment_count, 2);
+
+        // next_free_offset == sum of all segment sizes
+        let total_used: u64 = handle.index.entries.iter().map(|e| e.size).sum();
+        assert_eq!(handle.index.next_free_offset, total_used);
+        assert_eq!(handle.index.free_regions.len(), 0);
+
+        // C moved left
+        let c_offset_after = handle.index.find("c.txt").expect("C").offset;
+        assert!(c_offset_after < c_offset_before);
+
+        // Data integrity preserved
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("read A"), vec![0xAA; 200]);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("read C"), vec![0xCC; 200]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_multiple_gaps() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 100], None).expect("B");
+        vault_write(&mut handle, "c.txt".into(), vec![0xCC; 100], None).expect("C");
+        vault_write(&mut handle, "d.txt".into(), vec![0xDD; 100], None).expect("D");
+        vault_write(&mut handle, "e.txt".into(), vec![0xEE; 100], None).expect("E");
+
+        // Delete B and D — two gaps
+        vault_delete(&mut handle, "b.txt".into()).expect("del B");
+        vault_delete(&mut handle, "d.txt".into()).expect("del D");
+        assert_eq!(handle.index.free_regions.len(), 2);
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 2); // C and E moved
+        assert_eq!(result.free_regions_before, 2);
+
+        // All surviving segments readable
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+        assert_eq!(vault_read(&mut handle, "e.txt".into()).expect("E"), vec![0xEE; 100]);
+
+        assert_eq!(vault_capacity(&handle).free_list_bytes, 0);
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_already_compact() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 100], None).expect("B");
+        vault_write(&mut handle, "c.txt".into(), vec![0xCC; 100], None).expect("C");
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 0);
+        assert_eq!(result.bytes_reclaimed, 0);
+        assert_eq!(result.free_regions_before, 0);
+
+        // All segments still readable
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
+        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("B"), vec![0xBB; 100]);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_empty_vault() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 0);
+        assert_eq!(result.bytes_reclaimed, 0);
+        assert_eq!(result.free_regions_before, 0);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_single_segment_at_gap() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 200], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 200], None).expect("B");
+
+        // Delete A — gap at start, B remains at higher offset
+        vault_delete(&mut handle, "a.txt".into()).expect("del A");
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 1);
+        assert_eq!(result.free_regions_before, 1);
+
+        // B moved to offset 0
+        assert_eq!(handle.index.find("b.txt").expect("B").offset, 0);
+        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("read B"), vec![0xBB; 200]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_crash_recovery() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = vault_path(&dir);
+
+        // Create vault with A, B, C. Delete B to create a gap.
+        {
+            let mut handle =
+                vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+                    .expect("create");
+            vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
+            vault_write(&mut handle, "b.txt".into(), vec![0xBB; 100], None).expect("B");
+            vault_write(&mut handle, "c.txt".into(), vec![0xCC; 100], None).expect("C");
+            vault_delete(&mut handle, "b.txt".into()).expect("del B");
+            vault_close(handle).expect("close");
+        }
+
+        // Save pre-defrag encrypted index (the "good" state)
+        let pre_defrag_index = {
+            let mut f = File::open(&path).expect("open");
+            read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read index")
+        };
+
+        // Simulate crash mid-defrag: write uncommitted WAL entry
+        {
+            let mut wal = WriteAheadLog::open(&path).expect("wal");
+            wal.begin(WalOp::WriteSegment, &pre_defrag_index)
+                .expect("begin");
+            // Don't commit — simulates crash during defrag
+        }
+
+        // Reopen — WAL recovery should restore pre-defrag index
+        let mut handle = vault_open(path, test_key()).expect("open after crash");
+
+        // C should still be at its original (pre-defrag) offset, readable
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("read C"), vec![0xCC; 100]);
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("read A"), vec![0xAA; 100]);
+
+        // Free region from deleted B should still exist
+        assert!(!handle.index.free_regions.is_empty());
+
+        // Now run actual defrag — should succeed normally
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert!(result.segments_moved > 0);
+
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_preserves_compression() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        let zstd_data = b"zstd compressible data ".repeat(50);
+        let raw_data = b"raw segment no compression".to_vec();
+
+        let zstd_conf = CompressionConfig {
+            algorithm: CompressionAlgorithm::Zstd,
+            level: None,
+        };
+        vault_write(&mut handle, "text.txt".into(), zstd_data.clone(), Some(zstd_conf))
+            .expect("zstd");
+        vault_write(&mut handle, "spacer.bin".into(), vec![0xFF; 300], None).expect("spacer");
+        vault_write(&mut handle, "raw.dat".into(), raw_data.clone(), None).expect("raw");
+
+        // Delete spacer — gap between text.txt and raw.dat
+        vault_delete(&mut handle, "spacer.bin".into()).expect("del spacer");
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 1); // raw.dat moved
+
+        // Compression metadata preserved
+        let text_entry = handle.index.find("text.txt").expect("text");
+        assert_eq!(text_entry.compression, CompressionAlgorithm::Zstd);
+        let raw_entry = handle.index.find("raw.dat").expect("raw");
+        assert_eq!(raw_entry.compression, CompressionAlgorithm::None);
+
+        // Data integrity — decompression works after defrag
+        assert_eq!(vault_read(&mut handle, "text.txt".into()).expect("text"), zstd_data);
+        assert_eq!(vault_read(&mut handle, "raw.dat".into()).expect("raw"), raw_data);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_preserves_generation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
+        // Overwrite A to bump its generation
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A v2");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 100], None).expect("B");
+
+        let b_gen_before = handle.index.find("b.txt").expect("B").generation;
+
+        // Delete A — B needs to move
+        vault_delete(&mut handle, "a.txt".into()).expect("del A");
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 1);
+
+        // Generation unchanged
+        let b_gen_after = handle.index.find("b.txt").expect("B").generation;
+        assert_eq!(b_gen_before, b_gen_after);
+
+        // Nonce derivation still works (read succeeds)
+        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("read B"), vec![0xBB; 100]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_large_gap_at_start() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 300], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 300], None).expect("B");
+        vault_write(&mut handle, "c.txt".into(), vec![0xCC; 300], None).expect("C");
+
+        let ab_size = handle.index.find("a.txt").expect("A").size
+            + handle.index.find("b.txt").expect("B").size;
+
+        // Delete A and B — large gap at start, C alone at end
+        vault_delete(&mut handle, "a.txt".into()).expect("del A");
+        vault_delete(&mut handle, "b.txt".into()).expect("del B");
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+        assert_eq!(result.segments_moved, 1); // C moved to 0
+        assert_eq!(result.bytes_reclaimed, ab_size);
+
+        assert_eq!(handle.index.find("c.txt").expect("C").offset, 0);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 300]);
+        assert_eq!(vault_capacity(&handle).free_list_bytes, 0);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_write_after_defrag() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a.txt".into(), vec![0xAA; 200], None).expect("A");
+        vault_write(&mut handle, "b.txt".into(), vec![0xBB; 200], None).expect("B");
+        vault_write(&mut handle, "c.txt".into(), vec![0xCC; 200], None).expect("C");
+
+        vault_delete(&mut handle, "b.txt".into()).expect("del B");
+        vault_defragment(&mut handle).expect("defrag");
+
+        // Allocator should work: new writes go after the packed segments
+        vault_write(&mut handle, "d.txt".into(), vec![0xDD; 500], None).expect("D after defrag");
+
+        // All segments readable
+        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 200]);
+        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 200]);
+        assert_eq!(vault_read(&mut handle, "d.txt".into()).expect("D"), vec![0xDD; 500]);
+
+        // D should be allocated at the end (after A and C)
+        let a_end = handle.index.find("a.txt").expect("A").offset
+            + handle.index.find("a.txt").expect("A").size;
+        let c_end = handle.index.find("c.txt").expect("C").offset
+            + handle.index.find("c.txt").expect("C").size;
+        let d_offset = handle.index.find("d.txt").expect("D").offset;
+        let packed_end = std::cmp::max(a_end, c_end);
+        assert!(d_offset >= packed_end);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_ten_segments_delete_odd() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        // Write 10 segments (1KB each)
+        for i in 0..10 {
+            let name = format!("seg{i}.bin");
+            let data = vec![(i as u8) | 0x10; 1024];
+            vault_write(&mut handle, name, data, None).expect("write");
+        }
+
+        // Delete odd-numbered segments (1, 3, 5, 7, 9) — 5 gaps
+        for i in (1..10).step_by(2) {
+            let name = format!("seg{i}.bin");
+            vault_delete(&mut handle, name).expect("delete");
+        }
+        assert_eq!(handle.index.entries.len(), 5);
+        assert!(!handle.index.free_regions.is_empty());
+
+        let result = vault_defragment(&mut handle).expect("defrag");
+
+        // 4 of 5 even segments need to move (seg0 stays at 0)
+        assert_eq!(result.segments_moved, 4);
+        assert_eq!(handle.index.free_regions.len(), 0);
+
+        // next_free_offset == sum of all segment sizes
+        let total_used: u64 = handle.index.entries.iter().map(|e| e.size).sum();
+        assert_eq!(handle.index.next_free_offset, total_used);
+
+        // Segments are contiguous: sorted offsets form a gapless sequence
+        let mut offsets: Vec<(u64, u64)> = handle
+            .index
+            .entries
+            .iter()
+            .map(|e| (e.offset, e.size))
+            .collect();
+        offsets.sort_by_key(|&(off, _)| off);
+        assert_eq!(offsets[0].0, 0);
+        for w in offsets.windows(2) {
+            assert_eq!(w[0].0 + w[0].1, w[1].0, "gap between segments");
+        }
+
+        // All 5 surviving segments readable with correct data
+        for i in (0..10).step_by(2) {
+            let name = format!("seg{i}.bin");
+            let expected = vec![(i as u8) | 0x10; 1024];
+            let data = vault_read(&mut handle, name).expect("read");
+            assert_eq!(data, expected);
+        }
 
         vault_close(handle).expect("close");
     }
