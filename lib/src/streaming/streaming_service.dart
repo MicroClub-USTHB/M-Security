@@ -18,11 +18,13 @@ class StreamingService {
     required String outputPath,
     required rust_encryption.CipherHandle cipher,
   }) {
-    return _guardedStream(() => rust_streaming.streamEncryptFile(
-      cipher: cipher,
-      inputPath: inputPath,
-      outputPath: outputPath,
-    ));
+    return _guardedStream(
+      () => rust_streaming.streamEncryptFile(
+        cipher: cipher,
+        inputPath: inputPath,
+        outputPath: outputPath,
+      ),
+    );
   }
 
   /// Decrypt a streaming-encrypted file.
@@ -32,11 +34,13 @@ class StreamingService {
     required String outputPath,
     required rust_encryption.CipherHandle cipher,
   }) {
-    return _guardedStream(() => rust_streaming.streamDecryptFile(
-      cipher: cipher,
-      inputPath: inputPath,
-      outputPath: outputPath,
-    ));
+    return _guardedStream(
+      () => rust_streaming.streamDecryptFile(
+        cipher: cipher,
+        inputPath: inputPath,
+        outputPath: outputPath,
+      ),
+    );
   }
 
   /// Hash a file without loading it into memory.
@@ -45,10 +49,9 @@ class StreamingService {
     required String filePath,
     required rust_hashing.HasherHandle hasher,
   }) async {
-    await _guardedStream(() => rust_streaming.streamHashFile(
-      hasher: hasher,
-      filePath: filePath,
-    )).drain();
+    await _guardedStream(
+      () => rust_streaming.streamHashFile(hasher: hasher, filePath: filePath),
+    ).drain();
     return await rust_hashing.hasherFinalize(handle: hasher);
   }
 
@@ -58,24 +61,27 @@ class StreamingService {
   // closing the controller to let the zone handler forward it first.
   static Stream<double> _guardedStream(Stream<double> Function() factory) {
     final controller = StreamController<double>();
-    runZonedGuarded(() {
-      factory().listen(
-        controller.add,
-        onError: controller.addError,
-        onDone: () {
-          // FRB delivers errors after the stream closes — schedule close
-          // in the event loop so pending microtasks (zone errors) run first.
-          Future(() {
-            if (!controller.isClosed) controller.close();
-          });
-        },
-      );
-    }, (error, stack) {
-      if (!controller.isClosed) {
-        controller.addError(error, stack);
-        controller.close();
-      }
-    });
+    runZonedGuarded(
+      () {
+        factory().listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: () {
+            // FRB delivers errors after the stream closes — schedule close
+            // in the event loop so pending microtasks (zone errors) run first.
+            Future(() {
+              if (!controller.isClosed) controller.close();
+            });
+          },
+        );
+      },
+      (error, stack) {
+        if (!controller.isClosed) {
+          controller.addError(error, stack);
+          controller.close();
+        }
+      },
+    );
     return controller.stream;
   }
 }

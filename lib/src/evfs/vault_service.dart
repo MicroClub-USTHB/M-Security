@@ -33,7 +33,7 @@ class VaultService {
   }) {
     return rust_evfs.vaultOpen(path: path, key: key);
   }
-  
+
   /// Write (or overwrite) a named segment.
   ///
   /// [compression] is optional — defaults to no compression.
@@ -70,9 +70,7 @@ class VaultService {
   }
 
   /// List all segment names.
-  static Future<List<String>> list({
-    required rust_evfs.VaultHandle handle,
-  }) {
+  static Future<List<String>> list({required rust_evfs.VaultHandle handle}) {
     return rust_evfs.vaultList(handle: handle);
   }
 
@@ -84,9 +82,7 @@ class VaultService {
   }
 
   /// Close the vault (release lock, zeroize keys).
-  static Future<void> close({
-    required rust_evfs.VaultHandle handle,
-  }) {
+  static Future<void> close({required rust_evfs.VaultHandle handle}) {
     return rust_evfs.vaultClose(handle: handle);
   }
 }
