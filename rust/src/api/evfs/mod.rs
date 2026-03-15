@@ -435,7 +435,7 @@ pub fn vault_delete(
 pub fn vault_resize(handle: &mut VaultHandle, new_capacity: u64) -> Result<(), CryptoError> {
     let old_capacity = handle.index.capacity;
     if old_capacity == new_capacity {
-        return Ok(());
+        Ok(())
     } else if old_capacity > new_capacity {
         vault_resize_shrink_impl(handle, old_capacity, new_capacity)
     } else {
