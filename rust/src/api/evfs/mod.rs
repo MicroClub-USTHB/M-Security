@@ -426,6 +426,25 @@ pub fn vault_delete(
     Ok(())
 }
 
+/// Resize vault data region capacity.
+///
+/// - Grow: extend file, CSPRNG-fill new space, relocate shadow index + WAL
+/// - Shrink: validate segments fit, relocate shadow + WAL, truncate file
+/// - Returns VaultFull if shrink would lose data
+#[cfg(feature = "compression")]
+pub fn vault_resize(handle: &mut VaultHandle, new_capacity: u64) -> Result<(), CryptoError> {
+
+    let old_capacity = handle.index.capacity;
+
+    if old_capacity == new_capacity {
+        return Ok(());
+    } else if old_capacity > new_capacity {
+        // TODO: Shrink algorithm.
+    } else {
+        // TODO: Grow algorithm.
+    }
+}
+
 /// List all segment names in the vault.
 pub fn vault_list(handle: &VaultHandle) -> Vec<String> {
     handle.index.entries.iter().map(|e| e.name.clone()).collect()
