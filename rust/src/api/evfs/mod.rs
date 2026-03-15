@@ -437,8 +437,7 @@ pub fn vault_resize(handle: &mut VaultHandle, new_capacity: u64) -> Result<(), C
     if old_capacity == new_capacity {
         return Ok(());
     } else if old_capacity > new_capacity {
-        // TODO: Shrink algorithm.
-        unimplemented!("shrink algo")
+        vault_resize_shrink_impl(handle, old_capacity, new_capacity)
     } else {
         vault_resize_grow_impl(handle, old_capacity, new_capacity)
     }
@@ -486,6 +485,83 @@ fn vault_resize_grow_impl(
 
     Ok(())
 }
+
+#[cfg(feature = "compression")]
+fn vault_resize_shrink_impl(
+    handle: &mut VaultHandle,
+    old_capacity: u64,
+    new_capacity: u64,
+) -> Result<(), CryptoError> {
+    // Validate: every live segment must fit within the new capacity.
+    let max_used = handle
+        .index
+        .entries
+        .iter()
+        .map(|e| e.offset.saturating_add(e.size))
+        .max()
+        .unwrap_or(0);
+    if max_used > new_capacity {
+        return Err(CryptoError::VaultFull {
+            needed: max_used,
+            available: new_capacity,
+        });
+    }
+
+    // WAL begin — journal the current encrypted index for crash recovery.
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+
+    // Write shadow index at new (closer) position.
+    let new_shadow_off = format::shadow_index_offset(new_capacity)?;
+    let old_shadow_off = format::shadow_index_offset(old_capacity)?;
+    let shadow_bytes = read_encrypted_index(&mut handle.file, old_shadow_off)?;
+    handle.file.seek(SeekFrom::Start(new_shadow_off))?;
+    handle.file.write_all(&shadow_bytes)?;
+    handle.file.sync_all()?;
+
+    // Update handle
+    handle.wal = WriteAheadLog::open(&handle.path)?;
+    handle.index.capacity = new_capacity;
+    // Clamp next_free_offset to new_capacity (it cannot point beyond).
+    if handle.index.next_free_offset > new_capacity {
+        handle.index.next_free_offset = new_capacity;
+    }
+
+    // Remove free regions that fall entirely beyond the new boundary,
+    // and truncate any that partially overlap.
+    handle.index.free_regions.retain_mut(|r| {
+        if r.offset >= new_capacity {
+            // Entirely beyond — drop.
+            return false;
+        }
+        let end = r.offset + r.size;
+        if end > new_capacity {
+            // Partially beyond — truncate.
+            r.size = new_capacity - r.offset;
+        }
+        true
+    });
+
+    // Flush index (primary + shadow at new position).
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        new_capacity,
+    )?;
+
+    // Truncate file to new total size.
+    let new_total = format::total_vault_size(new_capacity)?;
+    handle.file.set_len(new_total)?;
+    handle.file.sync_all()?;
+
+    handle.wal.commit()?;
+    handle.wal.checkpoint()?;
+
+    Ok(())
+}
+
 /// List all segment names in the vault.
 pub fn vault_list(handle: &VaultHandle) -> Vec<String> {
     handle.index.entries.iter().map(|e| e.name.clone()).collect()
