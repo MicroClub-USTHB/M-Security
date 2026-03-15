@@ -433,18 +433,59 @@ pub fn vault_delete(
 /// - Returns VaultFull if shrink would lose data
 #[cfg(feature = "compression")]
 pub fn vault_resize(handle: &mut VaultHandle, new_capacity: u64) -> Result<(), CryptoError> {
-
     let old_capacity = handle.index.capacity;
-
     if old_capacity == new_capacity {
         return Ok(());
     } else if old_capacity > new_capacity {
         // TODO: Shrink algorithm.
+        unimplemented!("shrink algo")
     } else {
-        // TODO: Grow algorithm.
+        vault_resize_grow_impl(handle, old_capacity, new_capacity)
     }
 }
 
+#[cfg(feature = "compression")]
+fn vault_resize_grow_impl(
+    handle: &mut VaultHandle,
+    old_capacity: u64,
+    new_capacity: u64,
+) -> Result<(), CryptoError> {
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+
+    let old_shadow_off = format::shadow_index_offset(old_capacity)?;
+    let shadow_bytes = read_encrypted_index(&mut handle.file, old_shadow_off)?;
+
+    // Extend the file to the new total size
+    let new_total = format::total_vault_size(new_capacity)?;
+    handle.file.set_len(new_total)?;
+    // And fill the old_cap..new_cap region with CSPRNG data.
+    let fill_offset = DATA_REGION_OFFSET + old_capacity;
+    let fill_size = new_capacity - old_capacity;
+    segment::secure_erase_region(&mut handle.file, fill_offset, fill_size)?;
+
+    // 5. Write shadow index at new position.
+    let new_shadow_off = format::shadow_index_offset(new_capacity)?;
+    handle.file.seek(SeekFrom::Start(new_shadow_off))?;
+    handle.file.write_all(&shadow_bytes)?;
+    handle.file.sync_all()?;
+
+    // Update handle data.
+    handle.wal = WriteAheadLog::open(&handle.path)?;
+    handle.index.capacity = new_capacity;
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        new_capacity,
+    )?;
+
+    handle.wal.commit()?;
+    handle.wal.checkpoint()?;
+
+    Ok(())
+}
 /// List all segment names in the vault.
 pub fn vault_list(handle: &VaultHandle) -> Vec<String> {
     handle.index.entries.iter().map(|e| e.name.clone()).collect()
