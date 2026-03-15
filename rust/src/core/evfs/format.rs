@@ -526,6 +526,72 @@ impl SegmentIndex {
     pub fn free_list_bytes(&self) -> u64 {
         self.free_regions.iter().map(|r| r.size).sum()
     }
+
+    // -- defragmentation ----------------------------------------------------
+
+    /// Compute the list of segment moves needed to compact the index.
+    ///
+    /// Returns moves sorted by target offset. Each move describes copying
+    /// encrypted bytes from `old_offset` to `new_offset` (both relative to
+    /// data region start). Segments already in place are skipped.
+    pub fn plan_defrag(&self) -> Vec<DefragMove> {
+        let mut order: Vec<usize> = (0..self.entries.len()).collect();
+        order.sort_by_key(|&i| self.entries[i].offset);
+
+        let mut moves = Vec::new();
+        let mut target: u64 = 0;
+
+        for &i in &order {
+            let old_offset = self.entries[i].offset;
+            let size = self.entries[i].size;
+
+            if old_offset != target {
+                moves.push(DefragMove {
+                    entry_index: i,
+                    old_offset,
+                    new_offset: target,
+                    size,
+                });
+            }
+            target += size;
+        }
+
+        moves
+    }
+
+    /// Apply a single defrag move to the in-memory index.
+    ///
+    /// Updates the entry offset. Does NOT touch free_regions or
+    /// next_free_offset — call `complete_defrag()` after all moves.
+    pub fn apply_move(&mut self, entry_index: usize, new_offset: u64) {
+        self.entries[entry_index].offset = new_offset;
+    }
+
+    /// Finalize defrag: clear free_regions, set next_free_offset to the
+    /// sum of all segment sizes. Call after all moves have been applied.
+    pub fn complete_defrag(&mut self) {
+        self.free_regions.clear();
+        self.next_free_offset = self.used_bytes();
+    }
+
+    /// Returns true if the index has fragmented free space that defrag
+    /// would reclaim.
+    pub fn needs_defrag(&self) -> bool {
+        !self.free_regions.is_empty()
+    }
+}
+
+/// A single segment move planned by `SegmentIndex::plan_defrag()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefragMove {
+    /// Index into `SegmentIndex.entries`.
+    pub entry_index: usize,
+    /// Current offset (relative to data region start).
+    pub old_offset: u64,
+    /// Target offset after compaction.
+    pub new_offset: u64,
+    /// Encrypted segment size in bytes.
+    pub size: u64,
 }
 
 // ===========================================================================
@@ -934,5 +1000,142 @@ mod tests {
         idx.add(e1).expect("first add");
         assert!(idx.add(e2).is_err());
         assert_eq!(idx.entries.len(), 1);
+    }
+
+    // -- Defragmentation planning -------------------------------------------
+
+    #[test]
+    fn test_plan_defrag_no_gaps() {
+        let mut idx = SegmentIndex::new(1024);
+        idx.entries.push(
+            SegmentEntry::new("a", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new("b", 100, 200, 1, dummy_checksum(1), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert!(moves.is_empty(), "no moves needed when compact");
+    }
+
+    #[test]
+    fn test_plan_defrag_single_gap() {
+        let mut idx = SegmentIndex::new(1024);
+        // A at 0, gap at 100, B at 200
+        idx.entries.push(
+            SegmentEntry::new("a", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new("b", 200, 100, 1, dummy_checksum(1), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion { offset: 100, size: 100 });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 100);
+        assert_eq!(moves[0].size, 100);
+    }
+
+    #[test]
+    fn test_plan_defrag_gap_at_start() {
+        let mut idx = SegmentIndex::new(1024);
+        // Gap at 0, A at 200
+        idx.entries.push(
+            SegmentEntry::new("a", 200, 100, 0, dummy_checksum(0), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion { offset: 0, size: 200 });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 0);
+    }
+
+    #[test]
+    fn test_plan_defrag_multiple_gaps() {
+        let mut idx = SegmentIndex::new(2048);
+        // A(0-100) gap(100-200) B(200-350) gap(350-400) C(400-500)
+        idx.entries.push(
+            SegmentEntry::new("a", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new("b", 200, 150, 1, dummy_checksum(1), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new("c", 400, 100, 2, dummy_checksum(2), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion { offset: 100, size: 100 });
+        idx.free_regions.push(FreeRegion { offset: 350, size: 50 });
+        idx.next_free_offset = 500;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 2); // B and C need to move
+
+        // B: 200 → 100
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 100);
+        assert_eq!(moves[0].size, 150);
+
+        // C: 400 → 250
+        assert_eq!(moves[1].old_offset, 400);
+        assert_eq!(moves[1].new_offset, 250);
+        assert_eq!(moves[1].size, 100);
+    }
+
+    #[test]
+    fn test_plan_defrag_empty_index() {
+        let idx = SegmentIndex::new(1024);
+        let moves = idx.plan_defrag();
+        assert!(moves.is_empty());
+    }
+
+    #[test]
+    fn test_apply_move_and_complete() {
+        let mut idx = SegmentIndex::new(1024);
+        idx.entries.push(
+            SegmentEntry::new("a", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new("b", 200, 100, 1, dummy_checksum(1), CompressionAlgorithm::None)
+                .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion { offset: 100, size: 100 });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        for m in &moves {
+            idx.apply_move(m.entry_index, m.new_offset);
+        }
+        idx.complete_defrag();
+
+        assert_eq!(idx.free_regions.len(), 0);
+        assert_eq!(idx.next_free_offset, 200); // 100 + 100
+        assert_eq!(idx.entries[1].offset, 100); // B moved from 200 → 100
+
+        // Entries preserve generation and checksum
+        assert_eq!(idx.entries[0].generation, 0);
+        assert_eq!(idx.entries[1].generation, 1);
+    }
+
+    #[test]
+    fn test_needs_defrag() {
+        let mut idx = SegmentIndex::new(1024);
+        assert!(!idx.needs_defrag());
+
+        idx.free_regions.push(FreeRegion { offset: 0, size: 100 });
+        assert!(idx.needs_defrag());
     }
 }
