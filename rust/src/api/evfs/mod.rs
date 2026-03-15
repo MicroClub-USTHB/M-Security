@@ -209,20 +209,52 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     let file_size = file.seek(SeekFrom::End(0))?;
     let capacity = capacity_from_file_size(file_size)?;
 
-    // WAL recovery
+    // Defrag backup recovery: if a crash occurred during an overlapping defrag
+    // move, restore the segment data from the backup file before WAL recovery.
+    // Must happen first because WAL restores the index pointing to the old
+    // offset, and the backup restores the data at that offset.
+    let defrag_backup_path = format!("{path}.defrag");
     let mut wal = WriteAheadLog::open(&path)?;
-    if let Some(old_encrypted_index) = wal.recover()? {
+    let wal_snapshot = wal.recover()?;
+    if std::path::Path::new(&defrag_backup_path).exists() {
+        if wal_snapshot.is_some() {
+            // WAL uncommitted + backup exists → crash during overlapping defrag
+            // move. Restore segment data to the old position.
+            if let Ok(mut backup) = File::open(&defrag_backup_path) {
+                let mut hdr = [0u8; 16];
+                if backup.read_exact(&mut hdr).is_ok() {
+                    // SAFETY: slices are exactly 8 bytes from a 16-byte array
+                    let offset = u64::from_le_bytes([
+                        hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7],
+                    ]);
+                    let size = u64::from_le_bytes([
+                        hdr[8], hdr[9], hdr[10], hdr[11], hdr[12], hdr[13], hdr[14], hdr[15],
+                    ]);
+                    if size > 0 && size <= capacity {
+                        let mut data = vec![0u8; size as usize];
+                        if backup.read_exact(&mut data).is_ok() {
+                            file.seek(SeekFrom::Start(DATA_REGION_OFFSET + offset))?;
+                            file.write_all(&data)?;
+                            file.sync_all()?;
+                        }
+                    }
+                }
+            }
+        }
+        let _ = std::fs::remove_file(&defrag_backup_path);
+    }
+
+    // WAL recovery — only restore primary index. Shadow position depends on
+    // capacity which may have changed during an interrupted resize; the
+    // post-recovery reconciliation below fixes the shadow.
+    if let Some(old_encrypted_index) = wal_snapshot {
         if old_encrypted_index.len() != ENCRYPTED_INDEX_SIZE {
             return Err(CryptoError::VaultCorrupted(format!(
                 "WAL snapshot size {} != expected {ENCRYPTED_INDEX_SIZE}",
                 old_encrypted_index.len()
             )));
         }
-        // Restore old index to primary + shadow
         file.seek(SeekFrom::Start(PRIMARY_INDEX_OFFSET))?;
-        file.write_all(&old_encrypted_index)?;
-        let shadow_off = format::shadow_index_offset(capacity)?;
-        file.seek(SeekFrom::Start(shadow_off))?;
         file.write_all(&old_encrypted_index)?;
         file.sync_all()?;
     }
@@ -249,6 +281,19 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
             }
         }
     };
+
+    // Post-recovery reconciliation: if an interrupted resize left the file
+    // at the wrong size, fix the file and shadow to match the index.
+    let expected_total = format::total_vault_size(index.capacity)?;
+    let actual_size = file.seek(SeekFrom::End(0))?;
+    if actual_size != expected_total {
+        file.set_len(expected_total)?;
+        let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET)?;
+        let shadow_off = format::shadow_index_offset(index.capacity)?;
+        file.seek(SeekFrom::Start(shadow_off))?;
+        file.write_all(&primary_bytes)?;
+        file.sync_all()?;
+    }
 
     Ok(VaultHandle {
         path,
@@ -463,25 +508,14 @@ fn vault_resize_grow_impl(
     let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
-    let old_shadow_off = format::shadow_index_offset(old_capacity)?;
-    let shadow_bytes = read_encrypted_index(&mut handle.file, old_shadow_off)?;
-
-    // Extend the file to the new total size
+    // Extend file and CSPRNG-fill new space (also overwrites old shadow position)
     let new_total = format::total_vault_size(new_capacity)?;
     handle.file.set_len(new_total)?;
-    // And fill the old_cap..new_cap region with CSPRNG data.
     let fill_offset = DATA_REGION_OFFSET + old_capacity;
     let fill_size = new_capacity - old_capacity;
     segment::secure_erase_region(&mut handle.file, fill_offset, fill_size)?;
 
-    // 5. Write shadow index at new position.
-    let new_shadow_off = format::shadow_index_offset(new_capacity)?;
-    handle.file.seek(SeekFrom::Start(new_shadow_off))?;
-    handle.file.write_all(&shadow_bytes)?;
-    handle.file.sync_all()?;
-
-    // Update handle data.
-    handle.wal = WriteAheadLog::open(&handle.path)?;
+    // Update capacity and flush index to primary + shadow at new position
     handle.index.capacity = new_capacity;
     flush_index(
         &mut handle.file,
@@ -500,7 +534,7 @@ fn vault_resize_grow_impl(
 #[cfg(feature = "compression")]
 fn vault_resize_shrink_impl(
     handle: &mut VaultHandle,
-    old_capacity: u64,
+    _old_capacity: u64,
     new_capacity: u64,
 ) -> Result<(), CryptoError> {
     // Validate: every live segment must fit within the new capacity.
@@ -522,38 +556,25 @@ fn vault_resize_shrink_impl(
     let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
-    // Write shadow index at new (closer) position.
-    let new_shadow_off = format::shadow_index_offset(new_capacity)?;
-    let old_shadow_off = format::shadow_index_offset(old_capacity)?;
-    let shadow_bytes = read_encrypted_index(&mut handle.file, old_shadow_off)?;
-    handle.file.seek(SeekFrom::Start(new_shadow_off))?;
-    handle.file.write_all(&shadow_bytes)?;
-    handle.file.sync_all()?;
-
-    // Update handle
-    handle.wal = WriteAheadLog::open(&handle.path)?;
+    // Update index metadata for the new capacity.
     handle.index.capacity = new_capacity;
-    // Clamp next_free_offset to new_capacity (it cannot point beyond).
     if handle.index.next_free_offset > new_capacity {
         handle.index.next_free_offset = new_capacity;
     }
 
-    // Remove free regions that fall entirely beyond the new boundary,
-    // and truncate any that partially overlap.
+    // Remove free regions beyond new boundary; truncate partial overlaps.
     handle.index.free_regions.retain_mut(|r| {
         if r.offset >= new_capacity {
-            // Entirely beyond — drop.
             return false;
         }
-        let end = r.offset + r.size;
+        let end = r.offset.saturating_add(r.size);
         if end > new_capacity {
-            // Partially beyond — truncate.
             r.size = new_capacity - r.offset;
         }
         true
     });
 
-    // Flush index (primary + shadow at new position).
+    // Flush index to primary + shadow at new position.
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -616,15 +637,10 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
     let moves = handle.index.plan_defrag();
     let segments_moved = moves.len() as u32;
 
+    let defrag_backup_path = format!("{}.defrag", handle.path);
+
     for m in &moves {
         // --- WAL-protected move ---
-
-        // Journal current encrypted index before mutation
-        let old_encrypted_index =
-            read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
-        handle
-            .wal
-            .begin(WalOp::WriteSegment, &old_encrypted_index)?;
 
         // Read encrypted segment bytes from old offset
         let read_len = usize::try_from(m.size).map_err(|_| {
@@ -639,12 +655,32 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         let mut buf = vec![0u8; read_len];
         handle.file.read_exact(&mut buf)?;
 
+        // For overlapping moves (gap < size), writing to the new position
+        // corrupts the overlap zone at the old position. Save a backup so
+        // crash recovery can restore it.
+        let gap = m.old_offset - m.new_offset;
+        if gap < m.size {
+            let mut backup = File::create(&defrag_backup_path)
+                .map_err(|e| CryptoError::IoError(format!("defrag backup: {e}")))?;
+            backup.write_all(&m.old_offset.to_le_bytes())?;
+            backup.write_all(&m.size.to_le_bytes())?;
+            backup.write_all(&buf)?;
+            backup.sync_all()?;
+        }
+
+        // Journal current encrypted index before mutation
+        let old_encrypted_index =
+            read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+        handle
+            .wal
+            .begin(WalOp::WriteSegment, &old_encrypted_index)?;
+
         // Write to new target offset and fsync
         handle
             .file
             .seek(SeekFrom::Start(DATA_REGION_OFFSET + m.new_offset))?;
         handle.file.write_all(&buf)?;
-        buf.zeroize(); // defense in depth: wipe ciphertext from heap
+        buf.zeroize();
         handle.file.sync_all()?;
 
         // Update entry offset in index (generation, checksum, etc. stay the same)
@@ -661,6 +697,9 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
 
         // WAL commit — move is now durable
         handle.wal.commit()?;
+
+        // Remove defrag backup after successful commit
+        let _ = std::fs::remove_file(&defrag_backup_path);
 
         // Secure-erase non-overlapping tail of old region (stale ciphertext).
         // Done AFTER commit so crash-recovery never points to erased data.
@@ -1640,6 +1679,132 @@ mod tests {
         vault_close(handle).expect("close");
     }
 
+    #[test]
+    fn test_resize_same_capacity_is_noop() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, SIZE_MB);
+
+        vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+        let cap_before = vault_capacity(&handle);
+
+        // Resize to same capacity — should return Ok without I/O
+        vault_resize(&mut handle, SIZE_MB).expect("noop resize");
+
+        let cap_after = vault_capacity(&handle);
+        assert_eq!(cap_before.total_bytes, cap_after.total_bytes);
+        assert_eq!(cap_before.used_bytes, cap_after.used_bytes);
+
+        let data = vault_read(&mut handle, "a.txt".into()).expect("read");
+        assert_eq!(data, b"hello");
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_resize_shrink_after_defrag_reclaims_max_space() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 2 * SIZE_MB);
+
+        // Write three segments, delete the first two to create gaps
+        vault_write(&mut handle, "a.bin".into(), vec![0xAA; 200_000], None).expect("A");
+        vault_write(&mut handle, "b.bin".into(), vec![0xBB; 200_000], None).expect("B");
+        vault_write(&mut handle, "keep.bin".into(), vec![0xCC; 100_000], None).expect("keep");
+
+        vault_delete(&mut handle, "a.bin".into()).expect("del A");
+        vault_delete(&mut handle, "b.bin".into()).expect("del B");
+
+        // Before defrag: free regions exist, shrink is limited
+        assert!(handle.index.needs_defrag());
+
+        // Defrag compacts keep.bin to offset 0
+        vault_defragment(&mut handle).expect("defrag");
+        assert!(!handle.index.needs_defrag());
+
+        // After defrag: used space is only keep.bin's encrypted size
+        let used = handle.index.used_bytes();
+        assert!(used < 200_000, "used {used} should be less than 200KB");
+
+        // Shrink to just above used space (round up to 256KB boundary)
+        let new_cap = ((used / (256 * 1024)) + 1) * (256 * 1024);
+        vault_resize(&mut handle, new_cap).expect("shrink after defrag");
+
+        let cap = vault_capacity(&handle);
+        assert_eq!(cap.total_bytes, new_cap);
+
+        // Data intact after shrink
+        let data = vault_read(&mut handle, "keep.bin".into()).expect("read keep");
+        assert_eq!(data, vec![0xCC; 100_000]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_resize_grow_crash_midway_recovers() {
+        use crate::core::evfs::segment;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = vault_path(&dir);
+
+        // Create vault and write a segment.
+        let good_encrypted;
+        {
+            let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB)
+                .expect("create");
+            vault_write(&mut handle, "a.txt".into(), b"safe data".to_vec(), None)
+                .expect("write A");
+            vault_close(handle).expect("close");
+        }
+
+        // Capture the good encrypted index before simulating a partial grow.
+        {
+            let mut f = File::open(&path).expect("open");
+            good_encrypted = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read idx");
+        }
+
+        // Simulate a crash mid-grow: extend the file and CSPRNG-fill
+        // (destroying the old shadow), but leave an uncommitted WAL entry.
+        {
+            let mut f = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&path)
+                .expect("open rw");
+            let new_total = format::total_vault_size(2 * SIZE_MB).expect("size");
+            f.set_len(new_total).expect("extend");
+            // CSPRNG-fill overwrites old shadow position at DATA_REGION_OFFSET + SIZE_MB
+            segment::secure_erase_region(&mut f, DATA_REGION_OFFSET + SIZE_MB, SIZE_MB)
+                .expect("fill");
+
+            let mut wal = WriteAheadLog::open(&path).expect("wal");
+            wal.begin(WalOp::UpdateIndex, &good_encrypted)
+                .expect("begin");
+            // Don't commit — simulates crash
+        }
+
+        // Reopen — recovery should restore 1MB index, fix file size, fix shadow
+        let mut handle = vault_open(path.clone(), test_key()).expect("open after crash");
+
+        // Capacity should be restored to 1MB
+        assert_eq!(vault_capacity(&handle).total_bytes, SIZE_MB);
+
+        // File size should match restored capacity
+        let actual_size = handle.file.seek(SeekFrom::End(0)).expect("seek");
+        let expected_size = format::total_vault_size(SIZE_MB).expect("size");
+        assert_eq!(actual_size, expected_size);
+
+        // Data intact
+        let data = vault_read(&mut handle, "a.txt".into()).expect("read A");
+        assert_eq!(data, b"safe data");
+
+        // Vault usable after recovery — write + read works
+        vault_write(&mut handle, "b.txt".into(), b"post recovery".to_vec(), None)
+            .expect("write B");
+        let b_data = vault_read(&mut handle, "b.txt".into()).expect("read B");
+        assert_eq!(b_data, b"post recovery");
+
+        vault_close(handle).expect("close");
+    }
+
     // -- Defragmentation ----------------------------------------------------
 
     #[test]
@@ -1817,6 +1982,91 @@ mod tests {
 
         assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
         assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+
+        vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_defragment_crash_overlapping_move_recovers() {
+        // Exercises the overlapping-move crash path: segment B is larger than
+        // the gap created by deleting A, so moving B left overwrites part of
+        // B's old position. A crash before WAL commit should still recover.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = vault_path(&dir);
+
+        // Create: [A: 100B] [B: 10KB] — deleting A creates a small gap
+        // so B's move from offset(A.size) to 0 overlaps.
+        {
+            let mut handle =
+                vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB)
+                    .expect("create");
+            vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
+            vault_write(&mut handle, "b.txt".into(), vec![0xBB; 10_000], None).expect("B");
+            vault_delete(&mut handle, "a.txt".into()).expect("del A");
+            vault_close(handle).expect("close");
+        }
+
+        // Save pre-defrag index and get B's offset/size
+        let (pre_defrag_index, b_old_offset, b_size) = {
+            let handle = vault_open(path.clone(), test_key()).expect("open");
+            let mut f = File::open(&path).expect("open file");
+            let idx = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read idx");
+            let entry = handle.index.find("b.txt").expect("B");
+            let off = entry.offset;
+            let sz = entry.size;
+            vault_close(handle).expect("close");
+            (idx, off, sz)
+        };
+
+        // Verify this IS an overlapping move: gap < size
+        assert!(b_old_offset < b_size, "should be overlapping move");
+
+        // Simulate crash mid-defrag: perform the overlapping write but don't commit WAL
+        {
+            let mut f = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&path)
+                .expect("open rw");
+
+            // Read B from old position
+            let mut buf = vec![0u8; b_size as usize];
+            f.seek(SeekFrom::Start(DATA_REGION_OFFSET + b_old_offset))
+                .expect("seek");
+            f.read_exact(&mut buf).expect("read B");
+
+            // Write defrag backup (simulating what vault_defragment does)
+            let backup_path = format!("{path}.defrag");
+            let mut backup = File::create(&backup_path).expect("create backup");
+            backup.write_all(&b_old_offset.to_le_bytes()).expect("off");
+            backup.write_all(&b_size.to_le_bytes()).expect("sz");
+            backup.write_all(&buf).expect("data");
+            backup.sync_all().expect("sync backup");
+
+            // Write B to new position (offset 0) — corrupts overlap zone
+            f.seek(SeekFrom::Start(DATA_REGION_OFFSET)).expect("seek 0");
+            f.write_all(&buf).expect("write B to 0");
+            f.sync_all().expect("sync");
+
+            // Write uncommitted WAL entry
+            let mut wal = WriteAheadLog::open(&path).expect("wal");
+            wal.begin(WalOp::WriteSegment, &pre_defrag_index)
+                .expect("begin");
+            // Don't commit — crash
+        }
+
+        // Reopen — defrag backup + WAL recovery should restore to consistent state
+        let mut handle = vault_open(path, test_key()).expect("open after crash");
+
+        // B should be readable at old position (overlap zone restored)
+        let b_data = vault_read(&mut handle, "b.txt".into()).expect("read B");
+        assert_eq!(b_data, vec![0xBB; 10_000]);
+
+        // Defrag should still work after recovery
+        let result = vault_defragment(&mut handle).expect("defrag after recovery");
+        assert!(result.segments_moved > 0);
+        let b_data = vault_read(&mut handle, "b.txt".into()).expect("read B post-defrag");
+        assert_eq!(b_data, vec![0xBB; 10_000]);
 
         vault_close(handle).expect("close");
     }
