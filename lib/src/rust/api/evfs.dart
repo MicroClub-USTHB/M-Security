@@ -6,50 +6,82 @@
 import '../core/error.dart';
 import '../frb_generated.dart';
 import 'compression.dart';
+import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `vault_resize_grow_impl`, `vault_resize_shrink_impl`
 
-            // These functions are ignored because they are not marked as `pub`: `capacity_from_file_size`, `decrypt_index_blob`, `flush_index`, `parse_algorithm`, `read_encrypted_index`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `eq`, `fmt`
-
-
-            /// Create a new vault file at `path` with the given capacity.
+/// Create a new vault file at `path` with the given capacity.
 ///
 /// The algorithm string must be "aes-256-gcm" or "chacha20-poly1305".
-Future<VaultHandle>  vaultCreate({required String path , required List<int> key , required String algorithm , required BigInt capacityBytes }) => RustLib.instance.api.crateApiEvfsVaultCreate(path: path, key: key, algorithm: algorithm, capacityBytes: capacityBytes);
+Future<VaultHandle> vaultCreate({
+  required String path,
+  required List<int> key,
+  required String algorithm,
+  required BigInt capacityBytes,
+}) => RustLib.instance.api.crateApiEvfsVaultCreate(
+  path: path,
+  key: key,
+  algorithm: algorithm,
+  capacityBytes: capacityBytes,
+);
 
 /// Open an existing vault, running WAL recovery if needed.
-Future<VaultHandle>  vaultOpen({required String path , required List<int> key }) => RustLib.instance.api.crateApiEvfsVaultOpen(path: path, key: key);
+Future<VaultHandle> vaultOpen({required String path, required List<int> key}) =>
+    RustLib.instance.api.crateApiEvfsVaultOpen(path: path, key: key);
 
 /// Write (or overwrite) a named segment.
 ///
 /// Compression is transparent: pass a `CompressionConfig` to compress before
 /// encryption. MIME-aware skip applies when the segment name has an
 /// already-compressed extension.
-Future<void>  vaultWrite({required VaultHandle handle , required String name , required List<int> data , CompressionConfig? compression }) => RustLib.instance.api.crateApiEvfsVaultWrite(handle: handle, name: name, data: data, compression: compression);
+Future<void> vaultWrite({
+  required VaultHandle handle,
+  required String name,
+  required List<int> data,
+  CompressionConfig? compression,
+}) => RustLib.instance.api.crateApiEvfsVaultWrite(
+  handle: handle,
+  name: name,
+  data: data,
+  compression: compression,
+);
 
 /// Read a named segment. Decompression is automatic.
-Future<Uint8List>  vaultRead({required VaultHandle handle , required String name }) => RustLib.instance.api.crateApiEvfsVaultRead(handle: handle, name: name);
+Future<Uint8List> vaultRead({
+  required VaultHandle handle,
+  required String name,
+}) => RustLib.instance.api.crateApiEvfsVaultRead(handle: handle, name: name);
 
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
-Future<void>  vaultDelete({required VaultHandle handle , required String name }) => RustLib.instance.api.crateApiEvfsVaultDelete(handle: handle, name: name);
+Future<void> vaultDelete({required VaultHandle handle, required String name}) =>
+    RustLib.instance.api.crateApiEvfsVaultDelete(handle: handle, name: name);
 
 /// Resize vault data region capacity.
 ///
 /// - Grow: extend file, CSPRNG-fill new space, relocate shadow index + WAL
 /// - Shrink: validate segments fit, relocate shadow + WAL, truncate file
 /// - Returns VaultFull if shrink would lose data
-Future<void>  vaultResize({required VaultHandle handle , required BigInt newCapacity }) => RustLib.instance.api.crateApiEvfsVaultResize(handle: handle, newCapacity: newCapacity);
+Future<void> vaultResize({
+  required VaultHandle handle,
+  required BigInt newCapacity,
+}) => RustLib.instance.api.crateApiEvfsVaultResize(
+  handle: handle,
+  newCapacity: newCapacity,
+);
 
 /// List all segment names in the vault.
-Future<List<String>>  vaultList({required VaultHandle handle }) => RustLib.instance.api.crateApiEvfsVaultList(handle: handle);
+Future<List<String>> vaultList({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultList(handle: handle);
 
 /// Get vault capacity info.
-Future<VaultCapacityInfo>  vaultCapacity({required VaultHandle handle }) => RustLib.instance.api.crateApiEvfsVaultCapacity(handle: handle);
+Future<VaultCapacityInfo> vaultCapacity({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultCapacity(handle: handle);
 
 /// Get vault health/diagnostics (read-only).
-Future<VaultHealthInfo>  vaultHealth({required VaultHandle handle }) => RustLib.instance.api.crateApiEvfsVaultHealth(handle: handle);
+Future<VaultHealthInfo> vaultHealth({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultHealth(handle: handle);
 
 /// Defragment the vault: compact all segments toward the data region start,
 /// coalesce free space into a single contiguous block at the end.
@@ -57,115 +89,9 @@ Future<VaultHealthInfo>  vaultHealth({required VaultHandle handle }) => RustLib.
 /// Each segment move is individually WAL-protected for crash safety.
 /// Encrypted bytes are copied as-is (no re-encryption). The free tail
 /// is secure-erased with CSPRNG after all moves complete.
-Future<DefragResult>  vaultDefragment({required VaultHandle handle }) => RustLib.instance.api.crateApiEvfsVaultDefragment(handle: handle);
+Future<DefragResult> vaultDefragment({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultDefragment(handle: handle);
 
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
-Future<void>  vaultClose({required VaultHandle handle }) => RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);
-
-            
-                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>
-                abstract class VaultHandle implements RustOpaqueInterface {
-                    /// Compute health information from the in-memory index only (no file I/O or WAL writes).
-///
-/// The `#[must_use]` attribute is a Rust best practice indicating that the return value
-/// of this function should not be silently ignored by callers.
- Future<VaultHealthInfo>  health();
-
-
-
-                    
-                }
-                
-
-/// Result of a vault defragmentation operation.
-class DefragResult  {
-                /// Number of segments that were physically moved on disk.
-final int segmentsMoved;
-/// Bytes of free-list space reclaimed into contiguous unallocated space.
-final BigInt bytesReclaimed;
-/// Number of scattered free regions before defragmentation.
-final int freeRegionsBefore;
-
-                const DefragResult({required this.segmentsMoved ,required this.bytesReclaimed ,required this.freeRegionsBefore ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => segmentsMoved.hashCode^bytesReclaimed.hashCode^freeRegionsBefore.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is DefragResult &&
-                runtimeType == other.runtimeType
-                && segmentsMoved == other.segmentsMoved&& bytesReclaimed == other.bytesReclaimed&& freeRegionsBefore == other.freeRegionsBefore;
-        
-            }
-
-/// Capacity info returned to callers.
-class VaultCapacityInfo  {
-                final BigInt totalBytes;
-final BigInt usedBytes;
-final BigInt freeListBytes;
-final BigInt unallocatedBytes;
-final BigInt segmentCount;
-
-                const VaultCapacityInfo({required this.totalBytes ,required this.usedBytes ,required this.freeListBytes ,required this.unallocatedBytes ,required this.segmentCount ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => totalBytes.hashCode^usedBytes.hashCode^freeListBytes.hashCode^unallocatedBytes.hashCode^segmentCount.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is VaultCapacityInfo &&
-                runtimeType == other.runtimeType
-                && totalBytes == other.totalBytes&& usedBytes == other.usedBytes&& freeListBytes == other.freeListBytes&& unallocatedBytes == other.unallocatedBytes&& segmentCount == other.segmentCount;
-        
-            }
-
-/// Vault health and diagnostic info returned to callers.
-///
-/// `#[frb(non_opaque)]` tells the code generator to expose this as a direct Dart class
-/// with all these fields accessible, instead of hiding it behind a pointer.
-class VaultHealthInfo  {
-                final BigInt totalBytes;
-final BigInt usedBytes;
-final BigInt freeListBytes;
-final BigInt unallocatedBytes;
-final int segmentCount;
-final int freeRegionCount;
-final BigInt largestFreeBlock;
-/// 0.0 = no fragmentation, 1.0 = all free space is fragmented
-final double fragmentationRatio;
-
-                const VaultHealthInfo({required this.totalBytes ,required this.usedBytes ,required this.freeListBytes ,required this.unallocatedBytes ,required this.segmentCount ,required this.freeRegionCount ,required this.largestFreeBlock ,required this.fragmentationRatio ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => totalBytes.hashCode^usedBytes.hashCode^freeListBytes.hashCode^unallocatedBytes.hashCode^segmentCount.hashCode^freeRegionCount.hashCode^largestFreeBlock.hashCode^fragmentationRatio.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is VaultHealthInfo &&
-                runtimeType == other.runtimeType
-                && totalBytes == other.totalBytes&& usedBytes == other.usedBytes&& freeListBytes == other.freeListBytes&& unallocatedBytes == other.unallocatedBytes&& segmentCount == other.segmentCount&& freeRegionCount == other.freeRegionCount&& largestFreeBlock == other.largestFreeBlock&& fragmentationRatio == other.fragmentationRatio;
-        
-            }
-            
+Future<void> vaultClose({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);

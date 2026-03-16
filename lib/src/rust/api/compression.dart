@@ -7,61 +7,69 @@ import '../core/error.dart';
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `fmt`, `fmt`
 
-            // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `fmt`, `fmt`
-
-
-            /// Compress a byte buffer according to `config`.
-Future<Uint8List>  compress({required List<int> data , required CompressionConfig config }) => RustLib.instance.api.crateApiCompressionCompress(data: data, config: config);
+/// Compress a byte buffer according to `config`.
+Future<Uint8List> compress({
+  required List<int> data,
+  required CompressionConfig config,
+}) => RustLib.instance.api.crateApiCompressionCompress(
+  data: data,
+  config: config,
+);
 
 /// Decompress a byte buffer produced by the given algorithm.
-Future<Uint8List>  decompress({required List<int> data , required CompressionAlgorithm algorithm }) => RustLib.instance.api.crateApiCompressionDecompress(data: data, algorithm: algorithm);
+Future<Uint8List> decompress({
+  required List<int> data,
+  required CompressionAlgorithm algorithm,
+}) => RustLib.instance.api.crateApiCompressionDecompress(
+  data: data,
+  algorithm: algorithm,
+);
 
 /// Returns `true` when the file extension indicates already-compressed data.
-Future<bool>  shouldSkipCompression({required String filePath }) => RustLib.instance.api.crateApiCompressionShouldSkipCompression(filePath: filePath);
+Future<bool> shouldSkipCompression({required String filePath}) => RustLib
+    .instance
+    .api
+    .crateApiCompressionShouldSkipCompression(filePath: filePath);
 
-            /// Which compression algorithm to use.
+/// Which compression algorithm to use.
 enum CompressionAlgorithm {
-                    zstd,
-brotli,
-none,
-                    ;
-                    /// Deserialize from the byte stored in the stream header.
-static Future<CompressionAlgorithm>  fromU8({required int byte })=>RustLib.instance.api.crateApiCompressionCompressionAlgorithmFromU8(byte: byte);
+  zstd,
+  brotli,
+  none;
 
+  /// Deserialize from the byte stored in the stream header.
+  static Future<CompressionAlgorithm> fromU8({required int byte}) => RustLib
+      .instance
+      .api
+      .crateApiCompressionCompressionAlgorithmFromU8(byte: byte);
 
-/// Serialize to the byte stored in the stream header.
- Future<int>  toU8()=>RustLib.instance.api.crateApiCompressionCompressionAlgorithmToU8(that: this, );
-
-
-                }
+  /// Serialize to the byte stored in the stream header.
+  Future<int> toU8() => RustLib.instance.api
+      .crateApiCompressionCompressionAlgorithmToU8(that: this);
+}
 
 /// Configuration for a compress operation.
-class CompressionConfig  {
-                final CompressionAlgorithm algorithm;
-/// Compression level. Valid range depends on algorithm:
-/// - Zstd: 1–22 (default 3)
-/// - Brotli: 0–11 (default 4)
-/// - None: ignored
-final int? level;
+class CompressionConfig {
+  final CompressionAlgorithm algorithm;
 
-                const CompressionConfig({required this.algorithm ,this.level ,});
+  /// Compression level. Valid range depends on algorithm:
+  /// - Zstd: 1–22 (default 3)
+  /// - Brotli: 0–11 (default 4)
+  /// - None: ignored
+  final int? level;
 
-                
-                
+  const CompressionConfig({required this.algorithm, this.level});
 
-                
-        @override
-        int get hashCode => algorithm.hashCode^level.hashCode;
-        
+  @override
+  int get hashCode => algorithm.hashCode ^ level.hashCode;
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is CompressionConfig &&
-                runtimeType == other.runtimeType
-                && algorithm == other.algorithm&& level == other.level;
-        
-            }
-            
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompressionConfig &&
+          runtimeType == other.runtimeType &&
+          algorithm == other.algorithm &&
+          level == other.level;
+}

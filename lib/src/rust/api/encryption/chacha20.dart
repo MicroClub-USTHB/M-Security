@@ -7,13 +7,9 @@ import '../../core/error.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-
-            // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ChaCha20Poly1305Cipher`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ChaCha20Poly1305Cipher`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `algorithm_id`, `decrypt`, `encrypt`, `new`
 
-
-            /// Generate a random 32-byte ChaCha20-Poly1305 key.
-Future<Uint8List>  generateChachaKey() => RustLib.instance.api.crateApiEncryptionChacha20GenerateChachaKey();
-
-            
-            
+/// Generate a random 32-byte ChaCha20-Poly1305 key.
+Future<Uint8List> generateChachaKey() =>
+    RustLib.instance.api.crateApiEncryptionChacha20GenerateChachaKey();

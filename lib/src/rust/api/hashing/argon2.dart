@@ -7,35 +7,51 @@ import '../../core/error.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `params`
 
-            // These functions are ignored because they are not marked as `pub`: `params`
-
-
-            /// Hash a password using Argon2id with the given preset.
+/// Hash a password using Argon2id with the given preset.
 ///
 /// Generates a random salt internally and returns a PHC-format string
 /// containing the algorithm, parameters, salt, and hash.
-Future<String>  argon2IdHash({required String password , required Argon2Preset preset }) => RustLib.instance.api.crateApiHashingArgon2Argon2IdHash(password: password, preset: preset);
+Future<String> argon2IdHash({
+  required String password,
+  required Argon2Preset preset,
+}) => RustLib.instance.api.crateApiHashingArgon2Argon2IdHash(
+  password: password,
+  preset: preset,
+);
 
 /// Hash a password using Argon2id with an explicit salt.
 ///
 /// The salt must be valid base64 (no padding), between 1-64 bytes decoded.
 /// Returns a PHC-format string.
-Future<String>  argon2IdHashWithSalt({required String password , required String salt , required Argon2Preset preset }) => RustLib.instance.api.crateApiHashingArgon2Argon2IdHashWithSalt(password: password, salt: salt, preset: preset);
+Future<String> argon2IdHashWithSalt({
+  required String password,
+  required String salt,
+  required Argon2Preset preset,
+}) => RustLib.instance.api.crateApiHashingArgon2Argon2IdHashWithSalt(
+  password: password,
+  salt: salt,
+  preset: preset,
+);
 
 /// Verify a password against an Argon2id PHC hash string.
 ///
 /// Returns `Ok(())` if the password matches, or
 /// `Err(CryptoError::AuthenticationFailed)` if it does not.
-Future<void>  argon2IdVerify({required String phcHash , required String password }) => RustLib.instance.api.crateApiHashingArgon2Argon2IdVerify(phcHash: phcHash, password: password);
+Future<void> argon2IdVerify({
+  required String phcHash,
+  required String password,
+}) => RustLib.instance.api.crateApiHashingArgon2Argon2IdVerify(
+  phcHash: phcHash,
+  password: password,
+);
 
-            /// Platform-appropriate parameter presets for Argon2id.
+/// Platform-appropriate parameter presets for Argon2id.
 enum Argon2Preset {
-                    /// Optimized for mobile devices (64 MiB, 3 iterations, 4 threads).
-mobile,
-/// Optimized for desktop/server (256 MiB, 4 iterations, 8 threads).
-desktop,
-                    ;
-                    
-                }
-            
+  /// Optimized for mobile devices (64 MiB, 3 iterations, 4 threads).
+  mobile,
+
+  /// Optimized for desktop/server (256 MiB, 4 iterations, 8 threads).
+  desktop,
+}

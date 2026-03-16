@@ -8,6 +8,7 @@ import 'api/encryption.dart';
 import 'api/encryption/aes_gcm.dart';
 import 'api/encryption/chacha20.dart';
 import 'api/evfs.dart';
+import 'api/evfs/types.dart';
 import 'api/hashing.dart';
 import 'api/hashing/argon2.dart';
 import 'api/kdf/hkdf.dart';
@@ -19,326 +20,604 @@ import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
+abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
+  RustLibApiImplPlatform({
+    required super.handler,
+    required super.wire,
+    required super.generalizedFrbRustBinding,
+    required super.portManager,
+  });
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_CipherHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_HasherHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_VaultHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr;
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  CipherHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    dynamic raw,
+  );
+
+  @protected
+  HasherHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    dynamic raw,
+  );
+
+  @protected
+  VaultHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    dynamic raw,
+  );
+
+  @protected
+  VaultHandle
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    dynamic raw,
+  );
+
+  @protected
+  CipherHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    dynamic raw,
+  );
 
+  @protected
+  HasherHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    dynamic raw,
+  );
 
+  @protected
+  VaultHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    dynamic raw,
+  );
 
-                abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
-                  RustLibApiImplPlatform({
-                    required super.handler,
-                    required super.wire,
-                    required super.generalizedFrbRustBinding,
-                    required super.portManager,
-                  });
+  @protected
+  CipherHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    dynamic raw,
+  );
+
+  @protected
+  HasherHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    dynamic raw,
+  );
+
+  @protected
+  VaultHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    dynamic raw,
+  );
+
+  @protected
+  RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw);
+
+  @protected
+  String dco_decode_String(dynamic raw);
+
+  @protected
+  Argon2Preset dco_decode_argon_2_preset(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  CompressionConfig dco_decode_box_autoadd_compression_config(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw);
+
+  @protected
+  CompressionAlgorithm dco_decode_compression_algorithm(dynamic raw);
 
-                  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_CipherHandlePtr => wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr;
+  @protected
+  CompressionConfig dco_decode_compression_config(dynamic raw);
 
-CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_HasherHandlePtr => wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr;
+  @protected
+  CryptoError dco_decode_crypto_error(dynamic raw);
 
-CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_VaultHandlePtr => wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr;
+  @protected
+  DefragResult dco_decode_defrag_result(dynamic raw);
 
+  @protected
+  double dco_decode_f_64(dynamic raw);
 
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
-                  @protected AnyhowException dco_decode_AnyhowException(dynamic raw);
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
 
-@protected CipherHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw);
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
-@protected HasherHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw);
+  @protected
+  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
-@protected VaultHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw);
+  @protected
+  CompressionConfig? dco_decode_opt_box_autoadd_compression_config(dynamic raw);
 
-@protected VaultHandle dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw);
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
-@protected CipherHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw);
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
-@protected HasherHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw);
+  @protected
+  int dco_decode_u_32(dynamic raw);
 
-@protected VaultHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw);
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
-@protected CipherHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw);
+  @protected
+  int dco_decode_u_8(dynamic raw);
 
-@protected HasherHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw);
+  @protected
+  void dco_decode_unit(dynamic raw);
 
-@protected VaultHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw);
+  @protected
+  BigInt dco_decode_usize(dynamic raw);
 
-@protected RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw);
+  @protected
+  VaultCapacityInfo dco_decode_vault_capacity_info(dynamic raw);
 
-@protected String dco_decode_String(dynamic raw);
+  @protected
+  VaultHealthInfo dco_decode_vault_health_info(dynamic raw);
 
-@protected Argon2Preset dco_decode_argon_2_preset(dynamic raw);
+  @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
-@protected bool dco_decode_bool(dynamic raw);
+  @protected
+  CipherHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected CompressionConfig dco_decode_box_autoadd_compression_config(dynamic raw);
+  @protected
+  HasherHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected int dco_decode_box_autoadd_i_32(dynamic raw);
+  @protected
+  VaultHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected CompressionAlgorithm dco_decode_compression_algorithm(dynamic raw);
+  @protected
+  VaultHandle
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected CompressionConfig dco_decode_compression_config(dynamic raw);
+  @protected
+  CipherHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected CryptoError dco_decode_crypto_error(dynamic raw);
+  @protected
+  HasherHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected DefragResult dco_decode_defrag_result(dynamic raw);
+  @protected
+  VaultHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected double dco_decode_f_64(dynamic raw);
+  @protected
+  CipherHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected int dco_decode_i_32(dynamic raw);
+  @protected
+  HasherHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected List<String> dco_decode_list_String(dynamic raw);
+  @protected
+  VaultHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
 
-@protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+  @protected
+  RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
+    SseDeserializer deserializer,
+  );
 
-@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+  @protected
+  String sse_decode_String(SseDeserializer deserializer);
 
-@protected CompressionConfig? dco_decode_opt_box_autoadd_compression_config(dynamic raw);
+  @protected
+  Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer);
 
-@protected int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
 
-@protected Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+  @protected
+  CompressionConfig sse_decode_box_autoadd_compression_config(
+    SseDeserializer deserializer,
+  );
 
-@protected int dco_decode_u_32(dynamic raw);
+  @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
-@protected BigInt dco_decode_u_64(dynamic raw);
+  @protected
+  CompressionAlgorithm sse_decode_compression_algorithm(
+    SseDeserializer deserializer,
+  );
 
-@protected int dco_decode_u_8(dynamic raw);
-
-@protected void dco_decode_unit(dynamic raw);
-
-@protected BigInt dco_decode_usize(dynamic raw);
-
-@protected VaultCapacityInfo dco_decode_vault_capacity_info(dynamic raw);
-
-@protected VaultHealthInfo dco_decode_vault_health_info(dynamic raw);
-
-@protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
-
-@protected CipherHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer);
-
-@protected HasherHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer);
-
-@protected VaultHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer);
-
-@protected VaultHandle sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer);
-
-@protected CipherHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer);
-
-@protected HasherHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer);
-
-@protected VaultHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer);
-
-@protected CipherHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer);
-
-@protected HasherHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer);
-
-@protected VaultHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer);
-
-@protected RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(SseDeserializer deserializer);
-
-@protected String sse_decode_String(SseDeserializer deserializer);
-
-@protected Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer);
-
-@protected bool sse_decode_bool(SseDeserializer deserializer);
-
-@protected CompressionConfig sse_decode_box_autoadd_compression_config(SseDeserializer deserializer);
-
-@protected int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
-
-@protected CompressionAlgorithm sse_decode_compression_algorithm(SseDeserializer deserializer);
-
-@protected CompressionConfig sse_decode_compression_config(SseDeserializer deserializer);
-
-@protected CryptoError sse_decode_crypto_error(SseDeserializer deserializer);
-
-@protected DefragResult sse_decode_defrag_result(SseDeserializer deserializer);
-
-@protected double sse_decode_f_64(SseDeserializer deserializer);
-
-@protected int sse_decode_i_32(SseDeserializer deserializer);
-
-@protected List<String> sse_decode_list_String(SseDeserializer deserializer);
-
-@protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
-
-@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
-
-@protected CompressionConfig? sse_decode_opt_box_autoadd_compression_config(SseDeserializer deserializer);
-
-@protected int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
-
-@protected Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
-
-@protected int sse_decode_u_32(SseDeserializer deserializer);
-
-@protected BigInt sse_decode_u_64(SseDeserializer deserializer);
-
-@protected int sse_decode_u_8(SseDeserializer deserializer);
-
-@protected void sse_decode_unit(SseDeserializer deserializer);
-
-@protected BigInt sse_decode_usize(SseDeserializer deserializer);
-
-@protected VaultCapacityInfo sse_decode_vault_capacity_info(SseDeserializer deserializer);
-
-@protected VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer);
-
-@protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer);
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer);
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer);
-
-@protected void sse_encode_StreamSink_f_64_Sse(RustStreamSink<double> self, SseSerializer serializer);
-
-@protected void sse_encode_String(String self, SseSerializer serializer);
-
-@protected void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer);
-
-@protected void sse_encode_bool(bool self, SseSerializer serializer);
-
-@protected void sse_encode_box_autoadd_compression_config(CompressionConfig self, SseSerializer serializer);
-
-@protected void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
-
-@protected void sse_encode_compression_algorithm(CompressionAlgorithm self, SseSerializer serializer);
-
-@protected void sse_encode_compression_config(CompressionConfig self, SseSerializer serializer);
-
-@protected void sse_encode_crypto_error(CryptoError self, SseSerializer serializer);
-
-@protected void sse_encode_defrag_result(DefragResult self, SseSerializer serializer);
-
-@protected void sse_encode_f_64(double self, SseSerializer serializer);
-
-@protected void sse_encode_i_32(int self, SseSerializer serializer);
-
-@protected void sse_encode_list_String(List<String> self, SseSerializer serializer);
-
-@protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
-
-@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
-
-@protected void sse_encode_opt_box_autoadd_compression_config(CompressionConfig? self, SseSerializer serializer);
-
-@protected void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
-
-@protected void sse_encode_opt_list_prim_u_8_strict(Uint8List? self, SseSerializer serializer);
-
-@protected void sse_encode_u_32(int self, SseSerializer serializer);
-
-@protected void sse_encode_u_64(BigInt self, SseSerializer serializer);
-
-@protected void sse_encode_u_8(int self, SseSerializer serializer);
-
-@protected void sse_encode_unit(void self, SseSerializer serializer);
-
-@protected void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-@protected void sse_encode_vault_capacity_info(VaultCapacityInfo self, SseSerializer serializer);
-
-@protected void sse_encode_vault_health_info(VaultHealthInfo self, SseSerializer serializer);
-                }
-                
-
+  @protected
+  CompressionConfig sse_decode_compression_config(SseDeserializer deserializer);
+
+  @protected
+  CryptoError sse_decode_crypto_error(SseDeserializer deserializer);
+
+  @protected
+  DefragResult sse_decode_defrag_result(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+
+  @protected
+  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  CompressionConfig? sse_decode_opt_box_autoadd_compression_config(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_8(SseDeserializer deserializer);
+
+  @protected
+  void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  VaultCapacityInfo sse_decode_vault_capacity_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer);
+
+  @protected
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_f_64_Sse(
+    RustStreamSink<double> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_compression_config(
+    CompressionConfig self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_compression_algorithm(
+    CompressionAlgorithm self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_compression_config(
+    CompressionConfig self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_crypto_error(CryptoError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_defrag_result(DefragResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_compression_config(
+    CompressionConfig? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vault_capacity_info(
+    VaultCapacityInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_vault_health_info(
+    VaultHealthInfo self,
+    SseSerializer serializer,
+  );
+}
 
 // Section: wire_class
 
+class RustLibWire implements BaseWire {
+  factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
+      RustLibWire(lib.ffiDynamicLibrary);
 
-        class RustLibWire implements BaseWire {
+  /// Holds the symbol lookup function.
+  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
+  _lookup;
 
-            factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
-              RustLibWire(lib.ffiDynamicLibrary);
-        
-            /// Holds the symbol lookup function.
-            final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-                _lookup;
-  
-            /// The symbols are looked up in [dynamicLibrary].
-            RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-                : _lookup = dynamicLibrary.lookup;
+  /// The symbols are looked up in [dynamicLibrary].
+  RustLibWire(ffi.DynamicLibrary dynamicLibrary)
+    : _lookup = dynamicLibrary.lookup;
 
-            
-            void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                ptr,
-              );
-            }
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+      ptr,
+    );
+  }
 
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle');
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle = _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                ptr,
-              );
-            }
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle');
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle = _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-                ptr,
-              );
-            }
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+      ptr,
+    );
+  }
 
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle');
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle = _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-                ptr,
-              );
-            }
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle');
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle = _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-                ptr,
-              );
-            }
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+      ptr,
+    );
+  }
 
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle');
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle = _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-                ptr,
-              );
-            }
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle');
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle = _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-        }
-        
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_m_security_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+}

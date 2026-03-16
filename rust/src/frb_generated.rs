@@ -26,7 +26,7 @@
 // Section: imports
 
 use crate::api::encryption::*;
-use crate::api::evfs::*;
+use crate::api::evfs::types::*;
 use crate::api::hashing::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -303728813;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 187783673;
 
 // Section: executor
 
@@ -48,7 +48,7 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__evfs__VaultHandle_health_impl(
+fn wire__crate__api__evfs__types__VaultHandle_health_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -90,9 +90,9 @@ fn wire__crate__api__evfs__VaultHandle_health_impl(
                         }
                     }
                     let api_that_guard = api_that_guard.unwrap();
-                    let output_ok = Result::<_, ()>::Ok(crate::api::evfs::VaultHandle::health(
-                        &*api_that_guard,
-                    ))?;
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::evfs::types::VaultHandle::health(&*api_that_guard),
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -2281,13 +2281,13 @@ impl SseDecode for crate::core::error::CryptoError {
     }
 }
 
-impl SseDecode for crate::api::evfs::DefragResult {
+impl SseDecode for crate::api::evfs::types::DefragResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_segmentsMoved = <u32>::sse_decode(deserializer);
         let mut var_bytesReclaimed = <u64>::sse_decode(deserializer);
         let mut var_freeRegionsBefore = <u32>::sse_decode(deserializer);
-        return crate::api::evfs::DefragResult {
+        return crate::api::evfs::types::DefragResult {
             segments_moved: var_segmentsMoved,
             bytes_reclaimed: var_bytesReclaimed,
             free_regions_before: var_freeRegionsBefore,
@@ -2401,7 +2401,7 @@ impl SseDecode for usize {
     }
 }
 
-impl SseDecode for crate::api::evfs::VaultCapacityInfo {
+impl SseDecode for crate::api::evfs::types::VaultCapacityInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_totalBytes = <u64>::sse_decode(deserializer);
@@ -2409,7 +2409,7 @@ impl SseDecode for crate::api::evfs::VaultCapacityInfo {
         let mut var_freeListBytes = <u64>::sse_decode(deserializer);
         let mut var_unallocatedBytes = <u64>::sse_decode(deserializer);
         let mut var_segmentCount = <usize>::sse_decode(deserializer);
-        return crate::api::evfs::VaultCapacityInfo {
+        return crate::api::evfs::types::VaultCapacityInfo {
             total_bytes: var_totalBytes,
             used_bytes: var_usedBytes,
             free_list_bytes: var_freeListBytes,
@@ -2419,7 +2419,7 @@ impl SseDecode for crate::api::evfs::VaultCapacityInfo {
     }
 }
 
-impl SseDecode for crate::api::evfs::VaultHealthInfo {
+impl SseDecode for crate::api::evfs::types::VaultHealthInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_totalBytes = <u64>::sse_decode(deserializer);
@@ -2430,7 +2430,7 @@ impl SseDecode for crate::api::evfs::VaultHealthInfo {
         let mut var_freeRegionCount = <u32>::sse_decode(deserializer);
         let mut var_largestFreeBlock = <u64>::sse_decode(deserializer);
         let mut var_fragmentationRatio = <f64>::sse_decode(deserializer);
-        return crate::api::evfs::VaultHealthInfo {
+        return crate::api::evfs::types::VaultHealthInfo {
             total_bytes: var_totalBytes,
             used_bytes: var_usedBytes,
             free_list_bytes: var_freeListBytes,
@@ -2452,7 +2452,12 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__evfs__VaultHandle_health_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__evfs__types__VaultHandle_health_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         2 => {
             wire__crate__api__hashing__argon2__argon2id_hash_impl(port, ptr, rust_vec_len, data_len)
         }
@@ -2767,7 +2772,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::core::error::CryptoError>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::evfs::DefragResult {
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::DefragResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.segments_moved.into_into_dart().into_dart(),
@@ -2778,18 +2783,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::evfs::DefragResult {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::evfs::DefragResult
+    for crate::api::evfs::types::DefragResult
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::DefragResult>
-    for crate::api::evfs::DefragResult
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::DefragResult>
+    for crate::api::evfs::types::DefragResult
 {
-    fn into_into_dart(self) -> crate::api::evfs::DefragResult {
+    fn into_into_dart(self) -> crate::api::evfs::types::DefragResult {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::evfs::VaultCapacityInfo {
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::VaultCapacityInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.total_bytes.into_into_dart().into_dart(),
@@ -2802,18 +2807,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::evfs::VaultCapacityInfo {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::evfs::VaultCapacityInfo
+    for crate::api::evfs::types::VaultCapacityInfo
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::VaultCapacityInfo>
-    for crate::api::evfs::VaultCapacityInfo
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::VaultCapacityInfo>
+    for crate::api::evfs::types::VaultCapacityInfo
 {
-    fn into_into_dart(self) -> crate::api::evfs::VaultCapacityInfo {
+    fn into_into_dart(self) -> crate::api::evfs::types::VaultCapacityInfo {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::evfs::VaultHealthInfo {
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::VaultHealthInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.total_bytes.into_into_dart().into_dart(),
@@ -2829,13 +2834,13 @@ impl flutter_rust_bridge::IntoDart for crate::api::evfs::VaultHealthInfo {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::evfs::VaultHealthInfo
+    for crate::api::evfs::types::VaultHealthInfo
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::VaultHealthInfo>
-    for crate::api::evfs::VaultHealthInfo
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::VaultHealthInfo>
+    for crate::api::evfs::types::VaultHealthInfo
 {
-    fn into_into_dart(self) -> crate::api::evfs::VaultHealthInfo {
+    fn into_into_dart(self) -> crate::api::evfs::types::VaultHealthInfo {
         self
     }
 }
@@ -3028,7 +3033,7 @@ impl SseEncode for crate::core::error::CryptoError {
     }
 }
 
-impl SseEncode for crate::api::evfs::DefragResult {
+impl SseEncode for crate::api::evfs::types::DefragResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.segments_moved, serializer);
@@ -3137,7 +3142,7 @@ impl SseEncode for usize {
     }
 }
 
-impl SseEncode for crate::api::evfs::VaultCapacityInfo {
+impl SseEncode for crate::api::evfs::types::VaultCapacityInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.total_bytes, serializer);
@@ -3148,7 +3153,7 @@ impl SseEncode for crate::api::evfs::VaultCapacityInfo {
     }
 }
 
-impl SseEncode for crate::api::evfs::VaultHealthInfo {
+impl SseEncode for crate::api::evfs::types::VaultHealthInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.total_bytes, serializer);
@@ -3171,7 +3176,7 @@ mod io {
 
     use super::*;
     use crate::api::encryption::*;
-    use crate::api::evfs::*;
+    use crate::api::evfs::types::*;
     use crate::api::hashing::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
@@ -3238,7 +3243,7 @@ mod web {
 
     use super::*;
     use crate::api::encryption::*;
-    use crate::api::evfs::*;
+    use crate::api::evfs::types::*;
     use crate::api::hashing::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
