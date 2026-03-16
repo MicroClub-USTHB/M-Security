@@ -7,9 +7,13 @@ import '../../core/error.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Aes256GcmCipher`
+
+            // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Aes256GcmCipher`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `algorithm_id`, `decrypt`, `encrypt`, `new`
 
-/// Generate a random 32-byte AES-256 key.
-Future<Uint8List> generateAesKey() =>
-    RustLib.instance.api.crateApiEncryptionAesGcmGenerateAesKey();
+
+            /// Generate a random 32-byte AES-256 key.
+Future<Uint8List>  generateAesKey() => RustLib.instance.api.crateApiEncryptionAesGcmGenerateAesKey();
+
+            
+            

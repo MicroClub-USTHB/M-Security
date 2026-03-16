@@ -3,16 +3,19 @@
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
 
-use crate::core::compression::streaming::{new_compressor, new_decompressor};
 use crate::api::compression::{should_skip_compression, CompressionAlgorithm, CompressionConfig};
 use crate::api::encryption::CipherHandle;
+use crate::core::compression::streaming::{new_compressor, new_decompressor};
 use crate::core::error::CryptoError;
 use crate::core::streaming::{
     finish_file, pad_last_chunk, strip_last_chunk_padding, ChunkAad, ChunkReader, ChunkWriter,
     EncryptedChunk, StreamHeader, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE, STREAM_HEADER_SIZE,
 };
 
-use super::{algorithm_from_id, open_input, parse_encrypted_output, read_full, reassemble_into, TempFileGuard};
+use super::{
+    algorithm_from_id, open_input, parse_encrypted_output, read_full, reassemble_into,
+    TempFileGuard,
+};
 
 /// Stream-compress, then chunk the compressed stream.
 ///
@@ -64,27 +67,26 @@ pub(crate) fn compress_encrypt_file_impl(
 
     let mut compressor = new_compressor(effective_algo, level)?;
 
-    let flush_full_chunks =
-        |comp_buf: &mut Vec<u8>,
-         chunk_index: &mut u64,
-         enc_chunk: &mut EncryptedChunk,
-         writer: &mut ChunkWriter<BufWriter<File>>|
-         -> Result<(), CryptoError> {
-            while comp_buf.len() >= CHUNK_SIZE {
-                let aad = ChunkAad {
-                    index: *chunk_index,
-                    is_final: false,
-                }
-                .to_bytes();
-                let encrypted = cipher.encrypt_raw(&comp_buf[..CHUNK_SIZE], &aad)?;
-                parse_encrypted_output(&encrypted, enc_chunk)?;
-                writer.write_chunk(enc_chunk)?;
-
-                comp_buf.drain(..CHUNK_SIZE);
-                *chunk_index += 1;
+    let flush_full_chunks = |comp_buf: &mut Vec<u8>,
+                             chunk_index: &mut u64,
+                             enc_chunk: &mut EncryptedChunk,
+                             writer: &mut ChunkWriter<BufWriter<File>>|
+     -> Result<(), CryptoError> {
+        while comp_buf.len() >= CHUNK_SIZE {
+            let aad = ChunkAad {
+                index: *chunk_index,
+                is_final: false,
             }
-            Ok(())
-        };
+            .to_bytes();
+            let encrypted = cipher.encrypt_raw(&comp_buf[..CHUNK_SIZE], &aad)?;
+            parse_encrypted_output(&encrypted, enc_chunk)?;
+            writer.write_chunk(enc_chunk)?;
+
+            comp_buf.drain(..CHUNK_SIZE);
+            *chunk_index += 1;
+        }
+        Ok(())
+    };
 
     loop {
         let bytes_read = read_full(&mut reader, &mut read_buf)?;
@@ -193,7 +195,11 @@ pub(crate) fn decrypt_decompress_file_impl(
 
         if !has_next {
             // Current is the final chunk
-            let aad = ChunkAad { index: i, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: i,
+                is_final: true,
+            }
+            .to_bytes();
             let plaintext = cipher
                 .decrypt_raw(&wire_buf, &aad)
                 .map_err(|_| CryptoError::DecryptionFailed)?;
@@ -213,7 +219,11 @@ pub(crate) fn decrypt_decompress_file_impl(
         }
 
         // Current is an intermediate chunk
-        let aad = ChunkAad { index: i, is_final: false }.to_bytes();
+        let aad = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
         let plaintext = cipher
             .decrypt_raw(&wire_buf, &aad)
             .map_err(|_| CryptoError::DecryptionFailed)?;

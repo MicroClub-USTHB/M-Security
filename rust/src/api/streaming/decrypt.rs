@@ -74,7 +74,11 @@ pub(crate) fn decrypt_file_impl(
 
         if !has_next {
             // Current is the final chunk
-            let aad = ChunkAad { index: i, is_final: true }.to_bytes();
+            let aad = ChunkAad {
+                index: i,
+                is_final: true,
+            }
+            .to_bytes();
             let plaintext = cipher
                 .decrypt_raw(&wire_buf, &aad)
                 .map_err(|_| CryptoError::DecryptionFailed)?;
@@ -87,7 +91,11 @@ pub(crate) fn decrypt_file_impl(
         }
 
         // Current is an intermediate chunk
-        let aad = ChunkAad { index: i, is_final: false }.to_bytes();
+        let aad = ChunkAad {
+            index: i,
+            is_final: false,
+        }
+        .to_bytes();
         let plaintext = cipher
             .decrypt_raw(&wire_buf, &aad)
             .map_err(|_| CryptoError::DecryptionFailed)?;

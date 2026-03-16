@@ -687,6 +687,11 @@ pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
     }
 }
 
+/// Get vault health/diagnostics (read-only).
+pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
+    handle.health()
+}
+
 /// Defragment the vault: compact all segments toward the data region start,
 /// coalesce free space into a single contiguous block at the end.
 ///
@@ -2385,5 +2390,71 @@ mod tests {
         }
 
         vault_close(handle).expect("close");
+    }
+
+    #[test]
+    fn test_vault_health_empty() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let handle = create_test_vault(&dir, 1_048_576);
+
+        let h = vault_health(&handle);
+        assert_eq!(h.segment_count, 0);
+        assert_eq!(h.free_region_count, 0);
+        assert_eq!(h.fragmentation_ratio, 0.0);
+        assert_eq!(h.total_bytes, handle.index.capacity);
+        assert_eq!(h.used_bytes, 0);
+        assert_eq!(h.unallocated_bytes, handle.index.capacity);
+    }
+
+    #[test]
+    fn test_vault_health_after_write_delete_and_defrag() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1_048_576);
+
+        vault_write(&mut handle, "a".into(), vec![0xAA; 200], None).expect("A");
+        vault_write(&mut handle, "b".into(), vec![0xBB; 500], None).expect("B");
+        vault_write(&mut handle, "c".into(), vec![0xCC; 300], None).expect("C");
+
+        let before = vault_health(&handle);
+        assert!(before.used_bytes > 0);
+        assert_eq!(
+            before.unallocated_bytes + before.free_list_bytes + before.used_bytes,
+            handle.index.capacity
+        );
+
+        vault_delete(&mut handle, "b".into()).expect("delete B");
+
+        let after_delete = vault_health(&handle);
+        assert_eq!(after_delete.free_region_count, 1);
+        assert!(after_delete.fragmentation_ratio > 0.0);
+
+        vault_defragment(&mut handle).expect("defrag");
+
+        let after_defrag = vault_health(&handle);
+        assert_eq!(after_defrag.free_region_count, 0);
+        assert_eq!(after_defrag.fragmentation_ratio, 0.0);
+    }
+
+    #[test]
+    fn test_largest_free_block_accounts_for_tail() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut handle = create_test_vault(&dir, 1024u64);
+
+        vault_write(&mut handle, "s".into(), vec![0xAA; 100], None).expect("write");
+
+        let h = vault_health(&handle);
+        let free_list_max = handle
+            .index
+            .free_regions
+            .iter()
+            .map(|r| r.size)
+            .max()
+            .unwrap_or(0);
+        let tail = handle
+            .index
+            .capacity
+            .saturating_sub(handle.index.next_free_offset);
+
+        assert_eq!(h.largest_free_block, std::cmp::max(free_list_max, tail));
     }
 }

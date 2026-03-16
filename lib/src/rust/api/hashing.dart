@@ -7,48 +7,44 @@ import '../core/error.dart';
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `finalize_raw`, `new`, `reset_raw`, `update_raw`
 
-/// Create a BLAKE3 hasher handle.
-Future<HasherHandle> createBlake3() =>
-    RustLib.instance.api.crateApiHashingCreateBlake3();
+            // These functions are ignored because they are not marked as `pub`: `finalize_raw`, `new`, `reset_raw`, `update_raw`
+
+
+            /// Create a BLAKE3 hasher handle.
+Future<HasherHandle>  createBlake3() => RustLib.instance.api.crateApiHashingCreateBlake3();
 
 /// Create a SHA-3 hasher handle.
-Future<HasherHandle> createSha3() =>
-    RustLib.instance.api.crateApiHashingCreateSha3();
+Future<HasherHandle>  createSha3() => RustLib.instance.api.crateApiHashingCreateSha3();
 
 /// Feed data into the hasher.
-Future<void> hasherUpdate({
-  required HasherHandle handle,
-  required List<int> data,
-}) => RustLib.instance.api.crateApiHashingHasherUpdate(
-  handle: handle,
-  data: data,
-);
+Future<void>  hasherUpdate({required HasherHandle handle , required List<int> data }) => RustLib.instance.api.crateApiHashingHasherUpdate(handle: handle, data: data);
 
 /// Reset the hasher to its initial state.
-Future<void> hasherReset({required HasherHandle handle}) =>
-    RustLib.instance.api.crateApiHashingHasherReset(handle: handle);
+Future<void>  hasherReset({required HasherHandle handle }) => RustLib.instance.api.crateApiHashingHasherReset(handle: handle);
 
 /// Finalize and return the digest.
-Future<Uint8List> hasherFinalize({required HasherHandle handle}) =>
-    RustLib.instance.api.crateApiHashingHasherFinalize(handle: handle);
+Future<Uint8List>  hasherFinalize({required HasherHandle handle }) => RustLib.instance.api.crateApiHashingHasherFinalize(handle: handle);
 
 /// Get the algorithm identifier for the hasher.
-Future<String> hasherAlgorithmId({required HasherHandle handle}) =>
-    RustLib.instance.api.crateApiHashingHasherAlgorithmId(handle: handle);
+Future<String>  hasherAlgorithmId({required HasherHandle handle }) => RustLib.instance.api.crateApiHashingHasherAlgorithmId(handle: handle);
 
 /// One-shot BLAKE3 hash function.
 ///
 /// Convenience function for hashing data in a single call.
-Future<Uint8List> blake3Hash({required List<int> data}) =>
-    RustLib.instance.api.crateApiHashingBlake3Hash(data: data);
+Future<Uint8List>  blake3Hash({required List<int> data }) => RustLib.instance.api.crateApiHashingBlake3Hash(data: data);
 
 /// One-shot SHA-3 hash function.
 ///
 /// Convenience function for hashing data in a single call.
-Future<Uint8List> sha3Hash({required List<int> data}) =>
-    RustLib.instance.api.crateApiHashingSha3Hash(data: data);
+Future<Uint8List>  sha3Hash({required List<int> data }) => RustLib.instance.api.crateApiHashingSha3Hash(data: data);
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
-abstract class HasherHandle implements RustOpaqueInterface {}
+            
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
+                abstract class HasherHandle implements RustOpaqueInterface {
+                    
+
+                    
+                }
+                
+            

@@ -25,7 +25,11 @@ impl CipherHandle {
     }
 
     /// Direct decrypt for internal use (streaming). Not FRB-visible.
-    pub(crate) fn decrypt_raw(&self, ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    pub(crate) fn decrypt_raw(
+        &self,
+        ciphertext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
         self.inner.decrypt(ciphertext, aad)
     }
 

@@ -16,2839 +16,1956 @@ import 'core/error.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
-import 'frb_generated.io.dart'
-    if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// Main entrypoint of the Rust API
-class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
-  @internal
-  static final instance = RustLib._();
-
-  RustLib._();
-
-  /// Initialize flutter_rust_bridge
-  static Future<void> init({
-    RustLibApi? api,
-    BaseHandler? handler,
-    ExternalLibrary? externalLibrary,
-    bool forceSameCodegenVersion = true,
-  }) async {
-    await instance.initImpl(
-      api: api,
-      handler: handler,
-      externalLibrary: externalLibrary,
-      forceSameCodegenVersion: forceSameCodegenVersion,
-    );
-  }
-
-  /// Initialize flutter_rust_bridge in mock mode.
-  /// No libraries for FFI are loaded.
-  static void initMock({required RustLibApi api}) {
-    instance.initMockImpl(api: api);
-  }
-
-  /// Dispose flutter_rust_bridge
-  ///
-  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
-  /// is automatically disposed when the app stops.
-  static void dispose() => instance.disposeImpl();
-
-  @override
-  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor =>
-      RustLibApiImpl.new;
-
-  @override
-  WireConstructor<RustLibWire> get wireConstructor =>
-      RustLibWire.fromExternalLibrary;
-
-  @override
-  Future<void> executeRustInitializers() async {}
-
-  @override
-  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig =>
-      kDefaultExternalLibraryLoaderConfig;
-
-  @override
-  String get codegenVersion => '2.11.1';
-
-  @override
-  int get rustContentHash => 623065910;
-
-  static const kDefaultExternalLibraryLoaderConfig =
-      ExternalLibraryLoaderConfig(
-        stem: 'm_security',
-        ioDirectory: 'rust/target/release/',
-        webPrefix: 'pkg/',
-      );
-}
-
-abstract class RustLibApi extends BaseApi {
-  Future<String> crateApiHashingArgon2Argon2IdHash({
-    required String password,
-    required Argon2Preset preset,
-  });
-
-  Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({
-    required String password,
-    required String salt,
-    required Argon2Preset preset,
-  });
-
-  Future<void> crateApiHashingArgon2Argon2IdVerify({
-    required String phcHash,
-    required String password,
-  });
-
-  Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data});
-
-  Future<Uint8List> crateApiCompressionCompress({
-    required List<int> data,
-    required CompressionConfig config,
-  });
-
-  Future<CompressionAlgorithm> crateApiCompressionCompressionAlgorithmFromU8({
-    required int byte,
-  });
-
-  Future<int> crateApiCompressionCompressionAlgorithmToU8({
-    required CompressionAlgorithm that,
-  });
-
-  Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({
-    required List<int> key,
-  });
-
-  Future<HasherHandle> crateApiHashingCreateBlake3();
-
-  Future<CipherHandle> crateApiEncryptionCreateChacha20Poly1305({
-    required List<int> key,
-  });
-
-  Future<CipherHandle> crateApiEncryptionCreateNoopEncryption();
-
-  Future<HasherHandle> crateApiHashingCreateSha3();
-
-  Future<Uint8List> crateApiCompressionDecompress({
-    required List<int> data,
-    required CompressionAlgorithm algorithm,
-  });
-
-  Future<Uint8List> crateApiEncryptionDecrypt({
-    required CipherHandle cipher,
-    required List<int> ciphertext,
-    required List<int> aad,
-  });
-
-  Future<Uint8List> crateApiEncryptionEncrypt({
-    required CipherHandle cipher,
-    required List<int> plaintext,
-    required List<int> aad,
-  });
-
-  Future<String> crateApiEncryptionEncryptionAlgorithmId({
-    required CipherHandle cipher,
-  });
-
-  Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey();
-
-  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey();
-
-  Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key();
-
-  Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey();
-
-  Future<String> crateApiHashingHasherAlgorithmId({
-    required HasherHandle handle,
-  });
-
-  Future<Uint8List> crateApiHashingHasherFinalize({
-    required HasherHandle handle,
-  });
-
-  Future<void> crateApiHashingHasherReset({required HasherHandle handle});
-
-  Future<void> crateApiHashingHasherUpdate({
-    required HasherHandle handle,
-    required List<int> data,
-  });
-
-  Uint8List crateApiKdfHkdfHkdfDerive({
-    required List<int> ikm,
-    Uint8List? salt,
-    required List<int> info,
-    required BigInt outputLen,
-  });
-
-  Future<Uint8List> crateApiKdfHkdfHkdfExpand({
-    required List<int> prk,
-    required List<int> info,
-    required BigInt outputLen,
-  });
-
-  Uint8List crateApiKdfHkdfHkdfExtract({
-    required List<int> ikm,
-    Uint8List? salt,
-  });
 
-  Future<Uint8List> crateApiHashingSha3Hash({required List<int> data});
+                /// Main entrypoint of the Rust API
+                class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
+                  @internal
+                  static final instance = RustLib._();
 
-  Future<bool> crateApiCompressionShouldSkipCompression({
-    required String filePath,
-  });
-
-  Stream<double> crateApiStreamingStreamCompressEncryptFile({
-    required CipherHandle cipher,
-    required CompressionConfig compression,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamDecryptDecompressFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamDecryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamEncryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamHashFile({
-    required HasherHandle hasher,
-    required String filePath,
-  });
-
-  Future<VaultCapacityInfo> crateApiEvfsVaultCapacity({
-    required VaultHandle handle,
-  });
-
-  Future<void> crateApiEvfsVaultClose({required VaultHandle handle});
-
-  Future<VaultHandle> crateApiEvfsVaultCreate({
-    required String path,
-    required List<int> key,
-    required String algorithm,
-    required BigInt capacityBytes,
-  });
-
-  Future<void> crateApiEvfsVaultDelete({
-    required VaultHandle handle,
-    required String name,
-  });
-
-  Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle});
-
-  Future<VaultHandle> crateApiEvfsVaultOpen({
-    required String path,
-    required List<int> key,
-  });
-
-  Future<Uint8List> crateApiEvfsVaultRead({
-    required VaultHandle handle,
-    required String name,
-  });
-
-  Future<void> crateApiEvfsVaultWrite({
-    required VaultHandle handle,
-    required String name,
-    required List<int> data,
-    CompressionConfig? compression,
-  });
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_CipherHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_CipherHandle;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_CipherHandlePtr;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_HasherHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_HasherHandle;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_HasherHandlePtr;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_VaultHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_VaultHandle;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_VaultHandlePtr;
-}
-
-class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
-  RustLibApiImpl({
-    required super.handler,
-    required super.wire,
-    required super.generalizedFrbRustBinding,
-    required super.portManager,
-  });
-
-  @override
-  Future<String> crateApiHashingArgon2Argon2IdHash({
-    required String password,
-    required Argon2Preset preset,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(password, serializer);
-          sse_encode_argon_2_preset(preset, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 1,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+                  RustLib._();
+
+                  /// Initialize flutter_rust_bridge
+                  static Future<void> init({
+                    RustLibApi? api,
+                    BaseHandler? handler,
+                    ExternalLibrary? externalLibrary,
+                    bool forceSameCodegenVersion = true,
+                  }) async {
+                    await instance.initImpl(
+                      api: api,
+                      handler: handler,
+                      externalLibrary: externalLibrary,
+                      forceSameCodegenVersion: forceSameCodegenVersion,
+                    );
+                  }
+
+                  /// Initialize flutter_rust_bridge in mock mode.
+                  /// No libraries for FFI are loaded.
+                  static void initMock({
+                    required RustLibApi api,
+                  }) {
+                    instance.initMockImpl(
+                      api: api,
+                    );
+                  }
+
+                  /// Dispose flutter_rust_bridge
+                  ///
+                  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
+                  /// is automatically disposed when the app stops.
+                  static void dispose() => instance.disposeImpl();
+
+                  @override
+                  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor => RustLibApiImpl.new;
+
+                  @override
+                  WireConstructor<RustLibWire> get wireConstructor => RustLibWire.fromExternalLibrary;
+
+                  @override
+                  Future<void> executeRustInitializers() async {
+                    
+                  }
+
+                  @override
+                  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig => kDefaultExternalLibraryLoaderConfig;
+
+                  @override
+                  String get codegenVersion => '2.11.1';
+
+                  @override
+                  int get rustContentHash => -303728813;
+
+                  static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
+                    stem: 'm_security',
+                    ioDirectory: 'rust/target/release/',
+                    webPrefix: 'pkg/',
+                  );
+                }
+                
+
+                abstract class RustLibApi extends BaseApi {
+                  Future<VaultHealthInfo> crateApiEvfsVaultHandleHealth({required VaultHandle that });
+
+Future<String> crateApiHashingArgon2Argon2IdHash({required String password , required Argon2Preset preset });
+
+Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({required String password , required String salt , required Argon2Preset preset });
+
+Future<void> crateApiHashingArgon2Argon2IdVerify({required String phcHash , required String password });
+
+Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data });
+
+Future<Uint8List> crateApiCompressionCompress({required List<int> data , required CompressionConfig config });
+
+Future<CompressionAlgorithm> crateApiCompressionCompressionAlgorithmFromU8({required int byte });
+
+Future<int> crateApiCompressionCompressionAlgorithmToU8({required CompressionAlgorithm that });
+
+Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({required List<int> key });
+
+Future<HasherHandle> crateApiHashingCreateBlake3();
+
+Future<CipherHandle> crateApiEncryptionCreateChacha20Poly1305({required List<int> key });
+
+Future<CipherHandle> crateApiEncryptionCreateNoopEncryption();
+
+Future<HasherHandle> crateApiHashingCreateSha3();
+
+Future<Uint8List> crateApiCompressionDecompress({required List<int> data , required CompressionAlgorithm algorithm });
+
+Future<Uint8List> crateApiEncryptionDecrypt({required CipherHandle cipher , required List<int> ciphertext , required List<int> aad });
+
+Future<Uint8List> crateApiEncryptionEncrypt({required CipherHandle cipher , required List<int> plaintext , required List<int> aad });
+
+Future<String> crateApiEncryptionEncryptionAlgorithmId({required CipherHandle cipher });
+
+Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey();
+
+Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey();
+
+Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key();
+
+Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey();
+
+Future<String> crateApiHashingHasherAlgorithmId({required HasherHandle handle });
+
+Future<Uint8List> crateApiHashingHasherFinalize({required HasherHandle handle });
+
+Future<void> crateApiHashingHasherReset({required HasherHandle handle });
+
+Future<void> crateApiHashingHasherUpdate({required HasherHandle handle , required List<int> data });
+
+Uint8List crateApiKdfHkdfHkdfDerive({required List<int> ikm , Uint8List? salt , required List<int> info , required BigInt outputLen });
+
+Future<Uint8List> crateApiKdfHkdfHkdfExpand({required List<int> prk , required List<int> info , required BigInt outputLen });
+
+Uint8List crateApiKdfHkdfHkdfExtract({required List<int> ikm , Uint8List? salt });
+
+Future<Uint8List> crateApiHashingSha3Hash({required List<int> data });
+
+Future<bool> crateApiCompressionShouldSkipCompression({required String filePath });
+
+Stream<double> crateApiStreamingStreamCompressEncryptFile({required CipherHandle cipher , required CompressionConfig compression , required String inputPath , required String outputPath });
+
+Stream<double> crateApiStreamingStreamDecryptDecompressFile({required CipherHandle cipher , required String inputPath , required String outputPath });
+
+Stream<double> crateApiStreamingStreamDecryptFile({required CipherHandle cipher , required String inputPath , required String outputPath });
+
+Stream<double> crateApiStreamingStreamEncryptFile({required CipherHandle cipher , required String inputPath , required String outputPath });
+
+Stream<double> crateApiStreamingStreamHashFile({required HasherHandle hasher , required String filePath });
+
+Future<VaultCapacityInfo> crateApiEvfsVaultCapacity({required VaultHandle handle });
+
+Future<void> crateApiEvfsVaultClose({required VaultHandle handle });
+
+Future<VaultHandle> crateApiEvfsVaultCreate({required String path , required List<int> key , required String algorithm , required BigInt capacityBytes });
+
+Future<DefragResult> crateApiEvfsVaultDefragment({required VaultHandle handle });
+
+Future<void> crateApiEvfsVaultDelete({required VaultHandle handle , required String name });
+
+Future<VaultHealthInfo> crateApiEvfsVaultHealth({required VaultHandle handle });
+
+Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle });
+
+Future<VaultHandle> crateApiEvfsVaultOpen({required String path , required List<int> key });
+
+Future<Uint8List> crateApiEvfsVaultRead({required VaultHandle handle , required String name });
+
+Future<void> crateApiEvfsVaultResize({required VaultHandle handle , required BigInt newCapacity });
+
+Future<void> crateApiEvfsVaultWrite({required VaultHandle handle , required String name , required List<int> data , CompressionConfig? compression });
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_CipherHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_CipherHandle;
+
+CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_CipherHandlePtr;
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_HasherHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_HasherHandle;
+
+CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_HasherHandlePtr;
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_VaultHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_VaultHandle;
+
+CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_VaultHandlePtr;
+
+
+                }
+                
+
+                class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
+                  RustLibApiImpl({
+                    required super.handler,
+                    required super.wire,
+                    required super.generalizedFrbRustBinding,
+                    required super.portManager,
+                  });
+
+                  @override Future<VaultHealthInfo> crateApiEvfsVaultHandleHealth({required VaultHandle that })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(that, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_vault_health_info,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultHandleHealthConstMeta,
+            argValues: [that],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiEvfsVaultHandleHealthConstMeta => const TaskConstMeta(
+            debugName: "VaultHandle_health",
+            argNames: ["that"],
+        );
+        
+
+@override Future<String> crateApiHashingArgon2Argon2IdHash({required String password , required Argon2Preset preset })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(password, serializer);
+sse_encode_argon_2_preset(preset, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingArgon2Argon2IdHashConstMeta,
-        argValues: [password, preset],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingArgon2Argon2IdHashConstMeta,
+            argValues: [password, preset],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashConstMeta =>
-      const TaskConstMeta(
-        debugName: "argon2id_hash",
-        argNames: ["password", "preset"],
-      );
 
-  @override
-  Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({
-    required String password,
-    required String salt,
-    required Argon2Preset preset,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(password, serializer);
-          sse_encode_String(salt, serializer);
-          sse_encode_argon_2_preset(preset, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashConstMeta => const TaskConstMeta(
+            debugName: "argon2id_hash",
+            argNames: ["password", "preset"],
+        );
+        
+
+@override Future<String> crateApiHashingArgon2Argon2IdHashWithSalt({required String password , required String salt , required Argon2Preset preset })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(password, serializer);
+sse_encode_String(salt, serializer);
+sse_encode_argon_2_preset(preset, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta,
-        argValues: [password, salt, preset],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta,
+            argValues: [password, salt, preset],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta =>
-      const TaskConstMeta(
-        debugName: "argon2id_hash_with_salt",
-        argNames: ["password", "salt", "preset"],
-      );
 
-  @override
-  Future<void> crateApiHashingArgon2Argon2IdVerify({
-    required String phcHash,
-    required String password,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(phcHash, serializer);
-          sse_encode_String(password, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta => const TaskConstMeta(
+            debugName: "argon2id_hash_with_salt",
+            argNames: ["password", "salt", "preset"],
+        );
+        
+
+@override Future<void> crateApiHashingArgon2Argon2IdVerify({required String phcHash , required String password })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(phcHash, serializer);
+sse_encode_String(password, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingArgon2Argon2IdVerifyConstMeta,
-        argValues: [phcHash, password],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingArgon2Argon2IdVerifyConstMeta,
+            argValues: [phcHash, password],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingArgon2Argon2IdVerifyConstMeta =>
-      const TaskConstMeta(
-        debugName: "argon2id_verify",
-        argNames: ["phcHash", "password"],
-      );
 
-  @override
-  Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 4,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingArgon2Argon2IdVerifyConstMeta => const TaskConstMeta(
+            debugName: "argon2id_verify",
+            argNames: ["phcHash", "password"],
+        );
+        
+
+@override Future<Uint8List> crateApiHashingBlake3Hash({required List<int> data })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(data, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiHashingBlake3HashConstMeta,
-        argValues: [data],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingBlake3HashConstMeta,
+            argValues: [data],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingBlake3HashConstMeta =>
-      const TaskConstMeta(debugName: "blake3_hash", argNames: ["data"]);
 
-  @override
-  Future<Uint8List> crateApiCompressionCompress({
-    required List<int> data,
-    required CompressionConfig config,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_box_autoadd_compression_config(config, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 5,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingBlake3HashConstMeta => const TaskConstMeta(
+            debugName: "blake3_hash",
+            argNames: ["data"],
+        );
+        
+
+@override Future<Uint8List> crateApiCompressionCompress({required List<int> data , required CompressionConfig config })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(data, serializer);
+sse_encode_box_autoadd_compression_config(config, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiCompressionCompressConstMeta,
-        argValues: [data, config],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiCompressionCompressConstMeta,
+            argValues: [data, config],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiCompressionCompressConstMeta =>
-      const TaskConstMeta(debugName: "compress", argNames: ["data", "config"]);
 
-  @override
-  Future<CompressionAlgorithm> crateApiCompressionCompressionAlgorithmFromU8({
-    required int byte,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_u_8(byte, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 6,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiCompressionCompressConstMeta => const TaskConstMeta(
+            debugName: "compress",
+            argNames: ["data", "config"],
+        );
+        
+
+@override Future<CompressionAlgorithm> crateApiCompressionCompressionAlgorithmFromU8({required int byte })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_u_8(byte, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_compression_algorithm,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiCompressionCompressionAlgorithmFromU8ConstMeta,
-        argValues: [byte],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiCompressionCompressionAlgorithmFromU8ConstMeta,
+            argValues: [byte],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiCompressionCompressionAlgorithmFromU8ConstMeta =>
-      const TaskConstMeta(
-        debugName: "compression_algorithm_from_u8",
-        argNames: ["byte"],
-      );
 
-  @override
-  Future<int> crateApiCompressionCompressionAlgorithmToU8({
-    required CompressionAlgorithm that,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_compression_algorithm(that, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 7,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiCompressionCompressionAlgorithmFromU8ConstMeta => const TaskConstMeta(
+            debugName: "compression_algorithm_from_u8",
+            argNames: ["byte"],
+        );
+        
+
+@override Future<int> crateApiCompressionCompressionAlgorithmToU8({required CompressionAlgorithm that })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_compression_algorithm(that, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_u_8,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiCompressionCompressionAlgorithmToU8ConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiCompressionCompressionAlgorithmToU8ConstMeta,
+            argValues: [that],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiCompressionCompressionAlgorithmToU8ConstMeta =>
-      const TaskConstMeta(
-        debugName: "compression_algorithm_to_u8",
-        argNames: ["that"],
-      );
 
-  @override
-  Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({
-    required List<int> key,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 8,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+        TaskConstMeta get kCrateApiCompressionCompressionAlgorithmToU8ConstMeta => const TaskConstMeta(
+            debugName: "compression_algorithm_to_u8",
+            argNames: ["that"],
+        );
+        
+
+@override Future<CipherHandle> crateApiEncryptionCreateAes256Gcm({required List<int> key })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(key, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionCreateAes256GcmConstMeta,
-        argValues: [key],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionCreateAes256GcmConstMeta,
+            argValues: [key],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionCreateAes256GcmConstMeta =>
-      const TaskConstMeta(debugName: "create_aes256_gcm", argNames: ["key"]);
 
-  @override
-  Future<HasherHandle> crateApiHashingCreateBlake3() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 9,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
+        TaskConstMeta get kCrateApiEncryptionCreateAes256GcmConstMeta => const TaskConstMeta(
+            debugName: "create_aes256_gcm",
+            argNames: ["key"],
+        );
+        
+
+@override Future<HasherHandle> crateApiHashingCreateBlake3()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiHashingCreateBlake3ConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingCreateBlake3ConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingCreateBlake3ConstMeta =>
-      const TaskConstMeta(debugName: "create_blake3", argNames: []);
 
-  @override
-  Future<CipherHandle> crateApiEncryptionCreateChacha20Poly1305({
-    required List<int> key,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 10,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+        TaskConstMeta get kCrateApiHashingCreateBlake3ConstMeta => const TaskConstMeta(
+            debugName: "create_blake3",
+            argNames: [],
+        );
+        
+
+@override Future<CipherHandle> crateApiEncryptionCreateChacha20Poly1305({required List<int> key })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(key, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionCreateChacha20Poly1305ConstMeta,
-        argValues: [key],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionCreateChacha20Poly1305ConstMeta,
+            argValues: [key],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionCreateChacha20Poly1305ConstMeta =>
-      const TaskConstMeta(
-        debugName: "create_chacha20_poly1305",
-        argNames: ["key"],
-      );
 
-  @override
-  Future<CipherHandle> crateApiEncryptionCreateNoopEncryption() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 11,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+        TaskConstMeta get kCrateApiEncryptionCreateChacha20Poly1305ConstMeta => const TaskConstMeta(
+            debugName: "create_chacha20_poly1305",
+            argNames: ["key"],
+        );
+        
+
+@override Future<CipherHandle> crateApiEncryptionCreateNoopEncryption()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEncryptionCreateNoopEncryptionConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionCreateNoopEncryptionConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionCreateNoopEncryptionConstMeta =>
-      const TaskConstMeta(debugName: "create_noop_encryption", argNames: []);
 
-  @override
-  Future<HasherHandle> crateApiHashingCreateSha3() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 12,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
+        TaskConstMeta get kCrateApiEncryptionCreateNoopEncryptionConstMeta => const TaskConstMeta(
+            debugName: "create_noop_encryption",
+            argNames: [],
+        );
+        
+
+@override Future<HasherHandle> crateApiHashingCreateSha3()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiHashingCreateSha3ConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingCreateSha3ConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingCreateSha3ConstMeta =>
-      const TaskConstMeta(debugName: "create_sha3", argNames: []);
 
-  @override
-  Future<Uint8List> crateApiCompressionDecompress({
-    required List<int> data,
-    required CompressionAlgorithm algorithm,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_compression_algorithm(algorithm, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 13,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingCreateSha3ConstMeta => const TaskConstMeta(
+            debugName: "create_sha3",
+            argNames: [],
+        );
+        
+
+@override Future<Uint8List> crateApiCompressionDecompress({required List<int> data , required CompressionAlgorithm algorithm })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(data, serializer);
+sse_encode_compression_algorithm(algorithm, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiCompressionDecompressConstMeta,
-        argValues: [data, algorithm],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiCompressionDecompressConstMeta,
+            argValues: [data, algorithm],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiCompressionDecompressConstMeta =>
-      const TaskConstMeta(
-        debugName: "decompress",
-        argNames: ["data", "algorithm"],
-      );
 
-  @override
-  Future<Uint8List> crateApiEncryptionDecrypt({
-    required CipherHandle cipher,
-    required List<int> ciphertext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 14,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiCompressionDecompressConstMeta => const TaskConstMeta(
+            debugName: "decompress",
+            argNames: ["data", "algorithm"],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionDecrypt({required CipherHandle cipher , required List<int> ciphertext , required List<int> aad })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_list_prim_u_8_loose(ciphertext, serializer);
+sse_encode_list_prim_u_8_loose(aad, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionDecryptConstMeta,
-        argValues: [cipher, ciphertext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionDecryptConstMeta,
+            argValues: [cipher, ciphertext, aad],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionDecryptConstMeta => const TaskConstMeta(
-    debugName: "decrypt",
-    argNames: ["cipher", "ciphertext", "aad"],
-  );
 
-  @override
-  Future<Uint8List> crateApiEncryptionEncrypt({
-    required CipherHandle cipher,
-    required List<int> plaintext,
-    required List<int> aad,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(plaintext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 15,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionDecryptConstMeta => const TaskConstMeta(
+            debugName: "decrypt",
+            argNames: ["cipher", "ciphertext", "aad"],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionEncrypt({required CipherHandle cipher , required List<int> plaintext , required List<int> aad })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_list_prim_u_8_loose(plaintext, serializer);
+sse_encode_list_prim_u_8_loose(aad, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionEncryptConstMeta,
-        argValues: [cipher, plaintext, aad],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionEncryptConstMeta,
+            argValues: [cipher, plaintext, aad],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionEncryptConstMeta => const TaskConstMeta(
-    debugName: "encrypt",
-    argNames: ["cipher", "plaintext", "aad"],
-  );
 
-  @override
-  Future<String> crateApiEncryptionEncryptionAlgorithmId({
-    required CipherHandle cipher,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 16,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionEncryptConstMeta => const TaskConstMeta(
+            debugName: "encrypt",
+            argNames: ["cipher", "plaintext", "aad"],
+        );
+        
+
+@override Future<String> crateApiEncryptionEncryptionAlgorithmId({required CipherHandle cipher })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_String,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEncryptionEncryptionAlgorithmIdConstMeta,
-        argValues: [cipher],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionEncryptionAlgorithmIdConstMeta,
+            argValues: [cipher],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionEncryptionAlgorithmIdConstMeta =>
-      const TaskConstMeta(
-        debugName: "encryption_algorithm_id",
-        argNames: ["cipher"],
-      );
 
-  @override
-  Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 17,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionEncryptionAlgorithmIdConstMeta => const TaskConstMeta(
+            debugName: "encryption_algorithm_id",
+            argNames: ["cipher"],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionGenerateAes256GcmKeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionGenerateAes256GcmKeyConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionGenerateAes256GcmKeyConstMeta =>
-      const TaskConstMeta(debugName: "generate_aes256_gcm_key", argNames: []);
 
-  @override
-  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 18,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionGenerateAes256GcmKeyConstMeta => const TaskConstMeta(
+            debugName: "generate_aes256_gcm_key",
+            argNames: [],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta =>
-      const TaskConstMeta(debugName: "generate_aes_key", argNames: []);
 
-  @override
-  Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 19,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta => const TaskConstMeta(
+            debugName: "generate_aes_key",
+            argNames: [],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionGenerateChacha20Poly1305KeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionGenerateChacha20Poly1305KeyConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionGenerateChacha20Poly1305KeyConstMeta =>
-      const TaskConstMeta(
-        debugName: "generate_chacha20_poly1305_key",
-        argNames: [],
-      );
 
-  @override
-  Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 20,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionGenerateChacha20Poly1305KeyConstMeta => const TaskConstMeta(
+            debugName: "generate_chacha20_poly1305_key",
+            argNames: [],
+        );
+        
+
+@override Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey()  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta,
+            argValues: [],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta =>
-      const TaskConstMeta(debugName: "generate_chacha_key", argNames: []);
 
-  @override
-  Future<String> crateApiHashingHasherAlgorithmId({
-    required HasherHandle handle,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 21,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta => const TaskConstMeta(
+            debugName: "generate_chacha_key",
+            argNames: [],
+        );
+        
+
+@override Future<String> crateApiHashingHasherAlgorithmId({required HasherHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingHasherAlgorithmIdConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingHasherAlgorithmIdConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingHasherAlgorithmIdConstMeta =>
-      const TaskConstMeta(
-        debugName: "hasher_algorithm_id",
-        argNames: ["handle"],
-      );
 
-  @override
-  Future<Uint8List> crateApiHashingHasherFinalize({
-    required HasherHandle handle,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 22,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingHasherAlgorithmIdConstMeta => const TaskConstMeta(
+            debugName: "hasher_algorithm_id",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<Uint8List> crateApiHashingHasherFinalize({required HasherHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingHasherFinalizeConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingHasherFinalizeConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingHasherFinalizeConstMeta =>
-      const TaskConstMeta(debugName: "hasher_finalize", argNames: ["handle"]);
 
-  @override
-  Future<void> crateApiHashingHasherReset({required HasherHandle handle}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 23,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingHasherFinalizeConstMeta => const TaskConstMeta(
+            debugName: "hasher_finalize",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<void> crateApiHashingHasherReset({required HasherHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingHasherResetConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingHasherResetConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingHasherResetConstMeta =>
-      const TaskConstMeta(debugName: "hasher_reset", argNames: ["handle"]);
 
-  @override
-  Future<void> crateApiHashingHasherUpdate({
-    required HasherHandle handle,
-    required List<int> data,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 24,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingHasherResetConstMeta => const TaskConstMeta(
+            debugName: "hasher_reset",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<void> crateApiHashingHasherUpdate({required HasherHandle handle , required List<int> data })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(handle, serializer);
+sse_encode_list_prim_u_8_loose(data, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiHashingHasherUpdateConstMeta,
-        argValues: [handle, data],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingHasherUpdateConstMeta,
+            argValues: [handle, data],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingHasherUpdateConstMeta =>
-      const TaskConstMeta(
-        debugName: "hasher_update",
-        argNames: ["handle", "data"],
-      );
 
-  @override
-  Uint8List crateApiKdfHkdfHkdfDerive({
-    required List<int> ikm,
-    Uint8List? salt,
-    required List<int> info,
-    required BigInt outputLen,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(ikm, serializer);
-          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
-          sse_encode_list_prim_u_8_loose(info, serializer);
-          sse_encode_usize(outputLen, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingHasherUpdateConstMeta => const TaskConstMeta(
+            debugName: "hasher_update",
+            argNames: ["handle", "data"],
+        );
+        
+
+@override Uint8List crateApiKdfHkdfHkdfDerive({required List<int> ikm , Uint8List? salt , required List<int> info , required BigInt outputLen })  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(ikm, serializer);
+sse_encode_opt_list_prim_u_8_strict(salt, serializer);
+sse_encode_list_prim_u_8_loose(info, serializer);
+sse_encode_usize(outputLen, serializer);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiKdfHkdfHkdfDeriveConstMeta,
-        argValues: [ikm, salt, info, outputLen],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiKdfHkdfHkdfDeriveConstMeta,
+            argValues: [ikm, salt, info, outputLen],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiKdfHkdfHkdfDeriveConstMeta => const TaskConstMeta(
-    debugName: "hkdf_derive",
-    argNames: ["ikm", "salt", "info", "outputLen"],
-  );
 
-  @override
-  Future<Uint8List> crateApiKdfHkdfHkdfExpand({
-    required List<int> prk,
-    required List<int> info,
-    required BigInt outputLen,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(prk, serializer);
-          sse_encode_list_prim_u_8_loose(info, serializer);
-          sse_encode_usize(outputLen, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 26,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiKdfHkdfHkdfDeriveConstMeta => const TaskConstMeta(
+            debugName: "hkdf_derive",
+            argNames: ["ikm", "salt", "info", "outputLen"],
+        );
+        
+
+@override Future<Uint8List> crateApiKdfHkdfHkdfExpand({required List<int> prk , required List<int> info , required BigInt outputLen })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(prk, serializer);
+sse_encode_list_prim_u_8_loose(info, serializer);
+sse_encode_usize(outputLen, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiKdfHkdfHkdfExpandConstMeta,
-        argValues: [prk, info, outputLen],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiKdfHkdfHkdfExpandConstMeta,
+            argValues: [prk, info, outputLen],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiKdfHkdfHkdfExpandConstMeta => const TaskConstMeta(
-    debugName: "hkdf_expand",
-    argNames: ["prk", "info", "outputLen"],
-  );
 
-  @override
-  Uint8List crateApiKdfHkdfHkdfExtract({
-    required List<int> ikm,
-    Uint8List? salt,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(ikm, serializer);
-          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiKdfHkdfHkdfExpandConstMeta => const TaskConstMeta(
+            debugName: "hkdf_expand",
+            argNames: ["prk", "info", "outputLen"],
+        );
+        
+
+@override Uint8List crateApiKdfHkdfHkdfExtract({required List<int> ikm , Uint8List? salt })  { return handler.executeSync(SyncTask(
+            callFfi: () {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(ikm, serializer);
+sse_encode_opt_list_prim_u_8_strict(salt, serializer);
+            return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiKdfHkdfHkdfExtractConstMeta,
-        argValues: [ikm, salt],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiKdfHkdfHkdfExtractConstMeta,
+            argValues: [ikm, salt],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiKdfHkdfHkdfExtractConstMeta =>
-      const TaskConstMeta(debugName: "hkdf_extract", argNames: ["ikm", "salt"]);
 
-  @override
-  Future<Uint8List> crateApiHashingSha3Hash({required List<int> data}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 28,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiKdfHkdfHkdfExtractConstMeta => const TaskConstMeta(
+            debugName: "hkdf_extract",
+            argNames: ["ikm", "salt"],
+        );
+        
+
+@override Future<Uint8List> crateApiHashingSha3Hash({required List<int> data })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_list_prim_u_8_loose(data, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiHashingSha3HashConstMeta,
-        argValues: [data],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiHashingSha3HashConstMeta,
+            argValues: [data],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiHashingSha3HashConstMeta =>
-      const TaskConstMeta(debugName: "sha3_hash", argNames: ["data"]);
 
-  @override
-  Future<bool> crateApiCompressionShouldSkipCompression({
-    required String filePath,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(filePath, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 29,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiHashingSha3HashConstMeta => const TaskConstMeta(
+            debugName: "sha3_hash",
+            argNames: ["data"],
+        );
+        
+
+@override Future<bool> crateApiCompressionShouldSkipCompression({required String filePath })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(filePath, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_bool,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiCompressionShouldSkipCompressionConstMeta,
-        argValues: [filePath],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiCompressionShouldSkipCompressionConstMeta,
+            argValues: [filePath],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiCompressionShouldSkipCompressionConstMeta =>
-      const TaskConstMeta(
-        debugName: "should_skip_compression",
-        argNames: ["filePath"],
-      );
 
-  @override
-  Stream<double> crateApiStreamingStreamCompressEncryptFile({
-    required CipherHandle cipher,
-    required CompressionConfig compression,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_box_autoadd_compression_config(compression, serializer);
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 30,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamCompressEncryptFileConstMeta,
-          argValues: [cipher, compression, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
+        TaskConstMeta get kCrateApiCompressionShouldSkipCompressionConstMeta => const TaskConstMeta(
+            debugName: "should_skip_compression",
+            argNames: ["filePath"],
+        );
+        
 
-  TaskConstMeta get kCrateApiStreamingStreamCompressEncryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_compress_encrypt_file",
-        argNames: [
-          "cipher",
-          "compression",
-          "inputPath",
-          "outputPath",
-          "progressSink",
-        ],
-      );
+@override Stream<double> crateApiStreamingStreamCompressEncryptFile({required CipherHandle cipher , required CompressionConfig compression , required String inputPath , required String outputPath })  { 
+            final progressSink = RustStreamSink<double>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_box_autoadd_compression_config(compression, serializer);
+sse_encode_String(inputPath, serializer);
+sse_encode_String(outputPath, serializer);
+sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiStreamingStreamCompressEncryptFileConstMeta,
+            argValues: [cipher, compression, inputPath, outputPath, progressSink],
+            apiImpl: this,
+        )));
+            return progressSink.stream;
+             }
 
-  @override
-  Stream<double> crateApiStreamingStreamDecryptDecompressFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 31,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamDecryptDecompressFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
 
-  TaskConstMeta get kCrateApiStreamingStreamDecryptDecompressFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_decrypt_decompress_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
+        TaskConstMeta get kCrateApiStreamingStreamCompressEncryptFileConstMeta => const TaskConstMeta(
+            debugName: "stream_compress_encrypt_file",
+            argNames: ["cipher", "compression", "inputPath", "outputPath", "progressSink"],
+        );
+        
 
-  @override
-  Stream<double> crateApiStreamingStreamDecryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 32,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamDecryptFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
+@override Stream<double> crateApiStreamingStreamDecryptDecompressFile({required CipherHandle cipher , required String inputPath , required String outputPath })  { 
+            final progressSink = RustStreamSink<double>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_String(inputPath, serializer);
+sse_encode_String(outputPath, serializer);
+sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiStreamingStreamDecryptDecompressFileConstMeta,
+            argValues: [cipher, inputPath, outputPath, progressSink],
+            apiImpl: this,
+        )));
+            return progressSink.stream;
+             }
 
-  TaskConstMeta get kCrateApiStreamingStreamDecryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_decrypt_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
 
-  @override
-  Stream<double> crateApiStreamingStreamEncryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 33,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamEncryptFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
+        TaskConstMeta get kCrateApiStreamingStreamDecryptDecompressFileConstMeta => const TaskConstMeta(
+            debugName: "stream_decrypt_decompress_file",
+            argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
+        );
+        
 
-  TaskConstMeta get kCrateApiStreamingStreamEncryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_encrypt_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
+@override Stream<double> crateApiStreamingStreamDecryptFile({required CipherHandle cipher , required String inputPath , required String outputPath })  { 
+            final progressSink = RustStreamSink<double>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_String(inputPath, serializer);
+sse_encode_String(outputPath, serializer);
+sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiStreamingStreamDecryptFileConstMeta,
+            argValues: [cipher, inputPath, outputPath, progressSink],
+            apiImpl: this,
+        )));
+            return progressSink.stream;
+             }
 
-  @override
-  Stream<double> crateApiStreamingStreamHashFile({
-    required HasherHandle hasher,
-    required String filePath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-              hasher,
-              serializer,
-            );
-            sse_encode_String(filePath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 34,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamHashFileConstMeta,
-          argValues: [hasher, filePath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
 
-  TaskConstMeta get kCrateApiStreamingStreamHashFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_hash_file",
-        argNames: ["hasher", "filePath", "progressSink"],
-      );
+        TaskConstMeta get kCrateApiStreamingStreamDecryptFileConstMeta => const TaskConstMeta(
+            debugName: "stream_decrypt_file",
+            argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
+        );
+        
 
-  @override
-  Future<VaultCapacityInfo> crateApiEvfsVaultCapacity({
-    required VaultHandle handle,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 35,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+@override Stream<double> crateApiStreamingStreamEncryptFile({required CipherHandle cipher , required String inputPath , required String outputPath })  { 
+            final progressSink = RustStreamSink<double>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(cipher, serializer);
+sse_encode_String(inputPath, serializer);
+sse_encode_String(outputPath, serializer);
+sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiStreamingStreamEncryptFileConstMeta,
+            argValues: [cipher, inputPath, outputPath, progressSink],
+            apiImpl: this,
+        )));
+            return progressSink.stream;
+             }
+
+
+        TaskConstMeta get kCrateApiStreamingStreamEncryptFileConstMeta => const TaskConstMeta(
+            debugName: "stream_encrypt_file",
+            argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
+        );
+        
+
+@override Stream<double> crateApiStreamingStreamHashFile({required HasherHandle hasher , required String filePath })  { 
+            final progressSink = RustStreamSink<double>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(hasher, serializer);
+sse_encode_String(filePath, serializer);
+sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiStreamingStreamHashFileConstMeta,
+            argValues: [hasher, filePath, progressSink],
+            apiImpl: this,
+        )));
+            return progressSink.stream;
+             }
+
+
+        TaskConstMeta get kCrateApiStreamingStreamHashFileConstMeta => const TaskConstMeta(
+            debugName: "stream_hash_file",
+            argNames: ["hasher", "filePath", "progressSink"],
+        );
+        
+
+@override Future<VaultCapacityInfo> crateApiEvfsVaultCapacity({required VaultHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_vault_capacity_info,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEvfsVaultCapacityConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultCapacityConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultCapacityConstMeta =>
-      const TaskConstMeta(debugName: "vault_capacity", argNames: ["handle"]);
 
-  @override
-  Future<void> crateApiEvfsVaultClose({required VaultHandle handle}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 36,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEvfsVaultCapacityConstMeta => const TaskConstMeta(
+            debugName: "vault_capacity",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<void> crateApiEvfsVaultClose({required VaultHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultCloseConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultCloseConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultCloseConstMeta =>
-      const TaskConstMeta(debugName: "vault_close", argNames: ["handle"]);
 
-  @override
-  Future<VaultHandle> crateApiEvfsVaultCreate({
-    required String path,
-    required List<int> key,
-    required String algorithm,
-    required BigInt capacityBytes,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(path, serializer);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          sse_encode_String(algorithm, serializer);
-          sse_encode_u_64(capacityBytes, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 37,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+        TaskConstMeta get kCrateApiEvfsVaultCloseConstMeta => const TaskConstMeta(
+            debugName: "vault_close",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<VaultHandle> crateApiEvfsVaultCreate({required String path , required List<int> key , required String algorithm , required BigInt capacityBytes })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(path, serializer);
+sse_encode_list_prim_u_8_loose(key, serializer);
+sse_encode_String(algorithm, serializer);
+sse_encode_u_64(capacityBytes, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultCreateConstMeta,
-        argValues: [path, key, algorithm, capacityBytes],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultCreateConstMeta,
+            argValues: [path, key, algorithm, capacityBytes],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultCreateConstMeta => const TaskConstMeta(
-    debugName: "vault_create",
-    argNames: ["path", "key", "algorithm", "capacityBytes"],
-  );
 
-  @override
-  Future<void> crateApiEvfsVaultDelete({
-    required VaultHandle handle,
-    required String name,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 38,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEvfsVaultCreateConstMeta => const TaskConstMeta(
+            debugName: "vault_create",
+            argNames: ["path", "key", "algorithm", "capacityBytes"],
+        );
+        
+
+@override Future<DefragResult> crateApiEvfsVaultDefragment({required VaultHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_defrag_result,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultDefragmentConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiEvfsVaultDefragmentConstMeta => const TaskConstMeta(
+            debugName: "vault_defragment",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<void> crateApiEvfsVaultDelete({required VaultHandle handle , required String name })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+sse_encode_String(name, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultDeleteConstMeta,
-        argValues: [handle, name],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultDeleteConstMeta,
+            argValues: [handle, name],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultDeleteConstMeta => const TaskConstMeta(
-    debugName: "vault_delete",
-    argNames: ["handle", "name"],
-  );
 
-  @override
-  Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 39,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEvfsVaultDeleteConstMeta => const TaskConstMeta(
+            debugName: "vault_delete",
+            argNames: ["handle", "name"],
+        );
+        
+
+@override Future<VaultHealthInfo> crateApiEvfsVaultHealth({required VaultHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_vault_health_info,
+          decodeErrorData: null,
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultHealthConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiEvfsVaultHealthConstMeta => const TaskConstMeta(
+            debugName: "vault_health",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_String,
           decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEvfsVaultListConstMeta,
-        argValues: [handle],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultListConstMeta,
+            argValues: [handle],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultListConstMeta =>
-      const TaskConstMeta(debugName: "vault_list", argNames: ["handle"]);
 
-  @override
-  Future<VaultHandle> crateApiEvfsVaultOpen({
-    required String path,
-    required List<int> key,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(path, serializer);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 40,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+        TaskConstMeta get kCrateApiEvfsVaultListConstMeta => const TaskConstMeta(
+            debugName: "vault_list",
+            argNames: ["handle"],
+        );
+        
+
+@override Future<VaultHandle> crateApiEvfsVaultOpen({required String path , required List<int> key })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(path, serializer);
+sse_encode_list_prim_u_8_loose(key, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultOpenConstMeta,
-        argValues: [path, key],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultOpenConstMeta,
+            argValues: [path, key],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultOpenConstMeta =>
-      const TaskConstMeta(debugName: "vault_open", argNames: ["path", "key"]);
 
-  @override
-  Future<Uint8List> crateApiEvfsVaultRead({
-    required VaultHandle handle,
-    required String name,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 41,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEvfsVaultOpenConstMeta => const TaskConstMeta(
+            debugName: "vault_open",
+            argNames: ["path", "key"],
+        );
+        
+
+@override Future<Uint8List> crateApiEvfsVaultRead({required VaultHandle handle , required String name })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+sse_encode_String(name, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultReadConstMeta,
-        argValues: [handle, name],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultReadConstMeta,
+            argValues: [handle, name],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultReadConstMeta => const TaskConstMeta(
-    debugName: "vault_read",
-    argNames: ["handle", "name"],
-  );
 
-  @override
-  Future<void> crateApiEvfsVaultWrite({
-    required VaultHandle handle,
-    required String name,
-    required List<int> data,
-    CompressionConfig? compression,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_opt_box_autoadd_compression_config(
-            compression,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 42,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
+        TaskConstMeta get kCrateApiEvfsVaultReadConstMeta => const TaskConstMeta(
+            debugName: "vault_read",
+            argNames: ["handle", "name"],
+        );
+        
+
+@override Future<void> crateApiEvfsVaultResize({required VaultHandle handle , required BigInt newCapacity })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+sse_encode_u_64(newCapacity, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultWriteConstMeta,
-        argValues: [handle, name, data, compression],
-        apiImpl: this,
-      ),
-    );
-  }
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultResizeConstMeta,
+            argValues: [handle, newCapacity],
+            apiImpl: this,
+        )); }
 
-  TaskConstMeta get kCrateApiEvfsVaultWriteConstMeta => const TaskConstMeta(
-    debugName: "vault_write",
-    argNames: ["handle", "name", "data", "compression"],
-  );
 
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_CipherHandle => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_CipherHandle => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_HasherHandle => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_HasherHandle => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_VaultHandle => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_VaultHandle => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle;
-
-  @protected
-  AnyhowException dco_decode_AnyhowException(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return AnyhowException(raw as String);
-  }
-
-  @protected
-  CipherHandle
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  HasherHandle
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  VaultHandle
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  VaultHandle
-  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  CipherHandle
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  HasherHandle
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  VaultHandle
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  CipherHandle
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  HasherHandle
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  VaultHandle
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
-  RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    throw UnimplementedError();
-  }
-
-  @protected
-  String dco_decode_String(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as String;
-  }
-
-  @protected
-  Argon2Preset dco_decode_argon_2_preset(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Argon2Preset.values[raw as int];
-  }
-
-  @protected
-  bool dco_decode_bool(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as bool;
-  }
-
-  @protected
-  CompressionConfig dco_decode_box_autoadd_compression_config(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_compression_config(raw);
-  }
-
-  @protected
-  int dco_decode_box_autoadd_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  CompressionAlgorithm dco_decode_compression_algorithm(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return CompressionAlgorithm.values[raw as int];
-  }
-
-  @protected
-  CompressionConfig dco_decode_compression_config(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return CompressionConfig(
-      algorithm: dco_decode_compression_algorithm(arr[0]),
-      level: dco_decode_opt_box_autoadd_i_32(arr[1]),
-    );
-  }
-
-  @protected
-  CryptoError dco_decode_crypto_error(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return CryptoError_InvalidKeyLength(
-          expected: dco_decode_usize(raw[1]),
-          actual: dco_decode_usize(raw[2]),
+        TaskConstMeta get kCrateApiEvfsVaultResizeConstMeta => const TaskConstMeta(
+            debugName: "vault_resize",
+            argNames: ["handle", "newCapacity"],
         );
-      case 1:
-        return CryptoError_InvalidNonce();
-      case 2:
-        return CryptoError_EncryptionFailed(dco_decode_String(raw[1]));
-      case 3:
-        return CryptoError_DecryptionFailed();
-      case 4:
-        return CryptoError_HashingFailed(dco_decode_String(raw[1]));
-      case 5:
-        return CryptoError_KdfFailed(dco_decode_String(raw[1]));
-      case 6:
-        return CryptoError_IoError(dco_decode_String(raw[1]));
-      case 7:
-        return CryptoError_InvalidParameter(dco_decode_String(raw[1]));
-      case 8:
-        return CryptoError_CompressionFailed(dco_decode_String(raw[1]));
-      case 9:
-        return CryptoError_AuthenticationFailed();
-      case 10:
-        return CryptoError_VaultFull(
-          needed: dco_decode_u_64(raw[1]),
-          available: dco_decode_u_64(raw[2]),
+        
+
+@override Future<void> crateApiEvfsVaultWrite({required VaultHandle handle , required String name , required List<int> data , CompressionConfig? compression })  { return handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(handle, serializer);
+sse_encode_String(name, serializer);
+sse_encode_list_prim_u_8_loose(data, serializer);
+sse_encode_opt_box_autoadd_compression_config(compression, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        )
+        ,
+            constMeta: kCrateApiEvfsVaultWriteConstMeta,
+            argValues: [handle, name, data, compression],
+            apiImpl: this,
+        )); }
+
+
+        TaskConstMeta get kCrateApiEvfsVaultWriteConstMeta => const TaskConstMeta(
+            debugName: "vault_write",
+            argNames: ["handle", "name", "data", "compression"],
         );
-      case 11:
-        return CryptoError_VaultLocked();
-      case 12:
-        return CryptoError_SegmentNotFound(dco_decode_String(raw[1]));
-      case 13:
-        return CryptoError_VaultCorrupted(dco_decode_String(raw[1]));
-      default:
-        throw Exception("unreachable");
-    }
-  }
-
-  @protected
-  double dco_decode_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as double;
-  }
-
-  @protected
-  int dco_decode_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  List<String> dco_decode_list_String(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_String).toList();
-  }
-
-  @protected
-  List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as List<int>;
-  }
-
-  @protected
-  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as Uint8List;
-  }
-
-  @protected
-  CompressionConfig? dco_decode_opt_box_autoadd_compression_config(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_compression_config(raw);
-  }
-
-  @protected
-  int? dco_decode_opt_box_autoadd_i_32(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_i_32(raw);
-  }
-
-  @protected
-  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
-  }
-
-  @protected
-  BigInt dco_decode_u_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dcoDecodeU64(raw);
-  }
-
-  @protected
-  int dco_decode_u_8(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as int;
-  }
-
-  @protected
-  void dco_decode_unit(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return;
-  }
-
-  @protected
-  BigInt dco_decode_usize(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dcoDecodeU64(raw);
-  }
-
-  @protected
-  VaultCapacityInfo dco_decode_vault_capacity_info(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-    return VaultCapacityInfo(
-      totalBytes: dco_decode_u_64(arr[0]),
-      usedBytes: dco_decode_u_64(arr[1]),
-      freeListBytes: dco_decode_u_64(arr[2]),
-      unallocatedBytes: dco_decode_u_64(arr[3]),
-      segmentCount: dco_decode_usize(arr[4]),
-    );
-  }
-
-  @protected
-  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_String(deserializer);
-    return AnyhowException(inner);
-  }
-
-  @protected
-  CipherHandle
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  HasherHandle
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  VaultHandle
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  VaultHandle
-  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  CipherHandle
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  HasherHandle
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  VaultHandle
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  CipherHandle
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return CipherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  HasherHandle
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return HasherHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  VaultHandle
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return VaultHandleImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
-  RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    throw UnimplementedError('Unreachable ()');
-  }
-
-  @protected
-  String sse_decode_String(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_list_prim_u_8_strict(deserializer);
-    return utf8.decoder.convert(inner);
-  }
-
-  @protected
-  Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return Argon2Preset.values[inner];
-  }
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
-  CompressionConfig sse_decode_box_autoadd_compression_config(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_compression_config(deserializer));
-  }
-
-  @protected
-  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_i_32(deserializer));
-  }
-
-  @protected
-  CompressionAlgorithm sse_decode_compression_algorithm(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return CompressionAlgorithm.values[inner];
-  }
-
-  @protected
-  CompressionConfig sse_decode_compression_config(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_algorithm = sse_decode_compression_algorithm(deserializer);
-    var var_level = sse_decode_opt_box_autoadd_i_32(deserializer);
-    return CompressionConfig(algorithm: var_algorithm, level: var_level);
-  }
-
-  @protected
-  CryptoError sse_decode_crypto_error(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_expected = sse_decode_usize(deserializer);
-        var var_actual = sse_decode_usize(deserializer);
-        return CryptoError_InvalidKeyLength(
-          expected: var_expected,
-          actual: var_actual,
-        );
-      case 1:
-        return CryptoError_InvalidNonce();
-      case 2:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_EncryptionFailed(var_field0);
-      case 3:
-        return CryptoError_DecryptionFailed();
-      case 4:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_HashingFailed(var_field0);
-      case 5:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_KdfFailed(var_field0);
-      case 6:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_IoError(var_field0);
-      case 7:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_InvalidParameter(var_field0);
-      case 8:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_CompressionFailed(var_field0);
-      case 9:
-        return CryptoError_AuthenticationFailed();
-      case 10:
-        var var_needed = sse_decode_u_64(deserializer);
-        var var_available = sse_decode_u_64(deserializer);
-        return CryptoError_VaultFull(
-          needed: var_needed,
-          available: var_available,
-        );
-      case 11:
-        return CryptoError_VaultLocked();
-      case 12:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_SegmentNotFound(var_field0);
-      case 13:
-        var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_VaultCorrupted(var_field0);
-      default:
-        throw UnimplementedError('');
-    }
-  }
-
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getFloat64();
-  }
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
-  List<String> sse_decode_list_String(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <String>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_String(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint8List(len_);
-  }
-
-  @protected
-  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint8List(len_);
-  }
-
-  @protected
-  CompressionConfig? sse_decode_opt_box_autoadd_compression_config(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_compression_config(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_i_32(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_list_prim_u_8_strict(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  BigInt sse_decode_u_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getBigUint64();
-  }
-
-  @protected
-  int sse_decode_u_8(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8();
-  }
-
-  @protected
-  void sse_decode_unit(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  BigInt sse_decode_usize(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getBigUint64();
-  }
-
-  @protected
-  VaultCapacityInfo sse_decode_vault_capacity_info(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_totalBytes = sse_decode_u_64(deserializer);
-    var var_usedBytes = sse_decode_u_64(deserializer);
-    var var_freeListBytes = sse_decode_u_64(deserializer);
-    var var_unallocatedBytes = sse_decode_u_64(deserializer);
-    var var_segmentCount = sse_decode_usize(deserializer);
-    return VaultCapacityInfo(
-      totalBytes: var_totalBytes,
-      usedBytes: var_usedBytes,
-      freeListBytes: var_freeListBytes,
-      unallocatedBytes: var_unallocatedBytes,
-      segmentCount: var_segmentCount,
-    );
-  }
-
-  @protected
-  void sse_encode_AnyhowException(
-    AnyhowException self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.message, serializer);
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    CipherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as CipherHandleImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    HasherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as HasherHandleImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    VaultHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as VaultHandleImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    VaultHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as VaultHandleImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    CipherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as CipherHandleImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    HasherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as HasherHandleImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    VaultHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as VaultHandleImpl).frbInternalSseEncode(move: false),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-    CipherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as CipherHandleImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-    HasherHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as HasherHandleImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
-  }
-
-  @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-    VaultHandle self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as VaultHandleImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
-  }
-
-  @protected
-  void sse_encode_StreamSink_f_64_Sse(
-    RustStreamSink<double> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(
-      self.setupAndSerialize(
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_f_64,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-      ),
-      serializer,
-    );
-  }
-
-  @protected
-  void sse_encode_String(String self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
-  }
-
-  @protected
-  void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_compression_config(
-    CompressionConfig self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_compression_config(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self, serializer);
-  }
-
-  @protected
-  void sse_encode_compression_algorithm(
-    CompressionAlgorithm self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_compression_config(
-    CompressionConfig self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_compression_algorithm(self.algorithm, serializer);
-    sse_encode_opt_box_autoadd_i_32(self.level, serializer);
-  }
-
-  @protected
-  void sse_encode_crypto_error(CryptoError self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case CryptoError_InvalidKeyLength(
-        expected: final expected,
-        actual: final actual,
-      ):
-        sse_encode_i_32(0, serializer);
-        sse_encode_usize(expected, serializer);
-        sse_encode_usize(actual, serializer);
-      case CryptoError_InvalidNonce():
-        sse_encode_i_32(1, serializer);
-      case CryptoError_EncryptionFailed(field0: final field0):
-        sse_encode_i_32(2, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_DecryptionFailed():
-        sse_encode_i_32(3, serializer);
-      case CryptoError_HashingFailed(field0: final field0):
-        sse_encode_i_32(4, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_KdfFailed(field0: final field0):
-        sse_encode_i_32(5, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_IoError(field0: final field0):
-        sse_encode_i_32(6, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_InvalidParameter(field0: final field0):
-        sse_encode_i_32(7, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_CompressionFailed(field0: final field0):
-        sse_encode_i_32(8, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_AuthenticationFailed():
-        sse_encode_i_32(9, serializer);
-      case CryptoError_VaultFull(
-        needed: final needed,
-        available: final available,
-      ):
-        sse_encode_i_32(10, serializer);
-        sse_encode_u_64(needed, serializer);
-        sse_encode_u_64(available, serializer);
-      case CryptoError_VaultLocked():
-        sse_encode_i_32(11, serializer);
-      case CryptoError_SegmentNotFound(field0: final field0):
-        sse_encode_i_32(12, serializer);
-        sse_encode_String(field0, serializer);
-      case CryptoError_VaultCorrupted(field0: final field0):
-        sse_encode_i_32(13, serializer);
-        sse_encode_String(field0, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putFloat64(self);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_String(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_prim_u_8_loose(
-    List<int> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer.putUint8List(
-      self is Uint8List ? self : Uint8List.fromList(self),
-    );
-  }
-
-  @protected
-  void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer.putUint8List(self);
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_compression_config(
-    CompressionConfig? self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_compression_config(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_i_32(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_list_prim_u_8_strict(
-    Uint8List? self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_list_prim_u_8_strict(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_u_8(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self);
-  }
-
-  @protected
-  void sse_encode_unit(void self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_usize(BigInt self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_vault_capacity_info(
-    VaultCapacityInfo self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_u_64(self.totalBytes, serializer);
-    sse_encode_u_64(self.usedBytes, serializer);
-    sse_encode_u_64(self.freeListBytes, serializer);
-    sse_encode_u_64(self.unallocatedBytes, serializer);
-    sse_encode_usize(self.segmentCount, serializer);
-  }
-}
-
-@sealed
-class CipherHandleImpl extends RustOpaque implements CipherHandle {
-  // Not to be used by end users
-  CipherHandleImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  CipherHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_CipherHandle,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_CipherHandle,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_CipherHandlePtr,
-  );
-}
-
-@sealed
-class HasherHandleImpl extends RustOpaque implements HasherHandle {
-  // Not to be used by end users
-  HasherHandleImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  HasherHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_HasherHandle,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_HasherHandle,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_HasherHandlePtr,
-  );
-}
-
-@sealed
-class VaultHandleImpl extends RustOpaque implements VaultHandle {
-  // Not to be used by end users
-  VaultHandleImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  VaultHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_VaultHandle,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_VaultHandle,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_VaultHandlePtr,
-  );
-}
+        
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_CipherHandle => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_CipherHandle => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle;
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_HasherHandle => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_HasherHandle => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle;
+
+RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_VaultHandle => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle;
+
+RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_VaultHandle => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle;
+
+
+
+                  @protected AnyhowException dco_decode_AnyhowException(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return AnyhowException(raw as String); }
+
+@protected CipherHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected HasherHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected VaultHandle dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected VaultHandle dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected CipherHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected HasherHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected VaultHandle dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected CipherHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return CipherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected HasherHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return HasherHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected VaultHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>); }
+
+@protected RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+throw UnimplementedError(); }
+
+@protected String dco_decode_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as String; }
+
+@protected Argon2Preset dco_decode_argon_2_preset(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return Argon2Preset.values[raw as int]; }
+
+@protected bool dco_decode_bool(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as bool; }
+
+@protected CompressionConfig dco_decode_box_autoadd_compression_config(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_compression_config(raw); }
+
+@protected int dco_decode_box_autoadd_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected CompressionAlgorithm dco_decode_compression_algorithm(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return CompressionAlgorithm.values[raw as int]; }
+
+@protected CompressionConfig dco_decode_compression_config(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+                return CompressionConfig(algorithm: dco_decode_compression_algorithm(arr[0]),
+level: dco_decode_opt_box_autoadd_i_32(arr[1]),); }
+
+@protected CryptoError dco_decode_crypto_error(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+switch (raw[0]) {
+                case 0: return CryptoError_InvalidKeyLength(expected: dco_decode_usize(raw[1]),actual: dco_decode_usize(raw[2]),);
+case 1: return CryptoError_InvalidNonce();
+case 2: return CryptoError_EncryptionFailed(dco_decode_String(raw[1]),);
+case 3: return CryptoError_DecryptionFailed();
+case 4: return CryptoError_HashingFailed(dco_decode_String(raw[1]),);
+case 5: return CryptoError_KdfFailed(dco_decode_String(raw[1]),);
+case 6: return CryptoError_IoError(dco_decode_String(raw[1]),);
+case 7: return CryptoError_InvalidParameter(dco_decode_String(raw[1]),);
+case 8: return CryptoError_CompressionFailed(dco_decode_String(raw[1]),);
+case 9: return CryptoError_AuthenticationFailed();
+case 10: return CryptoError_VaultFull(needed: dco_decode_u_64(raw[1]),available: dco_decode_u_64(raw[2]),);
+case 11: return CryptoError_VaultLocked();
+case 12: return CryptoError_SegmentNotFound(dco_decode_String(raw[1]),);
+case 13: return CryptoError_VaultCorrupted(dco_decode_String(raw[1]),);
+                default: throw Exception("unreachable");
+            } }
+
+@protected DefragResult dco_decode_defrag_result(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+                return DefragResult(segmentsMoved: dco_decode_u_32(arr[0]),
+bytesReclaimed: dco_decode_u_64(arr[1]),
+freeRegionsBefore: dco_decode_u_32(arr[2]),); }
+
+@protected double dco_decode_f_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as double; }
+
+@protected int dco_decode_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected List<String> dco_decode_list_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return (raw as List<dynamic>).map(dco_decode_String).toList(); }
+
+@protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as List<int>; }
+
+@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as Uint8List; }
+
+@protected CompressionConfig? dco_decode_opt_box_autoadd_compression_config(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_compression_config(raw); }
+
+@protected int? dco_decode_opt_box_autoadd_i_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_box_autoadd_i_32(raw); }
+
+@protected Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw == null ? null : dco_decode_list_prim_u_8_strict(raw); }
+
+@protected int dco_decode_u_32(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected BigInt dco_decode_u_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dcoDecodeU64(raw); }
+
+@protected int dco_decode_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return raw as int; }
+
+@protected void dco_decode_unit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return; }
+
+@protected BigInt dco_decode_usize(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dcoDecodeU64(raw); }
+
+@protected VaultCapacityInfo dco_decode_vault_capacity_info(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+                return VaultCapacityInfo(totalBytes: dco_decode_u_64(arr[0]),
+usedBytes: dco_decode_u_64(arr[1]),
+freeListBytes: dco_decode_u_64(arr[2]),
+unallocatedBytes: dco_decode_u_64(arr[3]),
+segmentCount: dco_decode_usize(arr[4]),); }
+
+@protected VaultHealthInfo dco_decode_vault_health_info(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 8) throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+                return VaultHealthInfo(totalBytes: dco_decode_u_64(arr[0]),
+usedBytes: dco_decode_u_64(arr[1]),
+freeListBytes: dco_decode_u_64(arr[2]),
+unallocatedBytes: dco_decode_u_64(arr[3]),
+segmentCount: dco_decode_u_32(arr[4]),
+freeRegionCount: dco_decode_u_32(arr[5]),
+largestFreeBlock: dco_decode_u_64(arr[6]),
+fragmentationRatio: dco_decode_f_64(arr[7]),); }
+
+@protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_String(deserializer);
+        return AnyhowException(inner); }
+
+@protected CipherHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return CipherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected HasherHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return HasherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected VaultHandle sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return VaultHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected VaultHandle sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return VaultHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected CipherHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return CipherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected HasherHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return HasherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected VaultHandle sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return VaultHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected CipherHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return CipherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected HasherHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return HasherHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected VaultHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return VaultHandleImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
+
+@protected RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+throw UnimplementedError('Unreachable ()'); }
+
+@protected String sse_decode_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_list_prim_u_8_strict(deserializer);
+        return utf8.decoder.convert(inner); }
+
+@protected Argon2Preset sse_decode_argon_2_preset(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_i_32(deserializer);
+        return Argon2Preset.values[inner]; }
+
+@protected bool sse_decode_bool(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getUint8() != 0; }
+
+@protected CompressionConfig sse_decode_box_autoadd_compression_config(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_compression_config(deserializer)); }
+
+@protected int sse_decode_box_autoadd_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_i_32(deserializer)); }
+
+@protected CompressionAlgorithm sse_decode_compression_algorithm(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var inner = sse_decode_i_32(deserializer);
+        return CompressionAlgorithm.values[inner]; }
+
+@protected CompressionConfig sse_decode_compression_config(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_algorithm = sse_decode_compression_algorithm(deserializer);
+var var_level = sse_decode_opt_box_autoadd_i_32(deserializer);
+return CompressionConfig(algorithm: var_algorithm, level: var_level); }
+
+@protected CryptoError sse_decode_crypto_error(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            var tag_ = sse_decode_i_32(deserializer);
+            switch (tag_) { case 0: var var_expected = sse_decode_usize(deserializer);
+var var_actual = sse_decode_usize(deserializer);
+return CryptoError_InvalidKeyLength(expected: var_expected, actual: var_actual);case 1: return CryptoError_InvalidNonce();case 2: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_EncryptionFailed(var_field0);case 3: return CryptoError_DecryptionFailed();case 4: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_HashingFailed(var_field0);case 5: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_KdfFailed(var_field0);case 6: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_IoError(var_field0);case 7: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_InvalidParameter(var_field0);case 8: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_CompressionFailed(var_field0);case 9: return CryptoError_AuthenticationFailed();case 10: var var_needed = sse_decode_u_64(deserializer);
+var var_available = sse_decode_u_64(deserializer);
+return CryptoError_VaultFull(needed: var_needed, available: var_available);case 11: return CryptoError_VaultLocked();case 12: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_SegmentNotFound(var_field0);case 13: var var_field0 = sse_decode_String(deserializer);
+return CryptoError_VaultCorrupted(var_field0); default: throw UnimplementedError(''); }
+             }
+
+@protected DefragResult sse_decode_defrag_result(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_segmentsMoved = sse_decode_u_32(deserializer);
+var var_bytesReclaimed = sse_decode_u_64(deserializer);
+var var_freeRegionsBefore = sse_decode_u_32(deserializer);
+return DefragResult(segmentsMoved: var_segmentsMoved, bytesReclaimed: var_bytesReclaimed, freeRegionsBefore: var_freeRegionsBefore); }
+
+@protected double sse_decode_f_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getFloat64(); }
+
+@protected int sse_decode_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getInt32(); }
+
+@protected List<String> sse_decode_list_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+        var len_ = sse_decode_i_32(deserializer);
+        var ans_ = <String>[];
+        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_String(deserializer)); }
+        return ans_;
+         }
+
+@protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var len_ = sse_decode_i_32(deserializer);
+                return deserializer.buffer.getUint8List(len_); }
+
+@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var len_ = sse_decode_i_32(deserializer);
+                return deserializer.buffer.getUint8List(len_); }
+
+@protected CompressionConfig? sse_decode_opt_box_autoadd_compression_config(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_compression_config(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_box_autoadd_i_32(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+            if (sse_decode_bool(deserializer)) {
+                return (sse_decode_list_prim_u_8_strict(deserializer));
+            } else {
+                return null;
+            }
+             }
+
+@protected int sse_decode_u_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getUint32(); }
+
+@protected BigInt sse_decode_u_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getBigUint64(); }
+
+@protected int sse_decode_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getUint8(); }
+
+@protected void sse_decode_unit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+ }
+
+@protected BigInt sse_decode_usize(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return deserializer.buffer.getBigUint64(); }
+
+@protected VaultCapacityInfo sse_decode_vault_capacity_info(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_totalBytes = sse_decode_u_64(deserializer);
+var var_usedBytes = sse_decode_u_64(deserializer);
+var var_freeListBytes = sse_decode_u_64(deserializer);
+var var_unallocatedBytes = sse_decode_u_64(deserializer);
+var var_segmentCount = sse_decode_usize(deserializer);
+return VaultCapacityInfo(totalBytes: var_totalBytes, usedBytes: var_usedBytes, freeListBytes: var_freeListBytes, unallocatedBytes: var_unallocatedBytes, segmentCount: var_segmentCount); }
+
+@protected VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_totalBytes = sse_decode_u_64(deserializer);
+var var_usedBytes = sse_decode_u_64(deserializer);
+var var_freeListBytes = sse_decode_u_64(deserializer);
+var var_unallocatedBytes = sse_decode_u_64(deserializer);
+var var_segmentCount = sse_decode_u_32(deserializer);
+var var_freeRegionCount = sse_decode_u_32(deserializer);
+var var_largestFreeBlock = sse_decode_u_64(deserializer);
+var var_fragmentationRatio = sse_decode_f_64(deserializer);
+return VaultHealthInfo(totalBytes: var_totalBytes, usedBytes: var_usedBytes, freeListBytes: var_freeListBytes, unallocatedBytes: var_unallocatedBytes, segmentCount: var_segmentCount, freeRegionCount: var_freeRegionCount, largestFreeBlock: var_largestFreeBlock, fragmentationRatio: var_fragmentationRatio); }
+
+@protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.message, serializer); }
+
+@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as CipherHandleImpl).frbInternalSseEncode(move: true), serializer); }
+
+@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as HasherHandleImpl).frbInternalSseEncode(move: true), serializer); }
+
+@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as VaultHandleImpl).frbInternalSseEncode(move: true), serializer); }
+
+@protected void sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as VaultHandleImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as CipherHandleImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as HasherHandleImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as VaultHandleImpl).frbInternalSseEncode(move: false), serializer); }
+
+@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(CipherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as CipherHandleImpl).frbInternalSseEncode(move: null), serializer); }
+
+@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(HasherHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as HasherHandleImpl).frbInternalSseEncode(move: null), serializer); }
+
+@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(VaultHandle self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_usize((self as VaultHandleImpl).frbInternalSseEncode(move: null), serializer); }
+
+@protected void sse_encode_StreamSink_f_64_Sse(RustStreamSink<double> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.setupAndSerialize(codec: SseCodec(
+            decodeSuccessData: sse_decode_f_64,
+            decodeErrorData: sse_decode_AnyhowException,
+        )), serializer); }
+
+@protected void sse_encode_String(String self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
+
+@protected void sse_encode_argon_2_preset(Argon2Preset self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.index, serializer); }
+
+@protected void sse_encode_bool(bool self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putUint8(self ? 1 : 0); }
+
+@protected void sse_encode_box_autoadd_compression_config(CompressionConfig self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_compression_config(self, serializer); }
+
+@protected void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self, serializer); }
+
+@protected void sse_encode_compression_algorithm(CompressionAlgorithm self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.index, serializer); }
+
+@protected void sse_encode_compression_config(CompressionConfig self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_compression_algorithm(self.algorithm, serializer);
+sse_encode_opt_box_autoadd_i_32(self.level, serializer);
+ }
+
+@protected void sse_encode_crypto_error(CryptoError self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+switch (self) { case CryptoError_InvalidKeyLength(expected: final expected,actual: final actual): sse_encode_i_32(0, serializer); sse_encode_usize(expected, serializer);
+sse_encode_usize(actual, serializer);
+case CryptoError_InvalidNonce(): sse_encode_i_32(1, serializer); case CryptoError_EncryptionFailed(field0: final field0): sse_encode_i_32(2, serializer); sse_encode_String(field0, serializer);
+case CryptoError_DecryptionFailed(): sse_encode_i_32(3, serializer); case CryptoError_HashingFailed(field0: final field0): sse_encode_i_32(4, serializer); sse_encode_String(field0, serializer);
+case CryptoError_KdfFailed(field0: final field0): sse_encode_i_32(5, serializer); sse_encode_String(field0, serializer);
+case CryptoError_IoError(field0: final field0): sse_encode_i_32(6, serializer); sse_encode_String(field0, serializer);
+case CryptoError_InvalidParameter(field0: final field0): sse_encode_i_32(7, serializer); sse_encode_String(field0, serializer);
+case CryptoError_CompressionFailed(field0: final field0): sse_encode_i_32(8, serializer); sse_encode_String(field0, serializer);
+case CryptoError_AuthenticationFailed(): sse_encode_i_32(9, serializer); case CryptoError_VaultFull(needed: final needed,available: final available): sse_encode_i_32(10, serializer); sse_encode_u_64(needed, serializer);
+sse_encode_u_64(available, serializer);
+case CryptoError_VaultLocked(): sse_encode_i_32(11, serializer); case CryptoError_SegmentNotFound(field0: final field0): sse_encode_i_32(12, serializer); sse_encode_String(field0, serializer);
+case CryptoError_VaultCorrupted(field0: final field0): sse_encode_i_32(13, serializer); sse_encode_String(field0, serializer);
+  } }
+
+@protected void sse_encode_defrag_result(DefragResult self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_u_32(self.segmentsMoved, serializer);
+sse_encode_u_64(self.bytesReclaimed, serializer);
+sse_encode_u_32(self.freeRegionsBefore, serializer);
+ }
+
+@protected void sse_encode_f_64(double self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putFloat64(self); }
+
+@protected void sse_encode_i_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putInt32(self); }
+
+@protected void sse_encode_list_String(List<String> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+        for (final item in self) { sse_encode_String(item, serializer); } }
+
+@protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+                    serializer.buffer.putUint8List(self is Uint8List ? self : Uint8List.fromList(self)); }
+
+@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_i_32(self.length, serializer);
+                    serializer.buffer.putUint8List(self); }
+
+@protected void sse_encode_opt_box_autoadd_compression_config(CompressionConfig? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_compression_config(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_box_autoadd_i_32(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_opt_list_prim_u_8_strict(Uint8List? self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+
+                sse_encode_bool(self != null, serializer);
+                if (self != null) {
+                    sse_encode_list_prim_u_8_strict(self, serializer);
+                }
+                 }
+
+@protected void sse_encode_u_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putUint32(self); }
+
+@protected void sse_encode_u_64(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putBigUint64(self); }
+
+@protected void sse_encode_u_8(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putUint8(self); }
+
+@protected void sse_encode_unit(void self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+ }
+
+@protected void sse_encode_usize(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+serializer.buffer.putBigUint64(self); }
+
+@protected void sse_encode_vault_capacity_info(VaultCapacityInfo self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_u_64(self.totalBytes, serializer);
+sse_encode_u_64(self.usedBytes, serializer);
+sse_encode_u_64(self.freeListBytes, serializer);
+sse_encode_u_64(self.unallocatedBytes, serializer);
+sse_encode_usize(self.segmentCount, serializer);
+ }
+
+@protected void sse_encode_vault_health_info(VaultHealthInfo self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_u_64(self.totalBytes, serializer);
+sse_encode_u_64(self.usedBytes, serializer);
+sse_encode_u_64(self.freeListBytes, serializer);
+sse_encode_u_64(self.unallocatedBytes, serializer);
+sse_encode_u_32(self.segmentCount, serializer);
+sse_encode_u_32(self.freeRegionCount, serializer);
+sse_encode_u_64(self.largestFreeBlock, serializer);
+sse_encode_f_64(self.fragmentationRatio, serializer);
+ }
+                }
+                
+
+            @sealed class CipherHandleImpl extends RustOpaque implements CipherHandle {
+                // Not to be used by end users
+                CipherHandleImpl.frbInternalDcoDecode(List<dynamic> wire):
+                    super.frbInternalDcoDecode(wire, _kStaticData);
+
+                // Not to be used by end users
+                CipherHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
+                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+                static final _kStaticData = RustArcStaticData(
+                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_CipherHandle,
+                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_CipherHandle,
+                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_CipherHandlePtr,
+                );
+
+                
+            }
+            @sealed class HasherHandleImpl extends RustOpaque implements HasherHandle {
+                // Not to be used by end users
+                HasherHandleImpl.frbInternalDcoDecode(List<dynamic> wire):
+                    super.frbInternalDcoDecode(wire, _kStaticData);
+
+                // Not to be used by end users
+                HasherHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
+                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+                static final _kStaticData = RustArcStaticData(
+                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_HasherHandle,
+                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_HasherHandle,
+                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_HasherHandlePtr,
+                );
+
+                
+            }
+            @sealed class VaultHandleImpl extends RustOpaque implements VaultHandle {
+                // Not to be used by end users
+                VaultHandleImpl.frbInternalDcoDecode(List<dynamic> wire):
+                    super.frbInternalDcoDecode(wire, _kStaticData);
+
+                // Not to be used by end users
+                VaultHandleImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
+                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+                static final _kStaticData = RustArcStaticData(
+                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_VaultHandle,
+                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_VaultHandle,
+                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_VaultHandlePtr,
+                );
+
+                /// Compute health information from the in-memory index only (no file I/O or WAL writes).
+///
+/// The `#[must_use]` attribute is a Rust best practice indicating that the return value
+/// of this function should not be silently ignored by callers.
+ Future<VaultHealthInfo>  health()=>RustLib.instance.api.crateApiEvfsVaultHandleHealth(that: this, );
+
+
+            }

@@ -103,8 +103,7 @@ impl WalEntry {
         }
 
         let op = WalOp::from_byte(data[0])?;
-        let data_len =
-            u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
+        let data_len = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
 
         if data_len > MAX_SNAPSHOT_SIZE {
             return Err(CryptoError::VaultCorrupted(format!(
@@ -364,7 +363,11 @@ mod tests {
 
     #[test]
     fn test_wal_entry_all_ops() {
-        for op in [WalOp::WriteSegment, WalOp::DeleteSegment, WalOp::UpdateIndex] {
+        for op in [
+            WalOp::WriteSegment,
+            WalOp::DeleteSegment,
+            WalOp::UpdateIndex,
+        ] {
             let entry = WalEntry::new(op, vec![0x42]);
             let bytes = entry.to_bytes().expect("serialize");
             let parsed = WalEntry::from_bytes(&bytes).expect("parse");
@@ -560,8 +563,7 @@ mod tests {
         let mut wal = WriteAheadLog::open(vault_str).expect("open");
 
         for i in 0u8..5 {
-            wal.begin(WalOp::WriteSegment, &[i; 16])
-                .expect("begin");
+            wal.begin(WalOp::WriteSegment, &[i; 16]).expect("begin");
             wal.commit().expect("commit");
         }
 
@@ -578,11 +580,9 @@ mod tests {
         let mut wal = WriteAheadLog::open(vault_str).expect("open");
 
         // Two committed, then one uncommitted
-        wal.begin(WalOp::WriteSegment, &[0xAA; 16])
-            .expect("begin");
+        wal.begin(WalOp::WriteSegment, &[0xAA; 16]).expect("begin");
         wal.commit().expect("commit");
-        wal.begin(WalOp::DeleteSegment, &[0xBB; 16])
-            .expect("begin");
+        wal.begin(WalOp::DeleteSegment, &[0xBB; 16]).expect("begin");
         wal.commit().expect("commit");
 
         let crash_data = vec![0xCC; 16];

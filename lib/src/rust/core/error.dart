@@ -8,35 +8,31 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'error.freezed.dart';
 
-@freezed
-sealed class CryptoError with _$CryptoError implements FrbException {
-  const CryptoError._();
+            
 
-  const factory CryptoError.invalidKeyLength({
-    required BigInt expected,
-    required BigInt actual,
-  }) = CryptoError_InvalidKeyLength;
-  const factory CryptoError.invalidNonce() = CryptoError_InvalidNonce;
-  const factory CryptoError.encryptionFailed(String field0) =
-      CryptoError_EncryptionFailed;
-  const factory CryptoError.decryptionFailed() = CryptoError_DecryptionFailed;
-  const factory CryptoError.hashingFailed(String field0) =
-      CryptoError_HashingFailed;
-  const factory CryptoError.kdfFailed(String field0) = CryptoError_KdfFailed;
-  const factory CryptoError.ioError(String field0) = CryptoError_IoError;
-  const factory CryptoError.invalidParameter(String field0) =
-      CryptoError_InvalidParameter;
-  const factory CryptoError.compressionFailed(String field0) =
-      CryptoError_CompressionFailed;
-  const factory CryptoError.authenticationFailed() =
-      CryptoError_AuthenticationFailed;
-  const factory CryptoError.vaultFull({
-    required BigInt needed,
-    required BigInt available,
-  }) = CryptoError_VaultFull;
-  const factory CryptoError.vaultLocked() = CryptoError_VaultLocked;
-  const factory CryptoError.segmentNotFound(String field0) =
-      CryptoError_SegmentNotFound;
-  const factory CryptoError.vaultCorrupted(String field0) =
-      CryptoError_VaultCorrupted;
-}
+            
+
+            @freezed
+                sealed class CryptoError with _$CryptoError implements FrbException {
+                    const CryptoError._();
+
+                     const factory CryptoError.invalidKeyLength({   required BigInt expected ,  required BigInt actual , }) = CryptoError_InvalidKeyLength;
+ const factory CryptoError.invalidNonce() = CryptoError_InvalidNonce;
+ const factory CryptoError.encryptionFailed(  String field0,) = CryptoError_EncryptionFailed;
+ const factory CryptoError.decryptionFailed() = CryptoError_DecryptionFailed;
+ const factory CryptoError.hashingFailed(  String field0,) = CryptoError_HashingFailed;
+ const factory CryptoError.kdfFailed(  String field0,) = CryptoError_KdfFailed;
+ const factory CryptoError.ioError(  String field0,) = CryptoError_IoError;
+ const factory CryptoError.invalidParameter(  String field0,) = CryptoError_InvalidParameter;
+ const factory CryptoError.compressionFailed(  String field0,) = CryptoError_CompressionFailed;
+ const factory CryptoError.authenticationFailed() = CryptoError_AuthenticationFailed;
+ const factory CryptoError.vaultFull({   required BigInt needed ,  required BigInt available , }) = CryptoError_VaultFull;
+ const factory CryptoError.vaultLocked() = CryptoError_VaultLocked;
+ const factory CryptoError.segmentNotFound(  String field0,) = CryptoError_SegmentNotFound;
+ const factory CryptoError.vaultCorrupted(  String field0,) = CryptoError_VaultCorrupted;
+
+                    
+
+                    
+                }
+            
