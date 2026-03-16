@@ -551,6 +551,235 @@ void main() {
       
       await VaultService.close(handle: reopened2);
     });
+    // -- Defragmentation ------------------------------------------------
+
+    test('defragment compacts free space', () async {
+      final path = '${tempDir.path}/defrag.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 2 * 1024 * 1024,
+      );
+
+      // Write A, B, C
+      final dataA = Uint8List.fromList(List.generate(1000, (i) => i % 256));
+      final dataC = Uint8List.fromList(List.generate(500, (i) => (i * 3) % 256));
+      await VaultService.write(handle: handle, name: 'a.txt', data: dataA);
+      await VaultService.write(
+        handle: handle,
+        name: 'b.txt',
+        data: Uint8List(2000),
+      );
+      await VaultService.write(handle: handle, name: 'c.txt', data: dataC);
+
+      // Delete B → creates a gap
+      await VaultService.delete(handle: handle, name: 'b.txt');
+
+      final beforeHealth = await VaultService.health(handle: handle);
+      expect(beforeHealth.freeRegionCount, greaterThan(0));
+      expect(beforeHealth.fragmentationRatio, greaterThan(0.0));
+
+      // Defragment
+      final result = await VaultService.defragment(handle: handle);
+      expect(result.segmentsMoved, greaterThan(0));
+      expect(result.bytesReclaimed, greaterThan(BigInt.zero));
+
+      // After defrag: no fragmentation
+      final afterHealth = await VaultService.health(handle: handle);
+      expect(afterHealth.freeRegionCount, 0);
+      expect(afterHealth.fragmentationRatio, 0.0);
+
+      // Data still readable
+      expect(await VaultService.read(handle: handle, name: 'a.txt'), dataA);
+      expect(await VaultService.read(handle: handle, name: 'c.txt'), dataC);
+
+      await VaultService.close(handle: handle);
+    });
+
+    test('defragment on empty vault is no-op', () async {
+      final path = '${tempDir.path}/defrag_empty.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 1024 * 1024,
+      );
+
+      final result = await VaultService.defragment(handle: handle);
+      expect(result.segmentsMoved, 0);
+      expect(result.bytesReclaimed, BigInt.zero);
+
+      await VaultService.close(handle: handle);
+    });
+
+    // -- Resize ---------------------------------------------------------
+
+    test('resize grow then write in new space', () async {
+      final path = '${tempDir.path}/grow.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 512 * 1024, // 512KB
+      );
+
+      // Grow to 1MB
+      await VaultService.resize(
+        handle: handle,
+        newCapacityBytes: 1024 * 1024,
+      );
+
+      final health = await VaultService.health(handle: handle);
+      expect(health.totalBytes, BigInt.from(1024 * 1024));
+
+      // Write data that wouldn't fit in original 512KB
+      final bigData = Uint8List(600 * 1024); // 600KB
+      await VaultService.write(handle: handle, name: 'big.bin', data: bigData);
+
+      final result = await VaultService.read(handle: handle, name: 'big.bin');
+      expect(result, bigData);
+
+      await VaultService.close(handle: handle);
+    });
+
+    test('resize shrink after defrag', () async {
+      final path = '${tempDir.path}/shrink.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 1024 * 1024, // 1MB
+      );
+
+      // Write small data
+      final data = Uint8List.fromList(List.generate(100, (i) => i % 256));
+      await VaultService.write(handle: handle, name: 'small.bin', data: data);
+
+      // Defrag to compact
+      await VaultService.defragment(handle: handle);
+
+      // Shrink to 512KB (data fits)
+      await VaultService.resize(
+        handle: handle,
+        newCapacityBytes: 512 * 1024,
+      );
+
+      final health = await VaultService.health(handle: handle);
+      expect(health.totalBytes, BigInt.from(512 * 1024));
+
+      // Data still readable
+      expect(await VaultService.read(handle: handle, name: 'small.bin'), data);
+
+      await VaultService.close(handle: handle);
+    });
+
+    test('shrink below used space throws error', () async {
+      final path = '${tempDir.path}/shrink_fail.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 1024 * 1024,
+      );
+
+      // Write enough data to occupy space
+      final data = Uint8List(200 * 1024); // 200KB
+      await VaultService.write(handle: handle, name: 'data.bin', data: data);
+
+      // Try to shrink to 1KB → should fail
+      try {
+        await VaultService.resize(handle: handle, newCapacityBytes: 1024);
+        fail('Expected VaultFull error');
+      } catch (e) {
+        expect(e.toString(), contains('vaultFull'));
+      }
+
+      await VaultService.close(handle: handle);
+    });
+
+    // -- Health Check ---------------------------------------------------
+
+    test('health info on fresh vault', () async {
+      final path = '${tempDir.path}/health.vault';
+      final key = await generateAes256GcmKey();
+
+      final cap = 1024 * 1024;
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: cap,
+      );
+
+      final h = await VaultService.health(handle: handle);
+      expect(h.totalBytes, BigInt.from(cap));
+      expect(h.usedBytes, BigInt.zero);
+      expect(h.segmentCount, 0);
+      expect(h.freeRegionCount, 0);
+      expect(h.fragmentationRatio, 0.0);
+      expect(h.isConsistent, true);
+      expect(h.largestFreeBlock, BigInt.from(cap));
+
+      await VaultService.close(handle: handle);
+    });
+
+    test('health after write and delete shows fragmentation', () async {
+      final path = '${tempDir.path}/health_frag.vault';
+      final key = await generateAes256GcmKey();
+
+      final handle = await VaultService.create(
+        path: path,
+        key: key,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: 2 * 1024 * 1024,
+      );
+
+      await VaultService.write(
+        handle: handle,
+        name: 'a.txt',
+        data: Uint8List(1000),
+      );
+      await VaultService.write(
+        handle: handle,
+        name: 'b.txt',
+        data: Uint8List(2000),
+      );
+      await VaultService.write(
+        handle: handle,
+        name: 'c.txt',
+        data: Uint8List(500),
+      );
+
+      // Delete middle segment
+      await VaultService.delete(handle: handle, name: 'b.txt');
+
+      final h = await VaultService.health(handle: handle);
+      expect(h.segmentCount, 2);
+      expect(h.freeRegionCount, greaterThan(0));
+      expect(h.fragmentationRatio, greaterThan(0.0));
+      expect(h.isConsistent, true);
+
+      // Defrag → fragmentation goes to 0
+      await VaultService.defragment(handle: handle);
+      final after = await VaultService.health(handle: handle);
+      expect(after.freeRegionCount, 0);
+      expect(after.fragmentationRatio, 0.0);
+      expect(after.isConsistent, true);
+
+      await VaultService.close(handle: handle);
+    });
+
     test('corrupted primary index falls back to shadow', () async {
       final path = '${tempDir.path}/shadow.vault';
       final key = await generateAes256GcmKey();

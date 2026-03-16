@@ -1,4 +1,5 @@
 import 'package:m_security/src/rust/api/evfs.dart' as rust_evfs;
+import 'package:m_security/src/rust/api/evfs/types.dart' as rust_types;
 import 'package:m_security/src/rust/api/compression.dart';
 import 'dart:typed_data';
 
@@ -79,6 +80,38 @@ class VaultService {
     required rust_evfs.VaultHandle handle,
   }) {
     return rust_evfs.vaultCapacity(handle: handle);
+  }
+
+  /// Get vault health and diagnostic info (read-only, no I/O).
+  static Future<rust_types.VaultHealthInfo> health({
+    required rust_evfs.VaultHandle handle,
+  }) {
+    return rust_evfs.vaultHealth(handle: handle);
+  }
+
+  /// Defragment the vault: compact segments, coalesce free space.
+  ///
+  /// Each segment move is WAL-protected for crash safety.
+  /// Returns a [DefragResult] with move count and bytes reclaimed.
+  static Future<rust_types.DefragResult> defragment({
+    required rust_evfs.VaultHandle handle,
+  }) {
+    return rust_evfs.vaultDefragment(handle: handle);
+  }
+
+  /// Resize the vault data region capacity.
+  ///
+  /// Grow: extends file with CSPRNG-filled space.
+  /// Shrink: validates segments fit, then truncates.
+  /// Throws if shrinking below used space.
+  static Future<void> resize({
+    required rust_evfs.VaultHandle handle,
+    required int newCapacityBytes,
+  }) {
+    return rust_evfs.vaultResize(
+      handle: handle,
+      newCapacity: BigInt.from(newCapacityBytes),
+    );
   }
 
   /// Close the vault (release lock, zeroize keys).
