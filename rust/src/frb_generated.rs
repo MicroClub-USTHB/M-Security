@@ -2430,6 +2430,7 @@ impl SseDecode for crate::api::evfs::types::VaultHealthInfo {
         let mut var_freeRegionCount = <u32>::sse_decode(deserializer);
         let mut var_largestFreeBlock = <u64>::sse_decode(deserializer);
         let mut var_fragmentationRatio = <f64>::sse_decode(deserializer);
+        let mut var_isConsistent = <bool>::sse_decode(deserializer);
         return crate::api::evfs::types::VaultHealthInfo {
             total_bytes: var_totalBytes,
             used_bytes: var_usedBytes,
@@ -2439,6 +2440,7 @@ impl SseDecode for crate::api::evfs::types::VaultHealthInfo {
             free_region_count: var_freeRegionCount,
             largest_free_block: var_largestFreeBlock,
             fragmentation_ratio: var_fragmentationRatio,
+            is_consistent: var_isConsistent,
         };
     }
 }
@@ -2829,6 +2831,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::VaultHealthInfo 
             self.free_region_count.into_into_dart().into_dart(),
             self.largest_free_block.into_into_dart().into_dart(),
             self.fragmentation_ratio.into_into_dart().into_dart(),
+            self.is_consistent.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3164,6 +3167,7 @@ impl SseEncode for crate::api::evfs::types::VaultHealthInfo {
         <u32>::sse_encode(self.free_region_count, serializer);
         <u64>::sse_encode(self.largest_free_block, serializer);
         <f64>::sse_encode(self.fragmentation_ratio, serializer);
+        <bool>::sse_encode(self.is_consistent, serializer);
     }
 }
 

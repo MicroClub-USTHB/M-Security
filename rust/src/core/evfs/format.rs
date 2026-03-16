@@ -564,8 +564,15 @@ impl SegmentIndex {
     ///
     /// Updates the entry offset. Does NOT touch free_regions or
     /// next_free_offset — call `complete_defrag()` after all moves.
-    pub fn apply_move(&mut self, entry_index: usize, new_offset: u64) {
-        self.entries[entry_index].offset = new_offset;
+    pub fn apply_move(&mut self, entry_index: usize, new_offset: u64) -> Result<(), CryptoError> {
+        let len = self.entries.len();
+        let entry = self.entries.get_mut(entry_index).ok_or_else(|| {
+            CryptoError::VaultCorrupted(format!(
+                "defrag: entry_index {entry_index} out of bounds (len {len})"
+            ))
+        })?;
+        entry.offset = new_offset;
+        Ok(())
     }
 
     /// Finalize defrag: clear free_regions, set next_free_offset to the
@@ -1341,7 +1348,7 @@ mod tests {
 
         let moves = idx.plan_defrag();
         for m in &moves {
-            idx.apply_move(m.entry_index, m.new_offset);
+            idx.apply_move(m.entry_index, m.new_offset).expect("apply_move");
         }
         idx.complete_defrag();
 

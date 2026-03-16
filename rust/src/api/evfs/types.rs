@@ -59,6 +59,9 @@ pub struct VaultHealthInfo {
     pub largest_free_block: u64,
     /// 0.0 = no fragmentation, 1.0 = all free space is fragmented
     pub fragmentation_ratio: f64,
+    /// True when `used + free_list + unallocated == total`. False signals
+    /// index corruption or a bug in allocation bookkeeping.
+    pub is_consistent: bool,
 }
 
 impl VaultHandle {
@@ -98,6 +101,11 @@ impl VaultHandle {
             (free_list_bytes as f64) / (total_free as f64)
         };
 
+        let is_consistent = used_bytes
+            .checked_add(free_list_bytes)
+            .and_then(|v| v.checked_add(unallocated_bytes))
+            .map_or(false, |sum| sum == total_bytes);
+
         VaultHealthInfo {
             total_bytes,
             used_bytes,
@@ -107,6 +115,7 @@ impl VaultHandle {
             free_region_count,
             largest_free_block,
             fragmentation_ratio,
+            is_consistent,
         }
     }
 }

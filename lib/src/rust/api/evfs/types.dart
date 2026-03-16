@@ -102,6 +102,10 @@ class VaultHealthInfo {
   /// 0.0 = no fragmentation, 1.0 = all free space is fragmented
   final double fragmentationRatio;
 
+  /// True when `used + free_list + unallocated == total`. False signals
+  /// index corruption or a bug in allocation bookkeeping.
+  final bool isConsistent;
+
   const VaultHealthInfo({
     required this.totalBytes,
     required this.usedBytes,
@@ -111,6 +115,7 @@ class VaultHealthInfo {
     required this.freeRegionCount,
     required this.largestFreeBlock,
     required this.fragmentationRatio,
+    required this.isConsistent,
   });
 
   @override
@@ -122,7 +127,8 @@ class VaultHealthInfo {
       segmentCount.hashCode ^
       freeRegionCount.hashCode ^
       largestFreeBlock.hashCode ^
-      fragmentationRatio.hashCode;
+      fragmentationRatio.hashCode ^
+      isConsistent.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -136,5 +142,6 @@ class VaultHealthInfo {
           segmentCount == other.segmentCount &&
           freeRegionCount == other.freeRegionCount &&
           largestFreeBlock == other.largestFreeBlock &&
-          fragmentationRatio == other.fragmentationRatio;
+          fragmentationRatio == other.fragmentationRatio &&
+          isConsistent == other.isConsistent;
 }

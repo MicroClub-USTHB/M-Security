@@ -2233,8 +2233,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   VaultHealthInfo dco_decode_vault_health_info(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return VaultHealthInfo(
       totalBytes: dco_decode_u_64(arr[0]),
       usedBytes: dco_decode_u_64(arr[1]),
@@ -2244,6 +2244,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       freeRegionCount: dco_decode_u_32(arr[5]),
       largestFreeBlock: dco_decode_u_64(arr[6]),
       fragmentationRatio: dco_decode_f_64(arr[7]),
+      isConsistent: dco_decode_bool(arr[8]),
     );
   }
 
@@ -2637,6 +2638,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_freeRegionCount = sse_decode_u_32(deserializer);
     var var_largestFreeBlock = sse_decode_u_64(deserializer);
     var var_fragmentationRatio = sse_decode_f_64(deserializer);
+    var var_isConsistent = sse_decode_bool(deserializer);
     return VaultHealthInfo(
       totalBytes: var_totalBytes,
       usedBytes: var_usedBytes,
@@ -2646,6 +2648,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       freeRegionCount: var_freeRegionCount,
       largestFreeBlock: var_largestFreeBlock,
       fragmentationRatio: var_fragmentationRatio,
+      isConsistent: var_isConsistent,
     );
   }
 
@@ -3053,6 +3056,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.freeRegionCount, serializer);
     sse_encode_u_64(self.largestFreeBlock, serializer);
     sse_encode_f_64(self.fragmentationRatio, serializer);
+    sse_encode_bool(self.isConsistent, serializer);
   }
 }
 

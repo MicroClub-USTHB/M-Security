@@ -123,7 +123,9 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
                     let size = u64::from_le_bytes([
                         hdr[8], hdr[9], hdr[10], hdr[11], hdr[12], hdr[13], hdr[14], hdr[15],
                     ]);
-                    if size > 0 && size <= capacity {
+                    // Cap at 256MB to prevent OOM from corrupted backup headers
+                    const MAX_BACKUP_SIZE: u64 = 256 * 1024 * 1024;
+                    if size > 0 && size <= capacity && size <= MAX_BACKUP_SIZE {
                         let mut data = vec![0u8; size as usize];
                         if backup.read_exact(&mut data).is_ok() {
                             file.seek(SeekFrom::Start(DATA_REGION_OFFSET + offset))?;
@@ -250,11 +252,12 @@ pub fn vault_write(
     // 5. Allocate space (free list first, then append)
     let offset = handle.index.allocate(encrypted.len() as u64)?;
 
-    // 6. Write encrypted segment at allocated offset
+    // 6. Write encrypted segment at allocated offset + fsync before index update
     handle
         .file
         .seek(SeekFrom::Start(DATA_REGION_OFFSET + offset))?;
     handle.file.write_all(&encrypted)?;
+    handle.file.sync_all()?;
 
     // 7. Update index
     let entry = SegmentEntry::new(
@@ -577,7 +580,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         handle.file.sync_all()?;
 
         // Update entry offset in index (generation, checksum, etc. stay the same)
-        handle.index.apply_move(m.entry_index, m.new_offset);
+        handle.index.apply_move(m.entry_index, m.new_offset)?;
 
         // Flush index to primary + shadow
         flush_index(
