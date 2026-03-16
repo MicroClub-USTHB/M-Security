@@ -15,10 +15,10 @@ const ENTRY_HEADER_SIZE: usize = 5;
 /// WAL entry footer: crc32(4) + committed(1) = 5 bytes.
 const ENTRY_FOOTER_SIZE: usize = 5;
 
-/// Max snapshot size (256KB). The encrypted index is ~65KB; this leaves
-/// generous headroom while rejecting clearly corrupt `data_len` values
-/// that would cause OOM allocations.
-const MAX_SNAPSHOT_SIZE: usize = 256 * 1024;
+/// Max snapshot size: must accommodate the largest possible encrypted index.
+/// MAX_INDEX_PAD_SIZE (16MB) + AEAD overhead (28B), rounded up.
+/// Rejects clearly corrupt `data_len` values that would cause OOM.
+const MAX_SNAPSHOT_SIZE: usize = 16 * 1024 * 1024 + 1024;
 
 // ---------------------------------------------------------------------------
 // WalOp

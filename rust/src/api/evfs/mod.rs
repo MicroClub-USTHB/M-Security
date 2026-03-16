@@ -11,8 +11,7 @@ pub use types::*;
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
 use crate::core::evfs::format::{
-    self, SegmentEntry, SegmentIndex, VaultHeader, DATA_REGION_OFFSET, ENCRYPTED_INDEX_SIZE,
-    PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
+    self, SegmentEntry, SegmentIndex, VaultHeader, PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
 };
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
@@ -40,7 +39,8 @@ pub fn vault_create(
     let lock = VaultLock::acquire(&path)?;
     let keys = segment::derive_vault_keys(&key)?;
     key.zeroize();
-    let total_size = format::total_vault_size(capacity_bytes)?;
+    let index_pad_size = format::compute_index_size(capacity_bytes);
+    let total_size = format::total_vault_size(capacity_bytes, index_pad_size)?;
 
     let mut file = OpenOptions::new()
         .read(true)
@@ -52,14 +52,14 @@ pub fn vault_create(
     // Pre-allocate with CSPRNG random fill
     segment::preallocate_vault(&mut file, total_size)?;
 
-    // Write header
-    let header = VaultHeader::new(algo.to_byte());
+    // Write header (includes index_size for open to read back)
+    let header = VaultHeader::new(algo.to_byte(), index_pad_size as u32);
     file.seek(SeekFrom::Start(0))?;
     file.write_all(&header.to_bytes())?;
 
     // Create empty index and flush to primary + shadow
     let index = SegmentIndex::new(capacity_bytes);
-    flush_index(&mut file, &index, &keys, algo, capacity_bytes)?;
+    flush_index(&mut file, &index, &keys, algo, capacity_bytes, index_pad_size)?;
 
     // Create fresh WAL (checkpoint to clear any stale data)
     let mut wal = WriteAheadLog::open(&path)?;
@@ -70,6 +70,7 @@ pub fn vault_create(
         algorithm: algo,
         keys,
         index,
+        index_pad_size,
         file,
         wal,
         lock,
@@ -87,12 +88,15 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         .open(&path)
         .map_err(|e| CryptoError::IoError(format!("cannot open vault: {e}")))?;
 
-    // Read header
+    // Read header — includes index_size since dynamic index sizing
     let mut header_buf = [0u8; VAULT_HEADER_SIZE];
     file.seek(SeekFrom::Start(0))?;
     file.read_exact(&mut header_buf)?;
     let header = VaultHeader::from_bytes(&header_buf)?;
     let algorithm = Algorithm::from_byte(header.algorithm)?;
+    let index_pad_size = header.index_size as usize;
+    let enc_idx_size = format::encrypted_index_size(index_pad_size);
+    let data_off = format::data_region_offset(index_pad_size);
 
     // Derive keys
     let keys = segment::derive_vault_keys(&key)?;
@@ -100,7 +104,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
 
     // Compute capacity from file size
     let file_size = file.seek(SeekFrom::End(0))?;
-    let capacity = capacity_from_file_size(file_size)?;
+    let capacity = capacity_from_file_size(file_size, index_pad_size)?;
 
     // Defrag backup recovery: if a crash occurred during an overlapping defrag
     // move, restore the segment data from the backup file before WAL recovery.
@@ -128,7 +132,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
                     if size > 0 && size <= capacity && size <= MAX_BACKUP_SIZE {
                         let mut data = vec![0u8; size as usize];
                         if backup.read_exact(&mut data).is_ok() {
-                            file.seek(SeekFrom::Start(DATA_REGION_OFFSET + offset))?;
+                            file.seek(SeekFrom::Start(data_off + offset))?;
                             file.write_all(&data)?;
                             file.sync_all()?;
                         }
@@ -143,9 +147,9 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // capacity which may have changed during an interrupted resize; the
     // post-recovery reconciliation below fixes the shadow.
     if let Some(old_encrypted_index) = wal_snapshot {
-        if old_encrypted_index.len() != ENCRYPTED_INDEX_SIZE {
+        if old_encrypted_index.len() != enc_idx_size {
             return Err(CryptoError::VaultCorrupted(format!(
-                "WAL snapshot size {} != expected {ENCRYPTED_INDEX_SIZE}",
+                "WAL snapshot size {} != expected {enc_idx_size}",
                 old_encrypted_index.len()
             )));
         }
@@ -157,12 +161,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
 
     // Decrypt index (try primary, fall back to shadow)
     let index = {
-        let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET)?;
+        let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET, enc_idx_size)?;
         match decrypt_index_blob(&primary_bytes, &keys, algorithm) {
             Ok(idx) => idx,
             Err(_) => {
-                let shadow_off = format::shadow_index_offset(capacity)?;
-                let shadow_bytes = read_encrypted_index(&mut file, shadow_off)?;
+                let shadow_off = format::shadow_index_offset(capacity, index_pad_size)?;
+                let shadow_bytes = read_encrypted_index(&mut file, shadow_off, enc_idx_size)?;
                 let idx = decrypt_index_blob(&shadow_bytes, &keys, algorithm).map_err(|_| {
                     CryptoError::VaultCorrupted(
                         "both primary and shadow index are corrupted".into(),
@@ -179,12 +183,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
 
     // Post-recovery reconciliation: if an interrupted resize left the file
     // at the wrong size, fix the file and shadow to match the index.
-    let expected_total = format::total_vault_size(index.capacity)?;
+    let expected_total = format::total_vault_size(index.capacity, index_pad_size)?;
     let actual_size = file.seek(SeekFrom::End(0))?;
     if actual_size != expected_total {
         file.set_len(expected_total)?;
-        let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET)?;
-        let shadow_off = format::shadow_index_offset(index.capacity)?;
+        let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET, enc_idx_size)?;
+        let shadow_off = format::shadow_index_offset(index.capacity, index_pad_size)?;
         file.seek(SeekFrom::Start(shadow_off))?;
         file.write_all(&primary_bytes)?;
         file.sync_all()?;
@@ -195,6 +199,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         algorithm,
         keys,
         index,
+        index_pad_size,
         file,
         wal,
         lock,
@@ -234,7 +239,7 @@ pub fn vault_write(
     data.zeroize();
 
     // 3. WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
     handle
         .wal
         .begin(WalOp::WriteSegment, &old_encrypted_index)?;
@@ -243,7 +248,7 @@ pub fn vault_write(
     if let Some(old_entry) = handle.index.remove(&name) {
         segment::secure_erase_region(
             &mut handle.file,
-            DATA_REGION_OFFSET + old_entry.offset,
+            format::data_region_offset(handle.index_pad_size) + old_entry.offset,
             old_entry.size,
         )?;
         handle.index.deallocate(old_entry.offset, old_entry.size);
@@ -255,7 +260,7 @@ pub fn vault_write(
     // 6. Write encrypted segment at allocated offset + fsync before index update
     handle
         .file
-        .seek(SeekFrom::Start(DATA_REGION_OFFSET + offset))?;
+        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + offset))?;
     handle.file.write_all(&encrypted)?;
     handle.file.sync_all()?;
 
@@ -277,6 +282,7 @@ pub fn vault_write(
         &handle.keys,
         handle.algorithm,
         handle.index.capacity,
+        handle.index_pad_size,
     )?;
 
     // 9. WAL commit
@@ -307,7 +313,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     })?;
     handle
         .file
-        .seek(SeekFrom::Start(DATA_REGION_OFFSET + seg_offset))?;
+        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + seg_offset))?;
     let mut encrypted = vec![0u8; read_len];
     handle.file.read_exact(&mut encrypted)?;
 
@@ -336,7 +342,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
 #[cfg(feature = "compression")]
 pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), CryptoError> {
     // WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
     handle
         .wal
         .begin(WalOp::DeleteSegment, &old_encrypted_index)?;
@@ -349,7 +355,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
     // Secure erase (CSPRNG overwrite + fsync)
     segment::secure_erase_region(
         &mut handle.file,
-        DATA_REGION_OFFSET + entry.offset,
+        format::data_region_offset(handle.index_pad_size) + entry.offset,
         entry.size,
     )?;
 
@@ -363,6 +369,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
         &handle.keys,
         handle.algorithm,
         handle.index.capacity,
+        handle.index_pad_size,
     )?;
 
     // WAL commit
@@ -394,13 +401,13 @@ fn vault_resize_grow_impl(
     old_capacity: u64,
     new_capacity: u64,
 ) -> Result<(), CryptoError> {
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Extend file and CSPRNG-fill new space (also overwrites old shadow position)
-    let new_total = format::total_vault_size(new_capacity)?;
+    let new_total = format::total_vault_size(new_capacity, handle.index_pad_size)?;
     handle.file.set_len(new_total)?;
-    let fill_offset = DATA_REGION_OFFSET + old_capacity;
+    let fill_offset = format::data_region_offset(handle.index_pad_size) + old_capacity;
     let fill_size = new_capacity - old_capacity;
     segment::secure_erase_region(&mut handle.file, fill_offset, fill_size)?;
 
@@ -412,6 +419,7 @@ fn vault_resize_grow_impl(
         &handle.keys,
         handle.algorithm,
         new_capacity,
+        handle.index_pad_size,
     )?;
 
     handle.wal.commit()?;
@@ -442,7 +450,7 @@ fn vault_resize_shrink_impl(
     }
 
     // WAL begin — journal the current encrypted index for crash recovery.
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Update index metadata for the new capacity.
@@ -470,10 +478,11 @@ fn vault_resize_shrink_impl(
         &handle.keys,
         handle.algorithm,
         new_capacity,
+        handle.index_pad_size,
     )?;
 
     // Truncate file to new total size.
-    let new_total = format::total_vault_size(new_capacity)?;
+    let new_total = format::total_vault_size(new_capacity, handle.index_pad_size)?;
     handle.file.set_len(new_total)?;
     handle.file.sync_all()?;
 
@@ -548,7 +557,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         })?;
         handle
             .file
-            .seek(SeekFrom::Start(DATA_REGION_OFFSET + m.old_offset))?;
+            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.old_offset))?;
         let mut buf = vec![0u8; read_len];
         handle.file.read_exact(&mut buf)?;
 
@@ -566,7 +575,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         }
 
         // Journal current encrypted index before mutation
-        let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+        let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
         handle
             .wal
             .begin(WalOp::WriteSegment, &old_encrypted_index)?;
@@ -574,7 +583,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         // Write to new target offset and fsync
         handle
             .file
-            .seek(SeekFrom::Start(DATA_REGION_OFFSET + m.new_offset))?;
+            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.new_offset))?;
         handle.file.write_all(&buf)?;
         buf.zeroize();
         handle.file.sync_all()?;
@@ -589,6 +598,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
             &handle.keys,
             handle.algorithm,
             handle.index.capacity,
+            handle.index_pad_size,
         )?;
 
         // WAL commit — move is now durable
@@ -604,7 +614,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         if erase_end > erase_start {
             segment::secure_erase_region(
                 &mut handle.file,
-                DATA_REGION_OFFSET + erase_start,
+                format::data_region_offset(handle.index_pad_size) + erase_start,
                 erase_end - erase_start,
             )?;
         }
@@ -626,13 +636,14 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         &handle.keys,
         handle.algorithm,
         handle.index.capacity,
+        handle.index_pad_size,
     )?;
 
     // Secure-erase the free tail (CSPRNG overwrite + fsync)
     if packed_end < handle.index.capacity {
         segment::secure_erase_region(
             &mut handle.file,
-            DATA_REGION_OFFSET + packed_end,
+            format::data_region_offset(handle.index_pad_size) + packed_end,
             handle.index.capacity - packed_end,
         )?;
     }

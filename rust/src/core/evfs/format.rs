@@ -14,34 +14,60 @@ pub const VAULT_HEADER_SIZE: usize = 32;
 /// Max segment name length in bytes (UTF-8).
 pub const MAX_SEGMENT_NAME_LEN: usize = 255;
 
-/// Index is always serialized to this size (zero-padded).
-/// 64KB supports approximately 200 segments + free regions.
-pub const INDEX_PAD_SIZE: usize = 64 * 1024;
+/// Minimum index padding size (64KB). One page supports ~200 segments.
+pub const MIN_INDEX_PAD_SIZE: usize = 64 * 1024;
 
-/// Encrypted index size on disk: padded plaintext + AEAD nonce (12) + tag (16).
-pub const ENCRYPTED_INDEX_SIZE: usize = INDEX_PAD_SIZE + 12 + 16;
+/// AEAD overhead added to the padded index plaintext: nonce (12) + tag (16).
+const INDEX_AEAD_OVERHEAD: usize = 12 + 16;
 
-/// Vault file layout offsets.
+/// Primary index starts immediately after the header.
 pub const PRIMARY_INDEX_OFFSET: u64 = VAULT_HEADER_SIZE as u64;
-pub const DATA_REGION_OFFSET: u64 = PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64;
 
-/// Shadow index offset depends on vault capacity.
-pub fn shadow_index_offset(capacity: u64) -> Result<u64, CryptoError> {
-    DATA_REGION_OFFSET
+// ---------------------------------------------------------------------------
+// Dynamic layout functions
+// ---------------------------------------------------------------------------
+
+/// Maximum index padding size (16MB). Caps segment count at ~50,000 for the
+/// largest vaults. Also bounds the WAL snapshot and heap allocation.
+pub const MAX_INDEX_PAD_SIZE: usize = 16 * 1024 * 1024;
+
+/// Compute index padding size from vault capacity.
+///
+/// Returns 64KB per MB of capacity, minimum 64KB, capped at 16MB.
+/// This determines how many segments a vault can hold.
+pub fn compute_index_size(capacity: u64) -> usize {
+    let mb = std::cmp::max(1, capacity / (1024 * 1024));
+    let size = (mb as usize).saturating_mul(MIN_INDEX_PAD_SIZE);
+    std::cmp::min(size, MAX_INDEX_PAD_SIZE)
+}
+
+/// Encrypted index size on disk: padded plaintext + AEAD nonce + tag.
+pub fn encrypted_index_size(index_pad_size: usize) -> usize {
+    index_pad_size + INDEX_AEAD_OVERHEAD
+}
+
+/// Data region offset: right after the primary encrypted index.
+pub fn data_region_offset(index_pad_size: usize) -> u64 {
+    PRIMARY_INDEX_OFFSET + encrypted_index_size(index_pad_size) as u64
+}
+
+/// Shadow index offset depends on vault capacity and index size.
+pub fn shadow_index_offset(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    data_region_offset(index_pad_size)
         .checked_add(capacity)
         .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 /// WAL region starts after the shadow index.
-pub fn wal_region_offset(capacity: u64) -> Result<u64, CryptoError> {
-    shadow_index_offset(capacity)?
-        .checked_add(ENCRYPTED_INDEX_SIZE as u64)
+pub fn wal_region_offset(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    shadow_index_offset(capacity, index_pad_size)?
+        .checked_add(encrypted_index_size(index_pad_size) as u64)
         .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 /// Total vault file size: header + 2 encrypted indices + data capacity.
-pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
-    let base = VAULT_HEADER_SIZE as u64 + 2 * ENCRYPTED_INDEX_SIZE as u64;
+pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    let base = VAULT_HEADER_SIZE as u64 + 2 * encrypted_index_size(index_pad_size) as u64;
     base.checked_add(capacity)
         .ok_or_else(|| CryptoError::InvalidParameter("vault size overflows".into()))
 }
@@ -52,21 +78,24 @@ pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
 
 /// On-disk vault header (32 bytes).
 ///
-/// Layout: `[MAGIC(4)] [VERSION(1)] [ALGORITHM(1)] [FLAGS(2)] [RESERVED(24)]`
+/// Layout: `[MAGIC(4)] [VERSION(1)] [ALGORITHM(1)] [FLAGS(2)] [INDEX_SIZE(4)] [RESERVED(20)]`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VaultHeader {
     pub version: u8,
     /// AEAD algorithm ID (reuses `core::format::Algorithm` byte values).
     pub algorithm: u8,
     pub flags: u16,
+    /// Padded plaintext index size in bytes (64KB-aligned).
+    pub index_size: u32,
 }
 
 impl VaultHeader {
-    pub fn new(algorithm: u8) -> Self {
+    pub fn new(algorithm: u8, index_size: u32) -> Self {
         Self {
             version: VAULT_VERSION,
             algorithm,
             flags: 0,
+            index_size,
         }
     }
 
@@ -76,7 +105,8 @@ impl VaultHeader {
         buf[4] = self.version;
         buf[5] = self.algorithm;
         buf[6..8].copy_from_slice(&self.flags.to_le_bytes());
-        // bytes 8..32 reserved (zeros)
+        buf[8..12].copy_from_slice(&self.index_size.to_le_bytes());
+        // bytes 12..32 reserved (zeros)
         buf
     }
 
@@ -100,10 +130,20 @@ impl VaultHeader {
         }
         let algorithm = data[5];
         let flags = u16::from_le_bytes([data[6], data[7]]);
+        let index_size = u32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+
+        let idx_usize = index_size as usize;
+        if !(MIN_INDEX_PAD_SIZE..=MAX_INDEX_PAD_SIZE).contains(&idx_usize) {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "invalid index_size in header: {index_size} (must be {MIN_INDEX_PAD_SIZE}..{MAX_INDEX_PAD_SIZE})"
+            )));
+        }
+
         Ok(Self {
             version,
             algorithm,
             flags,
+            index_size,
         })
     }
 }
@@ -265,7 +305,7 @@ impl SegmentIndex {
         }
     }
 
-    /// Serialize index to bytes, padded to `INDEX_PAD_SIZE`.
+    /// Serialize index to bytes, zero-padded to `pad_size`.
     ///
     /// Wire format:
     /// ```text
@@ -281,10 +321,10 @@ impl SegmentIndex {
     ///   -- free regions --
     ///   per region:
     ///     [offset: u64] [size: u64]
-    ///   -- zero padding to INDEX_PAD_SIZE --
+    ///   -- zero padding to pad_size --
     /// ```
-    pub fn to_bytes(&self) -> Result<Vec<u8>, CryptoError> {
-        let mut buf = Vec::with_capacity(INDEX_PAD_SIZE);
+    pub fn to_bytes(&self, pad_size: usize) -> Result<Vec<u8>, CryptoError> {
+        let mut buf = Vec::with_capacity(pad_size);
 
         let entry_count = u32::try_from(self.entries.len())
             .map_err(|_| CryptoError::VaultCorrupted("too many segment entries".into()))?;
@@ -316,14 +356,14 @@ impl SegmentIndex {
             put_u64(&mut buf, region.size);
         }
 
-        if buf.len() > INDEX_PAD_SIZE {
+        if buf.len() > pad_size {
             return Err(CryptoError::VaultCorrupted(format!(
-                "index content ({} bytes) exceeds INDEX_PAD_SIZE ({INDEX_PAD_SIZE})",
+                "index content ({} bytes) exceeds pad_size ({pad_size})",
                 buf.len()
             )));
         }
 
-        buf.resize(INDEX_PAD_SIZE, 0);
+        buf.resize(pad_size, 0);
         Ok(buf)
     }
 
@@ -339,8 +379,8 @@ impl SegmentIndex {
 
         // Sanity-cap: the smallest possible entry is ~59 bytes (1-byte name),
         // free region is 16 bytes. Reject clearly corrupted counts early.
-        let max_entries = INDEX_PAD_SIZE / 59;
-        let max_free = INDEX_PAD_SIZE / 16;
+        let max_entries = data.len() / 59;
+        let max_free = data.len() / 16;
         if entry_count > max_entries {
             return Err(CryptoError::VaultCorrupted(format!(
                 "entry count {entry_count} exceeds maximum {max_entries}"
@@ -618,23 +658,44 @@ mod tests {
 
     #[test]
     fn test_vault_header_roundtrip() {
-        let header = VaultHeader::new(0x01);
+        let header = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32);
         let bytes = header.to_bytes();
         let parsed = VaultHeader::from_bytes(&bytes).expect("parse");
         assert_eq!(header, parsed);
     }
 
     #[test]
+    fn test_vault_header_roundtrip_large_index() {
+        let index_size = compute_index_size(5 * 1024 * 1024) as u32;
+        let header = VaultHeader::new(0x02, index_size);
+        let bytes = header.to_bytes();
+        let parsed = VaultHeader::from_bytes(&bytes).expect("parse");
+        assert_eq!(parsed.index_size, index_size);
+        assert_eq!(header, parsed);
+    }
+
+    #[test]
     fn test_vault_header_invalid_magic() {
-        let mut bytes = VaultHeader::new(0x01).to_bytes();
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
         bytes[0] = b'X';
         assert!(VaultHeader::from_bytes(&bytes).is_err());
     }
 
     #[test]
     fn test_vault_header_invalid_version() {
-        let mut bytes = VaultHeader::new(0x01).to_bytes();
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
         bytes[4] = 99;
+        assert!(VaultHeader::from_bytes(&bytes).is_err());
+    }
+
+    #[test]
+    fn test_vault_header_zero_index_size_rejected() {
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
+        // Zero out index_size at bytes 8..12
+        bytes[8] = 0;
+        bytes[9] = 0;
+        bytes[10] = 0;
+        bytes[11] = 0;
         assert!(VaultHeader::from_bytes(&bytes).is_err());
     }
 
@@ -726,7 +787,7 @@ mod tests {
     #[test]
     fn test_segment_index_roundtrip() {
         let idx = make_test_index();
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
@@ -764,7 +825,7 @@ mod tests {
             )
             .expect("entry"),
         );
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
@@ -793,7 +854,7 @@ mod tests {
                 .expect("entry"),
             );
         }
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
@@ -815,7 +876,7 @@ mod tests {
             offset: 1000,
             size: 300,
         });
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
         assert_eq!(
@@ -843,20 +904,22 @@ mod tests {
 
     #[test]
     fn test_segment_index_padded_size() {
-        // Empty index
+        // Empty index — small capacity gets MIN_INDEX_PAD_SIZE
         let idx = SegmentIndex::new(1024);
-        let bytes = idx.to_bytes().expect("serialize");
-        assert_eq!(bytes.len(), INDEX_PAD_SIZE);
+        let pad = compute_index_size(idx.capacity);
+        let bytes = idx.to_bytes(pad).expect("serialize");
+        assert_eq!(bytes.len(), MIN_INDEX_PAD_SIZE);
 
-        // Index with entries + free regions
+        // Index with entries + free regions (1MB capacity → 64KB index)
         let idx = make_test_index();
-        let bytes = idx.to_bytes().expect("serialize");
-        assert_eq!(bytes.len(), INDEX_PAD_SIZE);
+        let pad = compute_index_size(idx.capacity);
+        let bytes = idx.to_bytes(pad).expect("serialize");
+        assert_eq!(bytes.len(), MIN_INDEX_PAD_SIZE);
     }
 
     #[test]
-    fn test_segment_index_overflow() {
-        let mut idx = SegmentIndex::new(u64::MAX);
+    fn test_segment_index_overflow_min_pad() {
+        let mut idx = SegmentIndex::new(512 * 1024); // 512KB → MIN_INDEX_PAD_SIZE
         // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 = 314 bytes.
         // Index header is 32 bytes. (65536 - 32) / 314 ≈ 208 entries max.
         for i in 0..210 {
@@ -873,7 +936,7 @@ mod tests {
                 .expect("entry"),
             );
         }
-        assert!(idx.to_bytes().is_err());
+        assert!(idx.to_bytes(MIN_INDEX_PAD_SIZE).is_err());
     }
 
     // -- SegmentIndex lookup / mutation --------------------------------------
@@ -1082,34 +1145,65 @@ mod tests {
 
     #[test]
     fn test_layout_offsets() {
+        let idx_size = MIN_INDEX_PAD_SIZE;
+        let enc_size = encrypted_index_size(idx_size);
+
         // Primary index immediately after header
         assert_eq!(PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE as u64);
 
-        // Data region after primary index
-        assert_eq!(
-            DATA_REGION_OFFSET,
-            PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64
-        );
+        // Data region after primary encrypted index
+        let data_off = data_region_offset(idx_size);
+        assert_eq!(data_off, PRIMARY_INDEX_OFFSET + enc_size as u64);
 
         let cap = 10 * 1024 * 1024; // 10MB
-        let shadow = shadow_index_offset(cap).expect("shadow");
-        let wal = wal_region_offset(cap).expect("wal");
+        let idx_10mb = compute_index_size(cap);
+        let enc_10mb = encrypted_index_size(idx_10mb);
+        let shadow = shadow_index_offset(cap, idx_10mb).expect("shadow");
+        let wal = wal_region_offset(cap, idx_10mb).expect("wal");
 
         // Shadow index after data region
-        assert_eq!(shadow, DATA_REGION_OFFSET + cap);
+        assert_eq!(shadow, data_region_offset(idx_10mb) + cap);
 
         // WAL after shadow index
-        assert_eq!(wal, shadow + ENCRYPTED_INDEX_SIZE as u64);
+        assert_eq!(wal, shadow + enc_10mb as u64);
 
         // No overlapping regions
-        assert!(shadow > DATA_REGION_OFFSET);
+        assert!(shadow > data_region_offset(idx_10mb));
         assert!(wal > shadow);
     }
 
     #[test]
     fn test_layout_overflow() {
-        assert!(shadow_index_offset(u64::MAX).is_err());
-        assert!(wal_region_offset(u64::MAX).is_err());
+        assert!(shadow_index_offset(u64::MAX, MIN_INDEX_PAD_SIZE).is_err());
+        assert!(wal_region_offset(u64::MAX, MIN_INDEX_PAD_SIZE).is_err());
+    }
+
+    // -- compute_index_size -------------------------------------------------
+
+    #[test]
+    fn test_compute_index_size_minimum() {
+        // Capacities below 1MB all get MIN_INDEX_PAD_SIZE
+        assert_eq!(compute_index_size(0), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(1), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(512 * 1024), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(1024 * 1024), MIN_INDEX_PAD_SIZE);
+    }
+
+    #[test]
+    fn test_compute_index_size_scales() {
+        let mb = 1024 * 1024;
+        assert_eq!(compute_index_size(5 * mb), 5 * MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(10 * mb), 10 * MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(50 * mb), 50 * MIN_INDEX_PAD_SIZE);
+    }
+
+    #[test]
+    fn test_compute_index_size_boundary() {
+        let mb = 1024 * 1024;
+        // Just over 1MB → 1 page (integer division truncates)
+        assert_eq!(compute_index_size(mb + 1), MIN_INDEX_PAD_SIZE);
+        // 2MB → 2 pages
+        assert_eq!(compute_index_size(2 * mb), 2 * MIN_INDEX_PAD_SIZE);
     }
 
     // -- Zero-size allocation -----------------------------------------------

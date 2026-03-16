@@ -1,5 +1,6 @@
 
 use super::*;
+use crate::core::evfs::format::{encrypted_index_size, MIN_INDEX_PAD_SIZE};
 
 fn test_key() -> Vec<u8> {
     vec![0xAA; 32]
@@ -81,7 +82,7 @@ fn test_open_runs_wal_recovery() {
     // Save the "good" encrypted index (containing only A)
     let good_encrypted = {
         let mut f = File::open(&path).expect("open");
-        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read index")
+        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET, encrypted_index_size(MIN_INDEX_PAD_SIZE)).expect("read index")
     };
 
     // Add segment B normally (both index and data on disk)
@@ -203,7 +204,7 @@ fn test_read_tampered_segment() {
 
     // Tamper with encrypted data on disk
     let entry = handle.index.find("secret.txt").expect("find");
-    let disk_offset = DATA_REGION_OFFSET + entry.offset;
+    let disk_offset = format::data_region_offset(MIN_INDEX_PAD_SIZE) + entry.offset;
     // Flip a byte in the ciphertext (after the 12-byte nonce)
     handle
         .file
@@ -574,7 +575,7 @@ fn test_delete_secure_erase() {
 
     // Capture encrypted bytes at the segment offset
     let entry = handle.index.find("secret.txt").expect("find");
-    let disk_offset = DATA_REGION_OFFSET + entry.offset;
+    let disk_offset = format::data_region_offset(MIN_INDEX_PAD_SIZE) + entry.offset;
     let size = entry.size as usize;
     handle
         .file
@@ -875,7 +876,7 @@ fn test_resize_grow_crash_recovery() {
     // Save the "good" encrypted index (1MB capacity, contains A).
     let good_encrypted = {
         let mut f = File::open(&path).expect("open");
-        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read index")
+        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET, encrypted_index_size(MIN_INDEX_PAD_SIZE)).expect("read index")
     };
 
     // Perform a real grow to 2MB.
@@ -988,7 +989,7 @@ fn test_resize_grow_crash_midway_recovers() {
     // Capture the good encrypted index before simulating a partial grow.
     {
         let mut f = File::open(&path).expect("open");
-        good_encrypted = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read idx");
+        good_encrypted = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET, encrypted_index_size(MIN_INDEX_PAD_SIZE)).expect("read idx");
     }
 
     // Simulate a crash mid-grow: extend the file and CSPRNG-fill
@@ -999,10 +1000,10 @@ fn test_resize_grow_crash_midway_recovers() {
             .write(true)
             .open(&path)
             .expect("open rw");
-        let new_total = format::total_vault_size(2 * SIZE_MB).expect("size");
+        let new_total = format::total_vault_size(2 * SIZE_MB, MIN_INDEX_PAD_SIZE).expect("size");
         f.set_len(new_total).expect("extend");
-        // CSPRNG-fill overwrites old shadow position at DATA_REGION_OFFSET + SIZE_MB
-        segment::secure_erase_region(&mut f, DATA_REGION_OFFSET + SIZE_MB, SIZE_MB).expect("fill");
+        // CSPRNG-fill overwrites old shadow position at format::data_region_offset(MIN_INDEX_PAD_SIZE) + SIZE_MB
+        segment::secure_erase_region(&mut f, format::data_region_offset(MIN_INDEX_PAD_SIZE) + SIZE_MB, SIZE_MB).expect("fill");
 
         let mut wal = WriteAheadLog::open(&path).expect("wal");
         wal.begin(WalOp::UpdateIndex, &good_encrypted)
@@ -1018,7 +1019,7 @@ fn test_resize_grow_crash_midway_recovers() {
 
     // File size should match restored capacity
     let actual_size = handle.file.seek(SeekFrom::End(0)).expect("seek");
-    let expected_size = format::total_vault_size(SIZE_MB).expect("size");
+    let expected_size = format::total_vault_size(SIZE_MB, MIN_INDEX_PAD_SIZE).expect("size");
     assert_eq!(actual_size, expected_size);
 
     // Data intact
@@ -1209,7 +1210,7 @@ fn test_defragment_crash_recovery() {
     // Save pre-defrag encrypted index (the "good" state)
     let pre_defrag_index = {
         let mut f = File::open(&path).expect("open");
-        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read index")
+        read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET, encrypted_index_size(MIN_INDEX_PAD_SIZE)).expect("read index")
     };
 
     // Simulate crash mid-defrag: write uncommitted WAL entry
@@ -1275,7 +1276,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
     let (pre_defrag_index, b_old_offset, b_size) = {
         let handle = vault_open(path.clone(), test_key()).expect("open");
         let mut f = File::open(&path).expect("open file");
-        let idx = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET).expect("read idx");
+        let idx = read_encrypted_index(&mut f, PRIMARY_INDEX_OFFSET, encrypted_index_size(MIN_INDEX_PAD_SIZE)).expect("read idx");
         let entry = handle.index.find("b.txt").expect("B");
         let off = entry.offset;
         let sz = entry.size;
@@ -1296,7 +1297,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
 
         // Read B from old position
         let mut buf = vec![0u8; b_size as usize];
-        f.seek(SeekFrom::Start(DATA_REGION_OFFSET + b_old_offset))
+        f.seek(SeekFrom::Start(format::data_region_offset(MIN_INDEX_PAD_SIZE) + b_old_offset))
             .expect("seek");
         f.read_exact(&mut buf).expect("read B");
 
@@ -1309,7 +1310,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
         backup.sync_all().expect("sync backup");
 
         // Write B to new position (offset 0) — corrupts overlap zone
-        f.seek(SeekFrom::Start(DATA_REGION_OFFSET)).expect("seek 0");
+        f.seek(SeekFrom::Start(format::data_region_offset(MIN_INDEX_PAD_SIZE))).expect("seek 0");
         f.write_all(&buf).expect("write B to 0");
         f.sync_all().expect("sync");
 

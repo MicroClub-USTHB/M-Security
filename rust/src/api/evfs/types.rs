@@ -20,6 +20,8 @@ pub struct VaultHandle {
     pub(crate) algorithm: Algorithm,
     pub(crate) keys: VaultKeys,
     pub(crate) index: SegmentIndex,
+    /// Padded plaintext index size, set at creation and read from header on open.
+    pub(crate) index_pad_size: usize,
     pub(crate) file: File,
     pub(crate) wal: WriteAheadLog,
     pub(crate) lock: VaultLock,
@@ -104,7 +106,7 @@ impl VaultHandle {
         let is_consistent = used_bytes
             .checked_add(free_list_bytes)
             .and_then(|v| v.checked_add(unallocated_bytes))
-            .map_or(false, |sum| sum == total_bytes);
+            == Some(total_bytes);
 
         VaultHealthInfo {
             total_bytes,
