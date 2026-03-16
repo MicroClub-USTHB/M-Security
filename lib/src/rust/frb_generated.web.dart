@@ -11,6 +11,7 @@ import 'api/encryption.dart';
 import 'api/encryption/aes_gcm.dart';
 import 'api/encryption/chacha20.dart';
 import 'api/evfs.dart';
+import 'api/evfs/types.dart';
 import 'api/hashing.dart';
 import 'api/hashing/argon2.dart';
 import 'api/kdf/hkdf.dart';
@@ -132,6 +133,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CryptoError dco_decode_crypto_error(dynamic raw);
 
   @protected
+  DefragResult dco_decode_defrag_result(dynamic raw);
+
+  @protected
   double dco_decode_f_64(dynamic raw);
 
   @protected
@@ -156,6 +160,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  int dco_decode_u_32(dynamic raw);
+
+  @protected
   BigInt dco_decode_u_64(dynamic raw);
 
   @protected
@@ -169,6 +176,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   VaultCapacityInfo dco_decode_vault_capacity_info(dynamic raw);
+
+  @protected
+  VaultHealthInfo dco_decode_vault_health_info(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
@@ -267,6 +277,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CryptoError sse_decode_crypto_error(SseDeserializer deserializer);
 
   @protected
+  DefragResult sse_decode_defrag_result(SseDeserializer deserializer);
+
+  @protected
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
@@ -293,6 +306,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
@@ -308,6 +324,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   VaultCapacityInfo sse_decode_vault_capacity_info(
     SseDeserializer deserializer,
   );
+
+  @protected
+  VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -425,6 +444,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_crypto_error(CryptoError self, SseSerializer serializer);
 
   @protected
+  void sse_encode_defrag_result(DefragResult self, SseSerializer serializer);
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
@@ -458,6 +480,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
@@ -472,6 +497,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_vault_capacity_info(
     VaultCapacityInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_vault_health_info(
+    VaultHealthInfo self,
     SseSerializer serializer,
   );
 }

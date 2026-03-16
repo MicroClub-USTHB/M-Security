@@ -442,7 +442,10 @@ mod tests {
         assert_eq!(header, parsed);
 
         // Also test ChaCha20 variant
-        let header2 = StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305, CompressionAlgorithm::None);
+        let header2 = StreamHeader::new(
+            StreamAlgorithm::ChaCha20Poly1305,
+            CompressionAlgorithm::None,
+        );
         let bytes2 = header2.to_bytes();
         let parsed2 = StreamHeader::from_bytes(&bytes2).expect("parse failed");
         assert_eq!(header2, parsed2);
@@ -489,7 +492,10 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::ChaCha20Poly1305, CompressionAlgorithm::None))
+                .write_header(&StreamHeader::new(
+                    StreamAlgorithm::ChaCha20Poly1305,
+                    CompressionAlgorithm::None,
+                ))
                 .expect("write header");
 
             for i in 0..num_chunks {
@@ -523,7 +529,8 @@ mod tests {
 
     #[test]
     fn test_bad_magic_rejected() {
-        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
+        let mut bytes =
+            StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         bytes[0] = b'X';
         let result = StreamHeader::from_bytes(&bytes);
         assert!(result.is_err());
@@ -575,7 +582,10 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
+                .write_header(&StreamHeader::new(
+                    StreamAlgorithm::AesGcm,
+                    CompressionAlgorithm::None,
+                ))
                 .expect("write header");
 
             // Simulate 3 chunks — last one would be "short" in plaintext,
@@ -663,7 +673,10 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
+                .write_header(&StreamHeader::new(
+                    StreamAlgorithm::AesGcm,
+                    CompressionAlgorithm::None,
+                ))
                 .expect("write header");
 
             let chunk = EncryptedChunk {
@@ -694,7 +707,8 @@ mod tests {
 
     #[test]
     fn test_unsupported_version_rejected() {
-        let mut bytes = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
+        let mut bytes =
+            StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         bytes[4] = 0xFF; // bad version (LE low byte)
         bytes[5] = 0x00;
         let result = StreamHeader::from_bytes(&bytes);
@@ -748,7 +762,10 @@ mod tests {
         let output = Vec::new();
         let mut writer = ChunkWriter::new(output);
         writer
-            .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
+            .write_header(&StreamHeader::new(
+                StreamAlgorithm::AesGcm,
+                CompressionAlgorithm::None,
+            ))
             .expect("write header");
 
         let recovered = writer.finish().expect("finish");
@@ -757,7 +774,8 @@ mod tests {
 
     #[test]
     fn test_reader_into_inner() {
-        let data = StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
+        let data =
+            StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None).to_bytes();
         let cursor = Cursor::new(data.to_vec());
         let mut reader = ChunkReader::new(cursor);
         reader.read_header().expect("read header");
@@ -780,7 +798,10 @@ mod tests {
         {
             let mut writer = ChunkWriter::new(&mut output);
             writer
-                .write_header(&StreamHeader::new(StreamAlgorithm::AesGcm, CompressionAlgorithm::None))
+                .write_header(&StreamHeader::new(
+                    StreamAlgorithm::AesGcm,
+                    CompressionAlgorithm::None,
+                ))
                 .expect("header");
 
             for i in 0u8..3 {
