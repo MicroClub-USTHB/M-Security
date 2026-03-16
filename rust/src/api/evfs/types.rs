@@ -26,6 +26,7 @@ pub struct VaultHandle {
 }
 
 /// Capacity info returned to callers.
+#[frb(non_opaque)]
 pub struct VaultCapacityInfo {
     pub total_bytes: u64,
     pub used_bytes: u64,
@@ -46,9 +47,6 @@ pub struct DefragResult {
 }
 
 /// Vault health and diagnostic info returned to callers.
-///
-/// `#[frb(non_opaque)]` tells the code generator to expose this as a direct Dart class
-/// with all these fields accessible, instead of hiding it behind a pointer.
 #[frb(non_opaque)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct VaultHealthInfo {
@@ -65,9 +63,6 @@ pub struct VaultHealthInfo {
 
 impl VaultHandle {
     /// Compute health information from the in-memory index only (no file I/O or WAL writes).
-    ///
-    /// The `#[must_use]` attribute is a Rust best practice indicating that the return value
-    /// of this function should not be silently ignored by callers.
     #[must_use]
     pub fn health(&self) -> VaultHealthInfo {
         let total_bytes = self.index.capacity;
@@ -82,11 +77,9 @@ impl VaultHandle {
             .capacity
             .saturating_sub(self.index.next_free_offset);
 
-        // Ensure accurate type casting with safety bounds.
-        let segment_count = self.index.entries.len() as u32;
-        let free_region_count = self.index.free_regions.len() as u32;
+        let segment_count = u32::try_from(self.index.entries.len()).unwrap_or(u32::MAX);
+        let free_region_count = u32::try_from(self.index.free_regions.len()).unwrap_or(u32::MAX);
 
-        // Functional programming in Rust: iterate over free regions, map to size, and find the max.
         let free_list_max = self
             .index
             .free_regions
@@ -95,14 +88,10 @@ impl VaultHandle {
             .max()
             .unwrap_or(0);
 
-        let tail = unallocated_bytes;
-        // The largest available chunk is either the biggest free list block or the unallocated tail.
-        let largest_free_block = std::cmp::max(free_list_max, tail);
+        let largest_free_block = std::cmp::max(free_list_max, unallocated_bytes);
 
-        // Calculate total free space securely.
         let total_free = free_list_bytes.saturating_add(unallocated_bytes);
 
-        // Prevent Divide-by-Zero errors with a standard conditional cast.
         let fragmentation_ratio = if total_free == 0 {
             0.0
         } else {

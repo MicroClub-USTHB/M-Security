@@ -3,7 +3,7 @@
 mod helpers;
 #[cfg(all(test, feature = "compression"))]
 mod tests;
-mod types;
+pub mod types;
 
 use helpers::*;
 pub use types::*;
@@ -492,18 +492,13 @@ pub fn vault_list(handle: &VaultHandle) -> Vec<String> {
 
 /// Get vault capacity info.
 pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
-    let used = handle.index.used_bytes();
-    let free_list = handle.index.free_list_bytes();
-    let unallocated = handle
-        .index
-        .capacity
-        .saturating_sub(handle.index.next_free_offset);
+    let h = handle.health();
     VaultCapacityInfo {
-        total_bytes: handle.index.capacity,
-        used_bytes: used,
-        free_list_bytes: free_list,
-        unallocated_bytes: unallocated,
-        segment_count: handle.index.entries.len(),
+        total_bytes: h.total_bytes,
+        used_bytes: h.used_bytes,
+        free_list_bytes: h.free_list_bytes,
+        unallocated_bytes: h.unallocated_bytes,
+        segment_count: h.segment_count as usize,
     }
 }
 
