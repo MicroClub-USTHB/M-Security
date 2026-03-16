@@ -55,6 +55,24 @@ pub struct DefragResult {
     pub free_regions_before: u32,
 }
 
+/// Vault health and diagnostic info returned to callers.
+///
+/// `#[frb(non_opaque)]` tells the code generator to expose this as a direct Dart class
+/// with all these fields accessible, instead of hiding it behind a pointer.
+#[frb(non_opaque)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct VaultHealthInfo {
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub free_list_bytes: u64,
+    pub unallocated_bytes: u64,
+    pub segment_count: u32,
+    pub free_region_count: u32,
+    pub largest_free_block: u64,
+    /// 0.0 = no fragmentation, 1.0 = all free space is fragmented
+    pub fragmentation_ratio: f64,
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -78,12 +96,8 @@ fn flush_index(
     capacity: u64,
 ) -> Result<(), CryptoError> {
     let plaintext = index.to_bytes()?;
-    let encrypted = segment::aead_encrypt_random_nonce(
-        keys.index_key.as_bytes(),
-        &plaintext,
-        &[],
-        algorithm,
-    )?;
+    let encrypted =
+        segment::aead_encrypt_random_nonce(keys.index_key.as_bytes(), &plaintext, &[], algorithm)?;
 
     // Primary
     file.seek(SeekFrom::Start(PRIMARY_INDEX_OFFSET))?;
@@ -132,6 +146,65 @@ fn capacity_from_file_size(file_size: u64) -> Result<u64, CryptoError> {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+impl VaultHandle {
+    /// Compute health information from the in-memory index only (no file I/O or WAL writes).
+    ///
+    /// The `#[must_use]` attribute is a Rust best practice indicating that the return value
+    /// of this function should not be silently ignored by callers.
+    #[must_use]
+    pub fn health(&self) -> VaultHealthInfo {
+        let total_bytes = self.index.capacity;
+        let used_bytes = self.index.used_bytes();
+        let free_list_bytes = self.index.free_list_bytes();
+
+        // We use `saturating_sub` to safely handle subtractions. If next_free_offset
+        // exceeds capacity (which shouldn't happen, but defensive programming is key),
+        // it firmly caps at 0 instead of causing a thread panic.
+        let unallocated_bytes = self
+            .index
+            .capacity
+            .saturating_sub(self.index.next_free_offset);
+
+        // Ensure accurate type casting with safety bounds.
+        let segment_count = self.index.entries.len() as u32;
+        let free_region_count = self.index.free_regions.len() as u32;
+
+        // Functional programming in Rust: iterate over free regions, map to size, and find the max.
+        let free_list_max = self
+            .index
+            .free_regions
+            .iter()
+            .map(|r| r.size)
+            .max()
+            .unwrap_or(0);
+
+        let tail = unallocated_bytes;
+        // The largest available chunk is either the biggest free list block or the unallocated tail.
+        let largest_free_block = std::cmp::max(free_list_max, tail);
+
+        // Calculate total free space securely.
+        let total_free = free_list_bytes.saturating_add(unallocated_bytes);
+
+        // Prevent Divide-by-Zero errors with a standard conditional cast.
+        let fragmentation_ratio = if total_free == 0 {
+            0.0
+        } else {
+            (free_list_bytes as f64) / (total_free as f64)
+        };
+
+        VaultHealthInfo {
+            total_bytes,
+            used_bytes,
+            free_list_bytes,
+            unallocated_bytes,
+            segment_count,
+            free_region_count,
+            largest_free_block,
+            fragmentation_ratio,
+        }
+    }
+}
 
 /// Create a new vault file at `path` with the given capacity.
 ///
@@ -335,8 +408,7 @@ pub fn vault_write(
         segment_index: 0,
         generation: gen,
     };
-    let (encrypted, effective_algo) =
-        segment::encrypt_segment(&params, &data, &name, &config)?;
+    let (encrypted, effective_algo) = segment::encrypt_segment(&params, &data, &name, &config)?;
     data.zeroize();
 
     // 3. WAL journal old index
@@ -392,10 +464,7 @@ pub fn vault_write(
 
 /// Read a named segment. Decompression is automatic.
 #[cfg(feature = "compression")]
-pub fn vault_read(
-    handle: &mut VaultHandle,
-    name: String,
-) -> Result<Vec<u8>, CryptoError> {
+pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, CryptoError> {
     let entry = handle
         .index
         .find(&name)
@@ -442,10 +511,7 @@ pub fn vault_read(
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
 #[cfg(feature = "compression")]
-pub fn vault_delete(
-    handle: &mut VaultHandle,
-    name: String,
-) -> Result<(), CryptoError> {
+pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), CryptoError> {
     // WAL journal old index
     let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
     handle
@@ -596,14 +662,22 @@ fn vault_resize_shrink_impl(
 
 /// List all segment names in the vault.
 pub fn vault_list(handle: &VaultHandle) -> Vec<String> {
-    handle.index.entries.iter().map(|e| e.name.clone()).collect()
+    handle
+        .index
+        .entries
+        .iter()
+        .map(|e| e.name.clone())
+        .collect()
 }
 
 /// Get vault capacity info.
 pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
     let used = handle.index.used_bytes();
     let free_list = handle.index.free_list_bytes();
-    let unallocated = handle.index.capacity.saturating_sub(handle.index.next_free_offset);
+    let unallocated = handle
+        .index
+        .capacity
+        .saturating_sub(handle.index.next_free_offset);
     VaultCapacityInfo {
         total_bytes: handle.index.capacity,
         used_bytes: used,
@@ -669,8 +743,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         }
 
         // Journal current encrypted index before mutation
-        let old_encrypted_index =
-            read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
+        let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET)?;
         handle
             .wal
             .begin(WalOp::WriteSegment, &old_encrypted_index)?;
@@ -802,9 +875,8 @@ mod tests {
         let path = vault_path(&dir);
 
         {
-            let handle =
-                vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
-                    .expect("create");
+            let handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+                .expect("create");
             let names = vault_list(&handle);
             assert!(names.is_empty());
             vault_close(handle).expect("close");
@@ -824,9 +896,8 @@ mod tests {
         let path = vault_path(&dir);
 
         {
-            let handle =
-                vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
-                    .expect("create");
+            let handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+                .expect("create");
             vault_close(handle).expect("close");
         }
 
@@ -887,13 +958,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut handle = create_test_vault(&dir, 1_048_576);
 
-        vault_write(
-            &mut handle,
-            "doc.txt".into(),
-            b"hello vault".to_vec(),
-            None,
-        )
-        .expect("write");
+        vault_write(&mut handle, "doc.txt".into(), b"hello vault".to_vec(), None).expect("write");
 
         let data = vault_read(&mut handle, "doc.txt".into()).expect("read");
         assert_eq!(data, b"hello vault");
@@ -981,7 +1046,10 @@ mod tests {
         let entry = handle.index.find("secret.txt").expect("find");
         let disk_offset = DATA_REGION_OFFSET + entry.offset;
         // Flip a byte in the ciphertext (after the 12-byte nonce)
-        handle.file.seek(SeekFrom::Start(disk_offset + 13)).expect("seek");
+        handle
+            .file
+            .seek(SeekFrom::Start(disk_offset + 13))
+            .expect("seek");
         handle.file.write_all(&[0xFF]).expect("tamper");
         handle.file.sync_all().expect("sync");
 
@@ -1107,7 +1175,13 @@ mod tests {
             level: None,
         };
 
-        vault_write(&mut handle, "text.txt".into(), text.clone(), Some(zstd_conf)).expect("zstd");
+        vault_write(
+            &mut handle,
+            "text.txt".into(),
+            text.clone(),
+            Some(zstd_conf),
+        )
+        .expect("zstd");
         vault_write(
             &mut handle,
             "data.bin".into(),
@@ -1137,13 +1211,7 @@ mod tests {
             algorithm: CompressionAlgorithm::Zstd,
             level: None,
         };
-        vault_write(
-            &mut handle,
-            "check.txt".into(),
-            data.clone(),
-            Some(config),
-        )
-        .expect("write");
+        vault_write(&mut handle, "check.txt".into(), data.clone(), Some(config)).expect("write");
 
         // Verify the stored checksum matches original plaintext (not compressed form)
         let entry = handle.index.find("check.txt").expect("find");
@@ -1159,7 +1227,13 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut handle = create_test_vault(&dir, 1_048_576);
 
-        vault_write(&mut handle, "a.txt".into(), b"some data here".to_vec(), None).expect("write");
+        vault_write(
+            &mut handle,
+            "a.txt".into(),
+            b"some data here".to_vec(),
+            None,
+        )
+        .expect("write");
         let seg_size = handle.index.find("a.txt").expect("find").size;
 
         vault_delete(&mut handle, "a.txt".into()).expect("delete");
@@ -1231,8 +1305,7 @@ mod tests {
         let old_size = handle.index.find("doc.txt").expect("old").size;
 
         // Overwrite with smaller data
-        vault_write(&mut handle, "doc.txt".into(), vec![0xBB; 100], None)
-            .expect("overwrite small");
+        vault_write(&mut handle, "doc.txt".into(), vec![0xBB; 100], None).expect("overwrite small");
         let new_size = handle.index.find("doc.txt").expect("new").size;
 
         assert!(new_size < old_size);
@@ -1344,7 +1417,10 @@ mod tests {
         let entry = handle.index.find("secret.txt").expect("find");
         let disk_offset = DATA_REGION_OFFSET + entry.offset;
         let size = entry.size as usize;
-        handle.file.seek(SeekFrom::Start(disk_offset)).expect("seek");
+        handle
+            .file
+            .seek(SeekFrom::Start(disk_offset))
+            .expect("seek");
         let mut old_bytes = vec![0u8; size];
         handle.file.read_exact(&mut old_bytes).expect("read");
         let saved_offset = disk_offset;
@@ -1352,7 +1428,10 @@ mod tests {
         vault_delete(&mut handle, "secret.txt".into()).expect("delete");
 
         // Same region should now contain different bytes (CSPRNG overwrite)
-        handle.file.seek(SeekFrom::Start(saved_offset)).expect("seek");
+        handle
+            .file
+            .seek(SeekFrom::Start(saved_offset))
+            .expect("seek");
         let mut new_bytes = vec![0u8; size];
         handle.file.read_exact(&mut new_bytes).expect("read");
         assert_ne!(old_bytes, new_bytes);
@@ -1432,9 +1511,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = vault_path(&dir);
 
-        let _handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
-                .expect("create");
+        let _handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+            .expect("create");
 
         let result = vault_open(path, test_key());
         assert!(matches!(result, Err(CryptoError::VaultLocked)));
@@ -1448,9 +1526,13 @@ mod tests {
         let path = vault_path(&dir);
 
         {
-            let mut handle =
-                vault_create(path.clone(), test_key(), "chacha20-poly1305".into(), 1_048_576)
-                    .expect("create");
+            let mut handle = vault_create(
+                path.clone(),
+                test_key(),
+                "chacha20-poly1305".into(),
+                1_048_576,
+            )
+            .expect("create");
             vault_write(
                 &mut handle,
                 "persist.txt".into(),
@@ -1480,13 +1562,8 @@ mod tests {
             let mut handle =
                 vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
                     .expect("create");
-            vault_write(
-                &mut handle,
-                "doc.txt".into(),
-                b"shadow test".to_vec(),
-                None,
-            )
-            .expect("write");
+            vault_write(&mut handle, "doc.txt".into(), b"shadow test".to_vec(), None)
+                .expect("write");
             vault_close(handle).expect("close");
         }
 
@@ -1750,8 +1827,7 @@ mod tests {
         {
             let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB)
                 .expect("create");
-            vault_write(&mut handle, "a.txt".into(), b"safe data".to_vec(), None)
-                .expect("write A");
+            vault_write(&mut handle, "a.txt".into(), b"safe data".to_vec(), None).expect("write A");
             vault_close(handle).expect("close");
         }
 
@@ -1797,8 +1873,7 @@ mod tests {
         assert_eq!(data, b"safe data");
 
         // Vault usable after recovery — write + read works
-        vault_write(&mut handle, "b.txt".into(), b"post recovery".to_vec(), None)
-            .expect("write B");
+        vault_write(&mut handle, "b.txt".into(), b"post recovery".to_vec(), None).expect("write B");
         let b_data = vault_read(&mut handle, "b.txt".into()).expect("read B");
         assert_eq!(b_data, b"post recovery");
 
@@ -1843,8 +1918,14 @@ mod tests {
         assert!(c_offset_after < c_offset_before);
 
         // Data integrity preserved
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("read A"), vec![0xAA; 200]);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("read C"), vec![0xCC; 200]);
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("read A"),
+            vec![0xAA; 200]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("read C"),
+            vec![0xCC; 200]
+        );
 
         vault_close(handle).expect("close");
     }
@@ -1870,9 +1951,18 @@ mod tests {
         assert_eq!(result.free_regions_before, 2);
 
         // All surviving segments readable
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
-        assert_eq!(vault_read(&mut handle, "e.txt".into()).expect("E"), vec![0xEE; 100]);
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("A"),
+            vec![0xAA; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("C"),
+            vec![0xCC; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "e.txt".into()).expect("E"),
+            vec![0xEE; 100]
+        );
 
         assert_eq!(vault_capacity(&handle).free_list_bytes, 0);
         vault_close(handle).expect("close");
@@ -1893,9 +1983,18 @@ mod tests {
         assert_eq!(result.free_regions_before, 0);
 
         // All segments still readable
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
-        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("B"), vec![0xBB; 100]);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("A"),
+            vec![0xAA; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "b.txt".into()).expect("B"),
+            vec![0xBB; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("C"),
+            vec![0xCC; 100]
+        );
 
         vault_close(handle).expect("close");
     }
@@ -1930,7 +2029,10 @@ mod tests {
 
         // B moved to offset 0
         assert_eq!(handle.index.find("b.txt").expect("B").offset, 0);
-        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("read B"), vec![0xBB; 200]);
+        assert_eq!(
+            vault_read(&mut handle, "b.txt".into()).expect("read B"),
+            vec![0xBB; 200]
+        );
 
         vault_close(handle).expect("close");
     }
@@ -1970,8 +2072,14 @@ mod tests {
         let mut handle = vault_open(path, test_key()).expect("open after crash");
 
         // C should still be at its original (pre-defrag) offset, readable
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("read C"), vec![0xCC; 100]);
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("read A"), vec![0xAA; 100]);
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("read C"),
+            vec![0xCC; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("read A"),
+            vec![0xAA; 100]
+        );
 
         // Free region from deleted B should still exist
         assert!(!handle.index.free_regions.is_empty());
@@ -1980,8 +2088,14 @@ mod tests {
         let result = vault_defragment(&mut handle).expect("defrag");
         assert!(result.segments_moved > 0);
 
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 100]);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 100]);
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("A"),
+            vec![0xAA; 100]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("C"),
+            vec![0xCC; 100]
+        );
 
         vault_close(handle).expect("close");
     }
@@ -1997,9 +2111,8 @@ mod tests {
         // Create: [A: 100B] [B: 10KB] — deleting A creates a small gap
         // so B's move from offset(A.size) to 0 overlaps.
         {
-            let mut handle =
-                vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB)
-                    .expect("create");
+            let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB)
+                .expect("create");
             vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None).expect("A");
             vault_write(&mut handle, "b.txt".into(), vec![0xBB; 10_000], None).expect("B");
             vault_delete(&mut handle, "a.txt".into()).expect("del A");
@@ -2083,8 +2196,13 @@ mod tests {
             algorithm: CompressionAlgorithm::Zstd,
             level: None,
         };
-        vault_write(&mut handle, "text.txt".into(), zstd_data.clone(), Some(zstd_conf))
-            .expect("zstd");
+        vault_write(
+            &mut handle,
+            "text.txt".into(),
+            zstd_data.clone(),
+            Some(zstd_conf),
+        )
+        .expect("zstd");
         vault_write(&mut handle, "spacer.bin".into(), vec![0xFF; 300], None).expect("spacer");
         vault_write(&mut handle, "raw.dat".into(), raw_data.clone(), None).expect("raw");
 
@@ -2101,8 +2219,14 @@ mod tests {
         assert_eq!(raw_entry.compression, CompressionAlgorithm::None);
 
         // Data integrity — decompression works after defrag
-        assert_eq!(vault_read(&mut handle, "text.txt".into()).expect("text"), zstd_data);
-        assert_eq!(vault_read(&mut handle, "raw.dat".into()).expect("raw"), raw_data);
+        assert_eq!(
+            vault_read(&mut handle, "text.txt".into()).expect("text"),
+            zstd_data
+        );
+        assert_eq!(
+            vault_read(&mut handle, "raw.dat".into()).expect("raw"),
+            raw_data
+        );
 
         vault_close(handle).expect("close");
     }
@@ -2130,7 +2254,10 @@ mod tests {
         assert_eq!(b_gen_before, b_gen_after);
 
         // Nonce derivation still works (read succeeds)
-        assert_eq!(vault_read(&mut handle, "b.txt".into()).expect("read B"), vec![0xBB; 100]);
+        assert_eq!(
+            vault_read(&mut handle, "b.txt".into()).expect("read B"),
+            vec![0xBB; 100]
+        );
 
         vault_close(handle).expect("close");
     }
@@ -2156,7 +2283,10 @@ mod tests {
         assert_eq!(result.bytes_reclaimed, ab_size);
 
         assert_eq!(handle.index.find("c.txt").expect("C").offset, 0);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 300]);
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("C"),
+            vec![0xCC; 300]
+        );
         assert_eq!(vault_capacity(&handle).free_list_bytes, 0);
 
         vault_close(handle).expect("close");
@@ -2178,9 +2308,18 @@ mod tests {
         vault_write(&mut handle, "d.txt".into(), vec![0xDD; 500], None).expect("D after defrag");
 
         // All segments readable
-        assert_eq!(vault_read(&mut handle, "a.txt".into()).expect("A"), vec![0xAA; 200]);
-        assert_eq!(vault_read(&mut handle, "c.txt".into()).expect("C"), vec![0xCC; 200]);
-        assert_eq!(vault_read(&mut handle, "d.txt".into()).expect("D"), vec![0xDD; 500]);
+        assert_eq!(
+            vault_read(&mut handle, "a.txt".into()).expect("A"),
+            vec![0xAA; 200]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "c.txt".into()).expect("C"),
+            vec![0xCC; 200]
+        );
+        assert_eq!(
+            vault_read(&mut handle, "d.txt".into()).expect("D"),
+            vec![0xDD; 500]
+        );
 
         // D should be allocated at the end (after A and C)
         let a_end = handle.index.find("a.txt").expect("A").offset
