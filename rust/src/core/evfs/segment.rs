@@ -104,20 +104,54 @@ pub fn derive_segment_nonce(
 // ---------------------------------------------------------------------------
 
 /// Per-chunk AAD for vault streaming segments.
-/// Wire-compatible with the standalone streaming format's `ChunkAad`.
-pub type VaultChunkAad = crate::core::streaming::ChunkAad;
+///
+/// Extends standalone `ChunkAad` with `generation` to bind each chunk to its
+/// specific segment write, preventing cross-segment splice attacks.
+///
+/// Wire format: `[generation: u64 LE] [chunk_index: u64 LE] [is_final: u8]` = 17 bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VaultChunkAad {
+    pub generation: u64,
+    pub chunk_index: u64,
+    pub is_final: bool,
+}
+
+/// Wire size of `VaultChunkAad`.
+pub const VAULT_CHUNK_AAD_SIZE: usize = 17;
+
+impl VaultChunkAad {
+    pub fn to_bytes(self) -> [u8; VAULT_CHUNK_AAD_SIZE] {
+        let mut buf = [0u8; VAULT_CHUNK_AAD_SIZE];
+        buf[0..8].copy_from_slice(&self.generation.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.chunk_index.to_le_bytes());
+        buf[16] = u8::from(self.is_final);
+        buf
+    }
+}
 
 /// Derive a unique nonce for a specific chunk within a streaming segment.
 ///
-/// Reuses the existing HKDF-based nonce derivation with `chunk_index` as the
-/// index parameter and the segment's `generation` counter, producing unique
-/// nonces per chunk and per overwrite.
+/// Uses a domain-separated HKDF info (`0x01 || chunk_index || generation`)
+/// to ensure chunk nonces never collide with monolithic segment nonces
+/// (which use `segment_index || generation` without a domain prefix).
 pub fn derive_chunk_nonce(
     nonce_key: &[u8],
     chunk_index: u64,
     generation: u64,
 ) -> Result<Vec<u8>, CryptoError> {
-    derive_segment_nonce(nonce_key, chunk_index, generation, NONCE_LEN)
+    let hk = Hkdf::<Sha256>::from_prk(nonce_key)
+        .map_err(|_| CryptoError::KdfFailed("nonce_key too short for HKDF-PRK".into()))?;
+
+    // 17-byte info: domain(1) || chunk_index(LE8) || generation(LE8)
+    let mut info = [0u8; 17];
+    info[0] = 0x01;
+    info[1..9].copy_from_slice(&chunk_index.to_le_bytes());
+    info[9..17].copy_from_slice(&generation.to_le_bytes());
+
+    let mut nonce = vec![0u8; NONCE_LEN];
+    hk.expand(&info, &mut nonce)
+        .map_err(|_| CryptoError::KdfFailed("HKDF expand failed for chunk nonce".into()))?;
+    Ok(nonce)
 }
 
 // ---------------------------------------------------------------------------
@@ -961,29 +995,43 @@ mod tests {
     }
 
     #[test]
-    fn test_chunk_nonce_matches_segment_nonce() {
-        // derive_chunk_nonce(key, chunk_idx, gen) must equal
-        // derive_segment_nonce(key, chunk_idx, gen, NONCE_LEN)
+    fn test_chunk_nonce_domain_separation() {
+        // derive_chunk_nonce uses a domain-separated HKDF info, so it must
+        // NOT produce the same nonce as derive_segment_nonce with identical
+        // (index, generation) params. This prevents nonce collisions between
+        // monolithic segments and streaming chunk nonces.
         let keys = derive_vault_keys(&test_master_key()).expect("derive");
         let chunk = derive_chunk_nonce(keys.nonce_key.as_bytes(), 42, 7).expect("chunk");
         let segment =
             derive_segment_nonce(keys.nonce_key.as_bytes(), 42, 7, NONCE_LEN).expect("segment");
-        assert_eq!(chunk, segment);
+        assert_ne!(chunk, segment);
     }
 
     #[test]
-    fn test_vault_chunk_aad_wire_compat() {
-        // VaultChunkAad is a type alias for ChunkAad — verify wire format
-        use crate::core::streaming::AAD_SIZE;
+    fn test_vault_chunk_aad_wire_format() {
         let aad = VaultChunkAad {
-            index: 99,
+            generation: 3,
+            chunk_index: 99,
             is_final: true,
         };
         let bytes = aad.to_bytes();
-        assert_eq!(bytes.len(), AAD_SIZE);
-        // index = 99 LE
-        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 99);
+        assert_eq!(bytes.len(), VAULT_CHUNK_AAD_SIZE);
+        // generation = 3 LE
+        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 3);
+        // chunk_index = 99 LE
+        assert_eq!(u64::from_le_bytes(bytes[8..16].try_into().unwrap()), 99);
         // is_final = true
-        assert_eq!(bytes[8], 1);
+        assert_eq!(bytes[16], 1);
+    }
+
+    #[test]
+    fn test_vault_chunk_aad_not_final() {
+        let aad = VaultChunkAad {
+            generation: 0,
+            chunk_index: 0,
+            is_final: false,
+        };
+        let bytes = aad.to_bytes();
+        assert_eq!(bytes[16], 0);
     }
 }
