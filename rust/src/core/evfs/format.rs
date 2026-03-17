@@ -14,34 +14,60 @@ pub const VAULT_HEADER_SIZE: usize = 32;
 /// Max segment name length in bytes (UTF-8).
 pub const MAX_SEGMENT_NAME_LEN: usize = 255;
 
-/// Index is always serialized to this size (zero-padded).
-/// 64KB supports approximately 200 segments + free regions.
-pub const INDEX_PAD_SIZE: usize = 64 * 1024;
+/// Minimum index padding size (64KB). One page supports ~200 segments.
+pub const MIN_INDEX_PAD_SIZE: usize = 64 * 1024;
 
-/// Encrypted index size on disk: padded plaintext + AEAD nonce (12) + tag (16).
-pub const ENCRYPTED_INDEX_SIZE: usize = INDEX_PAD_SIZE + 12 + 16;
+/// AEAD overhead added to the padded index plaintext: nonce (12) + tag (16).
+const INDEX_AEAD_OVERHEAD: usize = 12 + 16;
 
-/// Vault file layout offsets.
+/// Primary index starts immediately after the header.
 pub const PRIMARY_INDEX_OFFSET: u64 = VAULT_HEADER_SIZE as u64;
-pub const DATA_REGION_OFFSET: u64 = PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64;
 
-/// Shadow index offset depends on vault capacity.
-pub fn shadow_index_offset(capacity: u64) -> Result<u64, CryptoError> {
-    DATA_REGION_OFFSET
+// ---------------------------------------------------------------------------
+// Dynamic layout functions
+// ---------------------------------------------------------------------------
+
+/// Maximum index padding size (16MB). Caps segment count at ~50,000 for the
+/// largest vaults. Also bounds the WAL snapshot and heap allocation.
+pub const MAX_INDEX_PAD_SIZE: usize = 16 * 1024 * 1024;
+
+/// Compute index padding size from vault capacity.
+///
+/// Returns 64KB per MB of capacity, minimum 64KB, capped at 16MB.
+/// This determines how many segments a vault can hold.
+pub fn compute_index_size(capacity: u64) -> usize {
+    let mb = std::cmp::max(1, capacity / (1024 * 1024));
+    let size = (mb as usize).saturating_mul(MIN_INDEX_PAD_SIZE);
+    std::cmp::min(size, MAX_INDEX_PAD_SIZE)
+}
+
+/// Encrypted index size on disk: padded plaintext + AEAD nonce + tag.
+pub fn encrypted_index_size(index_pad_size: usize) -> usize {
+    index_pad_size + INDEX_AEAD_OVERHEAD
+}
+
+/// Data region offset: right after the primary encrypted index.
+pub fn data_region_offset(index_pad_size: usize) -> u64 {
+    PRIMARY_INDEX_OFFSET + encrypted_index_size(index_pad_size) as u64
+}
+
+/// Shadow index offset depends on vault capacity and index size.
+pub fn shadow_index_offset(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    data_region_offset(index_pad_size)
         .checked_add(capacity)
         .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 /// WAL region starts after the shadow index.
-pub fn wal_region_offset(capacity: u64) -> Result<u64, CryptoError> {
-    shadow_index_offset(capacity)?
-        .checked_add(ENCRYPTED_INDEX_SIZE as u64)
+pub fn wal_region_offset(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    shadow_index_offset(capacity, index_pad_size)?
+        .checked_add(encrypted_index_size(index_pad_size) as u64)
         .ok_or_else(|| CryptoError::InvalidParameter("vault capacity overflows layout".into()))
 }
 
 /// Total vault file size: header + 2 encrypted indices + data capacity.
-pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
-    let base = VAULT_HEADER_SIZE as u64 + 2 * ENCRYPTED_INDEX_SIZE as u64;
+pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, CryptoError> {
+    let base = VAULT_HEADER_SIZE as u64 + 2 * encrypted_index_size(index_pad_size) as u64;
     base.checked_add(capacity)
         .ok_or_else(|| CryptoError::InvalidParameter("vault size overflows".into()))
 }
@@ -52,21 +78,24 @@ pub fn total_vault_size(capacity: u64) -> Result<u64, CryptoError> {
 
 /// On-disk vault header (32 bytes).
 ///
-/// Layout: `[MAGIC(4)] [VERSION(1)] [ALGORITHM(1)] [FLAGS(2)] [RESERVED(24)]`
+/// Layout: `[MAGIC(4)] [VERSION(1)] [ALGORITHM(1)] [FLAGS(2)] [INDEX_SIZE(4)] [RESERVED(20)]`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VaultHeader {
     pub version: u8,
     /// AEAD algorithm ID (reuses `core::format::Algorithm` byte values).
     pub algorithm: u8,
     pub flags: u16,
+    /// Padded plaintext index size in bytes (64KB-aligned).
+    pub index_size: u32,
 }
 
 impl VaultHeader {
-    pub fn new(algorithm: u8) -> Self {
+    pub fn new(algorithm: u8, index_size: u32) -> Self {
         Self {
             version: VAULT_VERSION,
             algorithm,
             flags: 0,
+            index_size,
         }
     }
 
@@ -76,7 +105,8 @@ impl VaultHeader {
         buf[4] = self.version;
         buf[5] = self.algorithm;
         buf[6..8].copy_from_slice(&self.flags.to_le_bytes());
-        // bytes 8..32 reserved (zeros)
+        buf[8..12].copy_from_slice(&self.index_size.to_le_bytes());
+        // bytes 12..32 reserved (zeros)
         buf
     }
 
@@ -100,10 +130,20 @@ impl VaultHeader {
         }
         let algorithm = data[5];
         let flags = u16::from_le_bytes([data[6], data[7]]);
+        let index_size = u32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+
+        let idx_usize = index_size as usize;
+        if !(MIN_INDEX_PAD_SIZE..=MAX_INDEX_PAD_SIZE).contains(&idx_usize) {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "invalid index_size in header: {index_size} (must be {MIN_INDEX_PAD_SIZE}..{MAX_INDEX_PAD_SIZE})"
+            )));
+        }
+
         Ok(Self {
             version,
             algorithm,
             flags,
+            index_size,
         })
     }
 }
@@ -244,7 +284,9 @@ fn read_u64(data: &[u8], off: &mut usize) -> Result<u64, CryptoError> {
 fn read_bytes(data: &[u8], off: &mut usize, len: usize) -> Result<Vec<u8>, CryptoError> {
     let end = *off + len;
     if end > data.len() {
-        return Err(CryptoError::VaultCorrupted("index truncated (bytes)".into()));
+        return Err(CryptoError::VaultCorrupted(
+            "index truncated (bytes)".into(),
+        ));
     }
     let v = data[*off..end].to_vec();
     *off = end;
@@ -263,7 +305,7 @@ impl SegmentIndex {
         }
     }
 
-    /// Serialize index to bytes, padded to `INDEX_PAD_SIZE`.
+    /// Serialize index to bytes, zero-padded to `pad_size`.
     ///
     /// Wire format:
     /// ```text
@@ -279,17 +321,15 @@ impl SegmentIndex {
     ///   -- free regions --
     ///   per region:
     ///     [offset: u64] [size: u64]
-    ///   -- zero padding to INDEX_PAD_SIZE --
+    ///   -- zero padding to pad_size --
     /// ```
-    pub fn to_bytes(&self) -> Result<Vec<u8>, CryptoError> {
-        let mut buf = Vec::with_capacity(INDEX_PAD_SIZE);
+    pub fn to_bytes(&self, pad_size: usize) -> Result<Vec<u8>, CryptoError> {
+        let mut buf = Vec::with_capacity(pad_size);
 
-        let entry_count = u32::try_from(self.entries.len()).map_err(|_| {
-            CryptoError::VaultCorrupted("too many segment entries".into())
-        })?;
-        let free_count = u32::try_from(self.free_regions.len()).map_err(|_| {
-            CryptoError::VaultCorrupted("too many free regions".into())
-        })?;
+        let entry_count = u32::try_from(self.entries.len())
+            .map_err(|_| CryptoError::VaultCorrupted("too many segment entries".into()))?;
+        let free_count = u32::try_from(self.free_regions.len())
+            .map_err(|_| CryptoError::VaultCorrupted("too many free regions".into()))?;
 
         put_u32(&mut buf, entry_count);
         put_u32(&mut buf, free_count);
@@ -316,14 +356,14 @@ impl SegmentIndex {
             put_u64(&mut buf, region.size);
         }
 
-        if buf.len() > INDEX_PAD_SIZE {
+        if buf.len() > pad_size {
             return Err(CryptoError::VaultCorrupted(format!(
-                "index content ({} bytes) exceeds INDEX_PAD_SIZE ({INDEX_PAD_SIZE})",
+                "index content ({} bytes) exceeds pad_size ({pad_size})",
                 buf.len()
             )));
         }
 
-        buf.resize(INDEX_PAD_SIZE, 0);
+        buf.resize(pad_size, 0);
         Ok(buf)
     }
 
@@ -339,8 +379,8 @@ impl SegmentIndex {
 
         // Sanity-cap: the smallest possible entry is ~59 bytes (1-byte name),
         // free region is 16 bytes. Reject clearly corrupted counts early.
-        let max_entries = INDEX_PAD_SIZE / 59;
-        let max_free = INDEX_PAD_SIZE / 16;
+        let max_entries = data.len() / 59;
+        let max_free = data.len() / 16;
         if entry_count > max_entries {
             return Err(CryptoError::VaultCorrupted(format!(
                 "entry count {entry_count} exceeds maximum {max_entries}"
@@ -472,12 +512,13 @@ impl SegmentIndex {
         }
 
         // Fall back to append (checked arithmetic to prevent overflow)
-        let end = self.next_free_offset.checked_add(size).ok_or(
-            CryptoError::VaultFull {
+        let end = self
+            .next_free_offset
+            .checked_add(size)
+            .ok_or(CryptoError::VaultFull {
                 needed: size,
                 available: self.capacity.saturating_sub(self.next_free_offset),
-            },
-        )?;
+            })?;
         if end > self.capacity {
             return Err(CryptoError::VaultFull {
                 needed: size,
@@ -526,6 +567,79 @@ impl SegmentIndex {
     pub fn free_list_bytes(&self) -> u64 {
         self.free_regions.iter().map(|r| r.size).sum()
     }
+
+    // -- defragmentation ----------------------------------------------------
+
+    /// Compute the list of segment moves needed to compact the index.
+    ///
+    /// Returns moves sorted by target offset. Each move describes copying
+    /// encrypted bytes from `old_offset` to `new_offset` (both relative to
+    /// data region start). Segments already in place are skipped.
+    pub fn plan_defrag(&self) -> Vec<DefragMove> {
+        let mut order: Vec<usize> = (0..self.entries.len()).collect();
+        order.sort_by_key(|&i| self.entries[i].offset);
+
+        let mut moves = Vec::new();
+        let mut target: u64 = 0;
+
+        for &i in &order {
+            let old_offset = self.entries[i].offset;
+            let size = self.entries[i].size;
+
+            if old_offset != target {
+                moves.push(DefragMove {
+                    entry_index: i,
+                    old_offset,
+                    new_offset: target,
+                    size,
+                });
+            }
+            target += size;
+        }
+
+        moves
+    }
+
+    /// Apply a single defrag move to the in-memory index.
+    ///
+    /// Updates the entry offset. Does NOT touch free_regions or
+    /// next_free_offset — call `complete_defrag()` after all moves.
+    pub fn apply_move(&mut self, entry_index: usize, new_offset: u64) -> Result<(), CryptoError> {
+        let len = self.entries.len();
+        let entry = self.entries.get_mut(entry_index).ok_or_else(|| {
+            CryptoError::VaultCorrupted(format!(
+                "defrag: entry_index {entry_index} out of bounds (len {len})"
+            ))
+        })?;
+        entry.offset = new_offset;
+        Ok(())
+    }
+
+    /// Finalize defrag: clear free_regions, set next_free_offset to the
+    /// sum of all segment sizes. Call after all moves have been applied.
+    pub fn complete_defrag(&mut self) {
+        self.free_regions.clear();
+        self.next_free_offset = self.used_bytes();
+    }
+
+    /// Returns true if the index has fragmented free space that defrag
+    /// would reclaim.
+    pub fn needs_defrag(&self) -> bool {
+        !self.free_regions.is_empty()
+    }
+}
+
+/// A single segment move planned by `SegmentIndex::plan_defrag()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefragMove {
+    /// Index into `SegmentIndex.entries`.
+    pub entry_index: usize,
+    /// Current offset (relative to data region start).
+    pub old_offset: u64,
+    /// Target offset after compaction.
+    pub new_offset: u64,
+    /// Encrypted segment size in bytes.
+    pub size: u64,
 }
 
 // ===========================================================================
@@ -544,23 +658,44 @@ mod tests {
 
     #[test]
     fn test_vault_header_roundtrip() {
-        let header = VaultHeader::new(0x01);
+        let header = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32);
         let bytes = header.to_bytes();
         let parsed = VaultHeader::from_bytes(&bytes).expect("parse");
         assert_eq!(header, parsed);
     }
 
     #[test]
+    fn test_vault_header_roundtrip_large_index() {
+        let index_size = compute_index_size(5 * 1024 * 1024) as u32;
+        let header = VaultHeader::new(0x02, index_size);
+        let bytes = header.to_bytes();
+        let parsed = VaultHeader::from_bytes(&bytes).expect("parse");
+        assert_eq!(parsed.index_size, index_size);
+        assert_eq!(header, parsed);
+    }
+
+    #[test]
     fn test_vault_header_invalid_magic() {
-        let mut bytes = VaultHeader::new(0x01).to_bytes();
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
         bytes[0] = b'X';
         assert!(VaultHeader::from_bytes(&bytes).is_err());
     }
 
     #[test]
     fn test_vault_header_invalid_version() {
-        let mut bytes = VaultHeader::new(0x01).to_bytes();
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
         bytes[4] = 99;
+        assert!(VaultHeader::from_bytes(&bytes).is_err());
+    }
+
+    #[test]
+    fn test_vault_header_zero_index_size_rejected() {
+        let mut bytes = VaultHeader::new(0x01, MIN_INDEX_PAD_SIZE as u32).to_bytes();
+        // Zero out index_size at bytes 8..12
+        bytes[8] = 0;
+        bytes[9] = 0;
+        bytes[10] = 0;
+        bytes[11] = 0;
         assert!(VaultHeader::from_bytes(&bytes).is_err());
     }
 
@@ -569,19 +704,40 @@ mod tests {
     #[test]
     fn test_segment_entry_valid_name() {
         // 1 byte
-        let e = SegmentEntry::new("a", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None);
+        let e = SegmentEntry::new(
+            "a",
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+        );
         assert!(e.is_ok());
 
         // 255 bytes
         let long = "a".repeat(MAX_SEGMENT_NAME_LEN);
-        let e = SegmentEntry::new(&long, 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None);
+        let e = SegmentEntry::new(
+            &long,
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+        );
         assert!(e.is_ok());
     }
 
     #[test]
     fn test_segment_entry_name_too_long() {
         let long = "a".repeat(MAX_SEGMENT_NAME_LEN + 1);
-        let e = SegmentEntry::new(&long, 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None);
+        let e = SegmentEntry::new(
+            &long,
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+        );
         assert!(e.is_err());
     }
 
@@ -596,14 +752,33 @@ mod tests {
     fn make_test_index() -> SegmentIndex {
         let mut idx = SegmentIndex::new(1024 * 1024);
         idx.add(
-            SegmentEntry::new("hello.txt", 0, 4096, 1, dummy_checksum(0xAA), CompressionAlgorithm::Zstd)
-                .expect("entry"),
-        ).expect("add");
+            SegmentEntry::new(
+                "hello.txt",
+                0,
+                4096,
+                1,
+                dummy_checksum(0xAA),
+                CompressionAlgorithm::Zstd,
+            )
+            .expect("entry"),
+        )
+        .expect("add");
         idx.add(
-            SegmentEntry::new("photo.jpg", 4096, 8192, 2, dummy_checksum(0xBB), CompressionAlgorithm::None)
-                .expect("entry"),
-        ).expect("add");
-        idx.free_regions.push(FreeRegion { offset: 12288, size: 2048 });
+            SegmentEntry::new(
+                "photo.jpg",
+                4096,
+                8192,
+                2,
+                dummy_checksum(0xBB),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        )
+        .expect("add");
+        idx.free_regions.push(FreeRegion {
+            offset: 12288,
+            size: 2048,
+        });
         idx.next_free_offset = 14336;
         idx.next_generation = 3;
         idx
@@ -612,7 +787,7 @@ mod tests {
     #[test]
     fn test_segment_index_roundtrip() {
         let idx = make_test_index();
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
@@ -640,10 +815,17 @@ mod tests {
         let mut idx = SegmentIndex::new(1024);
         idx.next_generation = 42;
         idx.entries.push(
-            SegmentEntry::new("gen", 0, 64, 41, dummy_checksum(0), CompressionAlgorithm::None)
-                .expect("entry"),
+            SegmentEntry::new(
+                "gen",
+                0,
+                64,
+                41,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
         );
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
@@ -652,9 +834,13 @@ mod tests {
     #[test]
     fn test_segment_index_compression_field() {
         let mut idx = SegmentIndex::new(1024 * 1024);
-        for (i, algo) in [CompressionAlgorithm::Zstd, CompressionAlgorithm::Brotli, CompressionAlgorithm::None]
-            .iter()
-            .enumerate()
+        for (i, algo) in [
+            CompressionAlgorithm::Zstd,
+            CompressionAlgorithm::Brotli,
+            CompressionAlgorithm::None,
+        ]
+        .iter()
+        .enumerate()
         {
             idx.entries.push(
                 SegmentEntry::new(
@@ -668,7 +854,7 @@ mod tests {
                 .expect("entry"),
             );
         }
-        let bytes = idx.to_bytes().expect("serialize");
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
@@ -678,43 +864,79 @@ mod tests {
     #[test]
     fn test_segment_index_free_regions_roundtrip() {
         let mut idx = SegmentIndex::new(1024 * 1024);
-        idx.free_regions.push(FreeRegion { offset: 0, size: 100 });
-        idx.free_regions.push(FreeRegion { offset: 500, size: 200 });
-        idx.free_regions.push(FreeRegion { offset: 1000, size: 300 });
-        let bytes = idx.to_bytes().expect("serialize");
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 100,
+        });
+        idx.free_regions.push(FreeRegion {
+            offset: 500,
+            size: 200,
+        });
+        idx.free_regions.push(FreeRegion {
+            offset: 1000,
+            size: 300,
+        });
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
-        assert_eq!(parsed.free_regions[0], FreeRegion { offset: 0, size: 100 });
-        assert_eq!(parsed.free_regions[1], FreeRegion { offset: 500, size: 200 });
-        assert_eq!(parsed.free_regions[2], FreeRegion { offset: 1000, size: 300 });
+        assert_eq!(
+            parsed.free_regions[0],
+            FreeRegion {
+                offset: 0,
+                size: 100
+            }
+        );
+        assert_eq!(
+            parsed.free_regions[1],
+            FreeRegion {
+                offset: 500,
+                size: 200
+            }
+        );
+        assert_eq!(
+            parsed.free_regions[2],
+            FreeRegion {
+                offset: 1000,
+                size: 300
+            }
+        );
     }
 
     #[test]
     fn test_segment_index_padded_size() {
-        // Empty index
+        // Empty index — small capacity gets MIN_INDEX_PAD_SIZE
         let idx = SegmentIndex::new(1024);
-        let bytes = idx.to_bytes().expect("serialize");
-        assert_eq!(bytes.len(), INDEX_PAD_SIZE);
+        let pad = compute_index_size(idx.capacity);
+        let bytes = idx.to_bytes(pad).expect("serialize");
+        assert_eq!(bytes.len(), MIN_INDEX_PAD_SIZE);
 
-        // Index with entries + free regions
+        // Index with entries + free regions (1MB capacity → 64KB index)
         let idx = make_test_index();
-        let bytes = idx.to_bytes().expect("serialize");
-        assert_eq!(bytes.len(), INDEX_PAD_SIZE);
+        let pad = compute_index_size(idx.capacity);
+        let bytes = idx.to_bytes(pad).expect("serialize");
+        assert_eq!(bytes.len(), MIN_INDEX_PAD_SIZE);
     }
 
     #[test]
-    fn test_segment_index_overflow() {
-        let mut idx = SegmentIndex::new(u64::MAX);
+    fn test_segment_index_overflow_min_pad() {
+        let mut idx = SegmentIndex::new(512 * 1024); // 512KB → MIN_INDEX_PAD_SIZE
         // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 = 314 bytes.
         // Index header is 32 bytes. (65536 - 32) / 314 ≈ 208 entries max.
         for i in 0..210 {
             let name = format!("{:0>255}", i);
             idx.entries.push(
-                SegmentEntry::new(&name, 0, 64, 0, dummy_checksum(0), CompressionAlgorithm::None)
-                    .expect("entry"),
+                SegmentEntry::new(
+                    &name,
+                    0,
+                    64,
+                    0,
+                    dummy_checksum(0),
+                    CompressionAlgorithm::None,
+                )
+                .expect("entry"),
             );
         }
-        assert!(idx.to_bytes().is_err());
+        assert!(idx.to_bytes(MIN_INDEX_PAD_SIZE).is_err());
     }
 
     // -- SegmentIndex lookup / mutation --------------------------------------
@@ -756,7 +978,10 @@ mod tests {
     #[test]
     fn test_allocate_reuses_free_region_exact_fit() {
         let mut idx = SegmentIndex::new(1024);
-        idx.free_regions.push(FreeRegion { offset: 0, size: 100 });
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 100,
+        });
 
         let off = idx.allocate(100).expect("alloc");
         assert_eq!(off, 0);
@@ -766,7 +991,10 @@ mod tests {
     #[test]
     fn test_allocate_reuses_free_region_with_split() {
         let mut idx = SegmentIndex::new(1024);
-        idx.free_regions.push(FreeRegion { offset: 0, size: 300 });
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 300,
+        });
 
         let off = idx.allocate(100).expect("alloc");
         assert_eq!(off, 0);
@@ -778,9 +1006,18 @@ mod tests {
     #[test]
     fn test_allocate_best_fit() {
         let mut idx = SegmentIndex::new(1024);
-        idx.free_regions.push(FreeRegion { offset: 0, size: 500 });
-        idx.free_regions.push(FreeRegion { offset: 600, size: 150 });
-        idx.free_regions.push(FreeRegion { offset: 800, size: 200 });
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 500,
+        });
+        idx.free_regions.push(FreeRegion {
+            offset: 600,
+            size: 150,
+        });
+        idx.free_regions.push(FreeRegion {
+            offset: 800,
+            size: 200,
+        });
 
         // Needs 150 — should pick region at 600 (exact fit 150)
         let off = idx.allocate(150).expect("alloc");
@@ -792,7 +1029,10 @@ mod tests {
     #[test]
     fn test_allocate_falls_back_to_append() {
         let mut idx = SegmentIndex::new(1024);
-        idx.free_regions.push(FreeRegion { offset: 0, size: 50 });
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 50,
+        });
         idx.next_free_offset = 100;
 
         // Needs 80 — free region only has 50, so append at 100
@@ -825,7 +1065,13 @@ mod tests {
         let mut idx = SegmentIndex::new(1024);
         idx.deallocate(100, 50);
         assert_eq!(idx.free_regions.len(), 1);
-        assert_eq!(idx.free_regions[0], FreeRegion { offset: 100, size: 50 });
+        assert_eq!(
+            idx.free_regions[0],
+            FreeRegion {
+                offset: 100,
+                size: 50
+            }
+        );
     }
 
     #[test]
@@ -834,7 +1080,13 @@ mod tests {
         idx.deallocate(100, 50);
         idx.deallocate(150, 50);
         assert_eq!(idx.free_regions.len(), 1);
-        assert_eq!(idx.free_regions[0], FreeRegion { offset: 100, size: 100 });
+        assert_eq!(
+            idx.free_regions[0],
+            FreeRegion {
+                offset: 100,
+                size: 100
+            }
+        );
     }
 
     #[test]
@@ -856,7 +1108,13 @@ mod tests {
         // Free the middle gap
         idx.deallocate(100, 100);
         assert_eq!(idx.free_regions.len(), 1);
-        assert_eq!(idx.free_regions[0], FreeRegion { offset: 0, size: 300 });
+        assert_eq!(
+            idx.free_regions[0],
+            FreeRegion {
+                offset: 0,
+                size: 300
+            }
+        );
     }
 
     #[test]
@@ -887,31 +1145,65 @@ mod tests {
 
     #[test]
     fn test_layout_offsets() {
+        let idx_size = MIN_INDEX_PAD_SIZE;
+        let enc_size = encrypted_index_size(idx_size);
+
         // Primary index immediately after header
         assert_eq!(PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE as u64);
 
-        // Data region after primary index
-        assert_eq!(DATA_REGION_OFFSET, PRIMARY_INDEX_OFFSET + ENCRYPTED_INDEX_SIZE as u64);
+        // Data region after primary encrypted index
+        let data_off = data_region_offset(idx_size);
+        assert_eq!(data_off, PRIMARY_INDEX_OFFSET + enc_size as u64);
 
         let cap = 10 * 1024 * 1024; // 10MB
-        let shadow = shadow_index_offset(cap).expect("shadow");
-        let wal = wal_region_offset(cap).expect("wal");
+        let idx_10mb = compute_index_size(cap);
+        let enc_10mb = encrypted_index_size(idx_10mb);
+        let shadow = shadow_index_offset(cap, idx_10mb).expect("shadow");
+        let wal = wal_region_offset(cap, idx_10mb).expect("wal");
 
         // Shadow index after data region
-        assert_eq!(shadow, DATA_REGION_OFFSET + cap);
+        assert_eq!(shadow, data_region_offset(idx_10mb) + cap);
 
         // WAL after shadow index
-        assert_eq!(wal, shadow + ENCRYPTED_INDEX_SIZE as u64);
+        assert_eq!(wal, shadow + enc_10mb as u64);
 
         // No overlapping regions
-        assert!(shadow > DATA_REGION_OFFSET);
+        assert!(shadow > data_region_offset(idx_10mb));
         assert!(wal > shadow);
     }
 
     #[test]
     fn test_layout_overflow() {
-        assert!(shadow_index_offset(u64::MAX).is_err());
-        assert!(wal_region_offset(u64::MAX).is_err());
+        assert!(shadow_index_offset(u64::MAX, MIN_INDEX_PAD_SIZE).is_err());
+        assert!(wal_region_offset(u64::MAX, MIN_INDEX_PAD_SIZE).is_err());
+    }
+
+    // -- compute_index_size -------------------------------------------------
+
+    #[test]
+    fn test_compute_index_size_minimum() {
+        // Capacities below 1MB all get MIN_INDEX_PAD_SIZE
+        assert_eq!(compute_index_size(0), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(1), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(512 * 1024), MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(1024 * 1024), MIN_INDEX_PAD_SIZE);
+    }
+
+    #[test]
+    fn test_compute_index_size_scales() {
+        let mb = 1024 * 1024;
+        assert_eq!(compute_index_size(5 * mb), 5 * MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(10 * mb), 10 * MIN_INDEX_PAD_SIZE);
+        assert_eq!(compute_index_size(50 * mb), 50 * MIN_INDEX_PAD_SIZE);
+    }
+
+    #[test]
+    fn test_compute_index_size_boundary() {
+        let mb = 1024 * 1024;
+        // Just over 1MB → 1 page (integer division truncates)
+        assert_eq!(compute_index_size(mb + 1), MIN_INDEX_PAD_SIZE);
+        // 2MB → 2 pages
+        assert_eq!(compute_index_size(2 * mb), 2 * MIN_INDEX_PAD_SIZE);
     }
 
     // -- Zero-size allocation -----------------------------------------------
@@ -927,12 +1219,251 @@ mod tests {
     #[test]
     fn test_add_duplicate_name_rejected() {
         let mut idx = SegmentIndex::new(1024);
-        let e1 = SegmentEntry::new("dup", 0, 64, 0, dummy_checksum(0), CompressionAlgorithm::None)
-            .expect("entry");
-        let e2 = SegmentEntry::new("dup", 64, 64, 1, dummy_checksum(1), CompressionAlgorithm::None)
-            .expect("entry");
+        let e1 = SegmentEntry::new(
+            "dup",
+            0,
+            64,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+        )
+        .expect("entry");
+        let e2 = SegmentEntry::new(
+            "dup",
+            64,
+            64,
+            1,
+            dummy_checksum(1),
+            CompressionAlgorithm::None,
+        )
+        .expect("entry");
         idx.add(e1).expect("first add");
         assert!(idx.add(e2).is_err());
         assert_eq!(idx.entries.len(), 1);
+    }
+
+    // -- Defragmentation planning -------------------------------------------
+
+    #[test]
+    fn test_plan_defrag_no_gaps() {
+        let mut idx = SegmentIndex::new(1024);
+        idx.entries.push(
+            SegmentEntry::new(
+                "a",
+                0,
+                100,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new(
+                "b",
+                100,
+                200,
+                1,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert!(moves.is_empty(), "no moves needed when compact");
+    }
+
+    #[test]
+    fn test_plan_defrag_single_gap() {
+        let mut idx = SegmentIndex::new(1024);
+        // A at 0, gap at 100, B at 200
+        idx.entries.push(
+            SegmentEntry::new(
+                "a",
+                0,
+                100,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new(
+                "b",
+                200,
+                100,
+                1,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion {
+            offset: 100,
+            size: 100,
+        });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 100);
+        assert_eq!(moves[0].size, 100);
+    }
+
+    #[test]
+    fn test_plan_defrag_gap_at_start() {
+        let mut idx = SegmentIndex::new(1024);
+        // Gap at 0, A at 200
+        idx.entries.push(
+            SegmentEntry::new(
+                "a",
+                200,
+                100,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 200,
+        });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 0);
+    }
+
+    #[test]
+    fn test_plan_defrag_multiple_gaps() {
+        let mut idx = SegmentIndex::new(2048);
+        // A(0-100) gap(100-200) B(200-350) gap(350-400) C(400-500)
+        idx.entries.push(
+            SegmentEntry::new(
+                "a",
+                0,
+                100,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new(
+                "b",
+                200,
+                150,
+                1,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new(
+                "c",
+                400,
+                100,
+                2,
+                dummy_checksum(2),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion {
+            offset: 100,
+            size: 100,
+        });
+        idx.free_regions.push(FreeRegion {
+            offset: 350,
+            size: 50,
+        });
+        idx.next_free_offset = 500;
+
+        let moves = idx.plan_defrag();
+        assert_eq!(moves.len(), 2); // B and C need to move
+
+        // B: 200 → 100
+        assert_eq!(moves[0].old_offset, 200);
+        assert_eq!(moves[0].new_offset, 100);
+        assert_eq!(moves[0].size, 150);
+
+        // C: 400 → 250
+        assert_eq!(moves[1].old_offset, 400);
+        assert_eq!(moves[1].new_offset, 250);
+        assert_eq!(moves[1].size, 100);
+    }
+
+    #[test]
+    fn test_plan_defrag_empty_index() {
+        let idx = SegmentIndex::new(1024);
+        let moves = idx.plan_defrag();
+        assert!(moves.is_empty());
+    }
+
+    #[test]
+    fn test_apply_move_and_complete() {
+        let mut idx = SegmentIndex::new(1024);
+        idx.entries.push(
+            SegmentEntry::new(
+                "a",
+                0,
+                100,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.entries.push(
+            SegmentEntry::new(
+                "b",
+                200,
+                100,
+                1,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+            )
+            .expect("entry"),
+        );
+        idx.free_regions.push(FreeRegion {
+            offset: 100,
+            size: 100,
+        });
+        idx.next_free_offset = 300;
+
+        let moves = idx.plan_defrag();
+        for m in &moves {
+            idx.apply_move(m.entry_index, m.new_offset).expect("apply_move");
+        }
+        idx.complete_defrag();
+
+        assert_eq!(idx.free_regions.len(), 0);
+        assert_eq!(idx.next_free_offset, 200); // 100 + 100
+        assert_eq!(idx.entries[1].offset, 100); // B moved from 200 → 100
+
+        // Entries preserve generation and checksum
+        assert_eq!(idx.entries[0].generation, 0);
+        assert_eq!(idx.entries[1].generation, 1);
+    }
+
+    #[test]
+    fn test_needs_defrag() {
+        let mut idx = SegmentIndex::new(1024);
+        assert!(!idx.needs_defrag());
+
+        idx.free_regions.push(FreeRegion {
+            offset: 0,
+            size: 100,
+        });
+        assert!(idx.needs_defrag());
     }
 }

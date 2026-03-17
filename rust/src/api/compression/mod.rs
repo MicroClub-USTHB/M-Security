@@ -88,12 +88,9 @@ pub fn should_skip_compression(file_path: &str) -> bool {
 
     const SKIP: &[&str] = &[
         // images
-        "jpg", "jpeg", "png", "gif", "webp",
-        // video
-        "mp4", "mkv", "avi", "mov", "webm",
-        // audio
-        "mp3", "aac", "ogg", "flac",
-        // archives
+        "jpg", "jpeg", "png", "gif", "webp", // video
+        "mp4", "mkv", "avi", "mov", "webm", // audio
+        "mp3", "aac", "ogg", "flac", // archives
         "zip", "gz", "bz2", "xz", "zst", "br", "7z", "rar",
     ];
 
@@ -256,8 +253,8 @@ mod tests {
             level: None,
         };
         let compressed = compress(empty, &config_brotli).expect("brotli compress empty");
-        let decompressed = decompress(&compressed, CompressionAlgorithm::Brotli)
-            .expect("brotli decompress empty");
+        let decompressed =
+            decompress(&compressed, CompressionAlgorithm::Brotli).expect("brotli decompress empty");
         assert!(decompressed.is_empty());
     }
 }
