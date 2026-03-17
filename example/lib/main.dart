@@ -7,7 +7,7 @@ import 'package:m_security/m_security.dart';
 import 'package:m_security/src/rust/api/encryption.dart' as rust_enc;
 import 'package:m_security/src/rust/api/hashing.dart' as hashing;
 import 'package:m_security/src/rust/api/compression.dart';
-import 'package:m_security/src/rust/api/evfs.dart' as rust_evfs;
+import 'package:m_security/src/rust/api/evfs/types.dart' as rust_evfs_types;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -613,7 +613,7 @@ class _VaultTabState extends State<_VaultTab> {
   bool _vaultOpen = false;
   String _compAlgo = 'Zstd';
 
-  rust_evfs.VaultHandle? _handle;
+  rust_evfs_types.VaultHandle? _handle;
   Uint8List? _key;
   String? _vaultPath;
 
