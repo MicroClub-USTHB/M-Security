@@ -116,29 +116,32 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     if std::path::Path::new(&defrag_backup_path).exists() {
         if wal_snapshot.is_some() {
             // WAL uncommitted + backup exists → crash during overlapping defrag
-            // move. Restore segment data to the old position.
-            if let Ok(mut backup) = File::open(&defrag_backup_path) {
-                let mut hdr = [0u8; 16];
-                if backup.read_exact(&mut hdr).is_ok() {
-                    // SAFETY: slices are exactly 8 bytes from a 16-byte array
-                    let offset = u64::from_le_bytes([
-                        hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7],
-                    ]);
-                    let size = u64::from_le_bytes([
-                        hdr[8], hdr[9], hdr[10], hdr[11], hdr[12], hdr[13], hdr[14], hdr[15],
-                    ]);
-                    // Cap at 256MB to prevent OOM from corrupted backup headers
-                    const MAX_BACKUP_SIZE: u64 = 256 * 1024 * 1024;
-                    if size > 0 && size <= capacity && size <= MAX_BACKUP_SIZE {
-                        let mut data = vec![0u8; size as usize];
-                        if backup.read_exact(&mut data).is_ok() {
-                            file.seek(SeekFrom::Start(data_off + offset))?;
-                            file.write_all(&data)?;
-                            file.sync_all()?;
-                        }
-                    }
-                }
+            // move. Restore segment data to the old position. Errors here are
+            // fatal: if the backup can't be read the segment data at the old
+            // offset is corrupted and the vault would silently serve bad data.
+            let mut backup = File::open(&defrag_backup_path)
+                .map_err(|e| CryptoError::IoError(format!("defrag backup open: {e}")))?;
+            let mut hdr = [0u8; 16];
+            backup.read_exact(&mut hdr)
+                .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup header: {e}")))?;
+            let offset = u64::from_le_bytes([
+                hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7],
+            ]);
+            let size = u64::from_le_bytes([
+                hdr[8], hdr[9], hdr[10], hdr[11], hdr[12], hdr[13], hdr[14], hdr[15],
+            ]);
+            const MAX_BACKUP_SIZE: u64 = 256 * 1024 * 1024;
+            if size == 0 || size > capacity || size > MAX_BACKUP_SIZE {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "defrag backup has invalid size {size} (capacity {capacity})"
+                )));
             }
+            let mut data = vec![0u8; size as usize];
+            backup.read_exact(&mut data)
+                .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup data: {e}")))?;
+            file.seek(SeekFrom::Start(data_off + offset))?;
+            file.write_all(&data)?;
+            file.sync_all()?;
         }
         let _ = std::fs::remove_file(&defrag_backup_path);
     }
@@ -146,7 +149,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // WAL recovery — only restore primary index. Shadow position depends on
     // capacity which may have changed during an interrupted resize; the
     // post-recovery reconciliation below fixes the shadow.
-    if let Some(old_encrypted_index) = wal_snapshot {
+    let wal_recovered = if let Some(old_encrypted_index) = wal_snapshot {
         if old_encrypted_index.len() != enc_idx_size {
             return Err(CryptoError::VaultCorrupted(format!(
                 "WAL snapshot size {} != expected {enc_idx_size}",
@@ -156,11 +159,14 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         file.seek(SeekFrom::Start(PRIMARY_INDEX_OFFSET))?;
         file.write_all(&old_encrypted_index)?;
         file.sync_all()?;
-    }
+        true
+    } else {
+        false
+    };
     wal.checkpoint()?;
 
     // Decrypt index (try primary, fall back to shadow)
-    let index = {
+    let mut index = {
         let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET, enc_idx_size)?;
         match decrypt_index_blob(&primary_bytes, &keys, algorithm) {
             Ok(idx) => idx,
@@ -180,6 +186,15 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
             }
         }
     };
+
+    // After WAL recovery, bump the generation counter to prevent nonce
+    // reuse. The crashed write consumed generation N but the restored index
+    // still has next_generation=N. Without this bump the next write would
+    // derive the same nonce with potentially different plaintext.
+    if wal_recovered {
+        index.next_generation = index.next_generation.saturating_add(1);
+        flush_index(&mut file, &index, &keys, algorithm, index.capacity, index_pad_size)?;
+    }
 
     // Post-recovery reconciliation: if an interrupted resize left the file
     // at the wrong size, fix the file and shadow to match the index.
