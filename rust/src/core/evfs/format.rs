@@ -73,6 +73,43 @@ pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, Cry
 }
 
 // ---------------------------------------------------------------------------
+// Streaming segment layout
+// ---------------------------------------------------------------------------
+
+/// Compute the total encrypted size for a streaming segment.
+///
+/// Each 64KB plaintext chunk encrypts to `ENCRYPTED_CHUNK_SIZE` bytes
+/// (nonce + ciphertext + tag). The last chunk is padded to uniform size.
+///
+/// Returns `Err` if the result overflows `u64`.
+pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
+    use crate::core::streaming::{CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE};
+    if plaintext_size == 0 {
+        return Ok(0);
+    }
+    let chunk_count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
+    chunk_count
+        .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
+        .ok_or_else(|| {
+            CryptoError::InvalidParameter("streaming segment size overflows u64".into())
+        })
+}
+
+/// Compute the number of chunks needed for a given plaintext size.
+///
+/// Returns `Err` if the count exceeds `u32::MAX`.
+pub fn streaming_chunk_count(plaintext_size: u64) -> Result<u32, CryptoError> {
+    use crate::core::streaming::CHUNK_SIZE;
+    if plaintext_size == 0 {
+        return Ok(0);
+    }
+    let count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
+    u32::try_from(count).map_err(|_| {
+        CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into())
+    })
+}
+
+// ---------------------------------------------------------------------------
 // VaultHeader
 // ---------------------------------------------------------------------------
 
@@ -179,6 +216,9 @@ pub struct SegmentEntry {
     pub checksum: [u8; 32],
     /// Algorithm used to compress this segment.
     pub compression: CompressionAlgorithm,
+    /// Number of chunks for streaming segments. 0 = monolithic (one-shot),
+    /// >0 = N independently-encrypted chunks within this segment slot.
+    pub chunk_count: u32,
 }
 
 impl SegmentEntry {
@@ -189,6 +229,7 @@ impl SegmentEntry {
         generation: u64,
         checksum: [u8; 32],
         compression: CompressionAlgorithm,
+        chunk_count: u32,
     ) -> Result<Self, CryptoError> {
         if name.is_empty() || name.len() > MAX_SEGMENT_NAME_LEN {
             return Err(CryptoError::InvalidParameter(format!(
@@ -203,7 +244,13 @@ impl SegmentEntry {
             generation,
             checksum,
             compression,
+            chunk_count,
         })
+    }
+
+    /// Returns true if this segment uses streaming (chunked) storage.
+    pub fn is_streaming(&self) -> bool {
+        self.chunk_count > 0
     }
 }
 
@@ -317,7 +364,7 @@ impl SegmentIndex {
     ///   -- entries --
     ///   per entry:
     ///     [name_len: u16] [name: UTF-8] [offset: u64] [size: u64]
-    ///     [generation: u64] [checksum: 32B] [compression: u8]
+    ///     [generation: u64] [checksum: 32B] [compression: u8] [chunk_count: u32]
     ///   -- free regions --
     ///   per region:
     ///     [offset: u64] [size: u64]
@@ -349,6 +396,7 @@ impl SegmentIndex {
             put_u64(&mut buf, entry.generation);
             buf.extend_from_slice(&entry.checksum);
             buf.push(entry.compression.to_u8());
+            put_u32(&mut buf, entry.chunk_count);
         }
 
         for region in &self.free_regions {
@@ -377,9 +425,9 @@ impl SegmentIndex {
         let entry_count = read_u32(data, &mut off)? as usize;
         let free_count = read_u32(data, &mut off)? as usize;
 
-        // Sanity-cap: the smallest possible entry is ~59 bytes (1-byte name),
+        // Sanity-cap: smallest entry is 64 bytes (2+1+8+8+8+32+1+4, 1-byte name),
         // free region is 16 bytes. Reject clearly corrupted counts early.
-        let max_entries = data.len() / 59;
+        let max_entries = data.len() / 64;
         let max_free = data.len() / 16;
         if entry_count > max_entries {
             return Err(CryptoError::VaultCorrupted(format!(
@@ -416,6 +464,25 @@ impl SegmentIndex {
             checksum.copy_from_slice(&checksum_bytes);
             let comp_byte = read_bytes(data, &mut off, 1)?;
             let compression = CompressionAlgorithm::from_u8(comp_byte[0])?;
+            let chunk_count = read_u32(data, &mut off)?;
+
+            // Validate chunk_count consistency with stored size
+            if chunk_count > 0 {
+                let expected = (chunk_count as u64)
+                    .checked_mul(crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64)
+                    .ok_or_else(|| {
+                        CryptoError::VaultCorrupted(format!(
+                            "segment '{name}': chunk_count overflows size"
+                        ))
+                    })?;
+                if size != expected {
+                    return Err(CryptoError::VaultCorrupted(format!(
+                        "segment '{name}': chunk_count {chunk_count} implies size \
+                         {expected} but stored {size}"
+                    )));
+                }
+            }
+
             entries.push(SegmentEntry {
                 name,
                 offset,
@@ -423,6 +490,7 @@ impl SegmentIndex {
                 generation,
                 checksum,
                 compression,
+                chunk_count,
             });
         }
 
@@ -711,6 +779,7 @@ mod tests {
             0,
             dummy_checksum(0),
             CompressionAlgorithm::None,
+            0,
         );
         assert!(e.is_ok());
 
@@ -723,6 +792,7 @@ mod tests {
             0,
             dummy_checksum(0),
             CompressionAlgorithm::None,
+            0,
         );
         assert!(e.is_ok());
     }
@@ -737,13 +807,14 @@ mod tests {
             0,
             dummy_checksum(0),
             CompressionAlgorithm::None,
+            0,
         );
         assert!(e.is_err());
     }
 
     #[test]
     fn test_segment_entry_name_empty() {
-        let e = SegmentEntry::new("", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None);
+        let e = SegmentEntry::new("", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None, 0);
         assert!(e.is_err());
     }
 
@@ -759,6 +830,7 @@ mod tests {
                 1,
                 dummy_checksum(0xAA),
                 CompressionAlgorithm::Zstd,
+                0, // monolithic
             )
             .expect("entry"),
         )
@@ -771,6 +843,7 @@ mod tests {
                 2,
                 dummy_checksum(0xBB),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         )
@@ -797,9 +870,11 @@ mod tests {
         assert_eq!(parsed.entries[0].generation, 1);
         assert_eq!(parsed.entries[0].checksum, dummy_checksum(0xAA));
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
+        assert_eq!(parsed.entries[0].chunk_count, 0);
 
         assert_eq!(parsed.entries[1].name, "photo.jpg");
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::None);
+        assert_eq!(parsed.entries[1].chunk_count, 0);
 
         assert_eq!(parsed.free_regions.len(), 1);
         assert_eq!(parsed.free_regions[0].offset, 12288);
@@ -822,6 +897,7 @@ mod tests {
                 41,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -850,6 +926,7 @@ mod tests {
                     0,
                     dummy_checksum(i as u8),
                     *algo,
+                    0,
                 )
                 .expect("entry"),
             );
@@ -920,8 +997,8 @@ mod tests {
     #[test]
     fn test_segment_index_overflow_min_pad() {
         let mut idx = SegmentIndex::new(512 * 1024); // 512KB → MIN_INDEX_PAD_SIZE
-        // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 = 314 bytes.
-        // Index header is 32 bytes. (65536 - 32) / 314 ≈ 208 entries max.
+        // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 + 4 = 318 bytes.
+        // Index header is 32 bytes. (65536 - 32) / 318 ≈ 205 entries max.
         for i in 0..210 {
             let name = format!("{:0>255}", i);
             idx.entries.push(
@@ -932,6 +1009,7 @@ mod tests {
                     0,
                     dummy_checksum(0),
                     CompressionAlgorithm::None,
+                    0,
                 )
                 .expect("entry"),
             );
@@ -1226,6 +1304,7 @@ mod tests {
             0,
             dummy_checksum(0),
             CompressionAlgorithm::None,
+            0,
         )
         .expect("entry");
         let e2 = SegmentEntry::new(
@@ -1235,6 +1314,7 @@ mod tests {
             1,
             dummy_checksum(1),
             CompressionAlgorithm::None,
+            0,
         )
         .expect("entry");
         idx.add(e1).expect("first add");
@@ -1255,6 +1335,7 @@ mod tests {
                 0,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1266,6 +1347,7 @@ mod tests {
                 1,
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1287,6 +1369,7 @@ mod tests {
                 0,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1298,6 +1381,7 @@ mod tests {
                 1,
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1326,6 +1410,7 @@ mod tests {
                 0,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1353,6 +1438,7 @@ mod tests {
                 0,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1364,6 +1450,7 @@ mod tests {
                 1,
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1375,6 +1462,7 @@ mod tests {
                 2,
                 dummy_checksum(2),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1420,6 +1508,7 @@ mod tests {
                 0,
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1431,6 +1520,7 @@ mod tests {
                 1,
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
+                0,
             )
             .expect("entry"),
         );
@@ -1465,5 +1555,158 @@ mod tests {
             size: 100,
         });
         assert!(idx.needs_defrag());
+    }
+
+    // -- Streaming segment format -------------------------------------------
+
+    #[test]
+    fn test_segment_entry_chunk_count_roundtrip() {
+        let mut idx = SegmentIndex::new(1024 * 1024);
+        // Monolithic segment
+        idx.entries.push(
+            SegmentEntry::new(
+                "mono.bin",
+                0,
+                1024,
+                0,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+                0,
+            )
+            .expect("entry"),
+        );
+        // Streaming segment with 5 chunks
+        idx.entries.push(
+            SegmentEntry::new(
+                "stream.bin",
+                1024,
+                5 * 65564, // 5 * ENCRYPTED_CHUNK_SIZE
+                1,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+                5,
+            )
+            .expect("entry"),
+        );
+
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+
+        assert_eq!(parsed.entries[0].chunk_count, 0);
+        assert!(!parsed.entries[0].is_streaming());
+        assert_eq!(parsed.entries[1].chunk_count, 5);
+        assert!(parsed.entries[1].is_streaming());
+    }
+
+    #[test]
+    fn test_chunk_count_size_mismatch_rejected() {
+        use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+
+        let mut idx = SegmentIndex::new(1024 * 1024);
+        // chunk_count=5 but size is wrong (should be 5 * ENCRYPTED_CHUNK_SIZE)
+        idx.entries.push(SegmentEntry {
+            name: "bad.bin".to_string(),
+            offset: 0,
+            size: 1024, // mismatched
+            generation: 0,
+            checksum: dummy_checksum(0),
+            compression: CompressionAlgorithm::None,
+            chunk_count: 5,
+        });
+
+        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let result = SegmentIndex::from_bytes(&bytes);
+        assert!(result.is_err());
+        let err = result.expect_err("should fail").to_string();
+        assert!(err.contains("chunk_count"), "Error: {err}");
+
+        // Verify correct size is accepted
+        let mut idx2 = SegmentIndex::new(1024 * 1024);
+        idx2.entries.push(SegmentEntry {
+            name: "ok.bin".to_string(),
+            offset: 0,
+            size: 5 * ENCRYPTED_CHUNK_SIZE as u64,
+            generation: 0,
+            checksum: dummy_checksum(0),
+            compression: CompressionAlgorithm::None,
+            chunk_count: 5,
+        });
+        let bytes2 = idx2.to_bytes(compute_index_size(idx2.capacity)).expect("serialize");
+        assert!(SegmentIndex::from_bytes(&bytes2).is_ok());
+    }
+
+    #[test]
+    fn test_streaming_segment_size_zero() {
+        assert_eq!(streaming_segment_size(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_streaming_segment_size_single_chunk() {
+        use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+        // 1 byte → 1 chunk
+        assert_eq!(streaming_segment_size(1).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
+        // Exactly one chunk
+        assert_eq!(streaming_segment_size(64 * 1024).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
+    }
+
+    #[test]
+    fn test_streaming_segment_size_multiple_chunks() {
+        use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+        // 64KB + 1 byte → 2 chunks
+        assert_eq!(
+            streaming_segment_size(64 * 1024 + 1).unwrap(),
+            2 * ENCRYPTED_CHUNK_SIZE as u64
+        );
+        // 5 full chunks
+        assert_eq!(
+            streaming_segment_size(5 * 64 * 1024).unwrap(),
+            5 * ENCRYPTED_CHUNK_SIZE as u64
+        );
+    }
+
+    #[test]
+    fn test_streaming_segment_size_overflow() {
+        assert!(streaming_segment_size(u64::MAX).is_err());
+    }
+
+    #[test]
+    fn test_streaming_chunk_count_values() {
+        assert_eq!(streaming_chunk_count(0).unwrap(), 0);
+        assert_eq!(streaming_chunk_count(1).unwrap(), 1);
+        assert_eq!(streaming_chunk_count(64 * 1024).unwrap(), 1);
+        assert_eq!(streaming_chunk_count(64 * 1024 + 1).unwrap(), 2);
+        assert_eq!(streaming_chunk_count(5 * 64 * 1024).unwrap(), 5);
+    }
+
+    #[test]
+    fn test_streaming_chunk_count_overflow() {
+        assert!(streaming_chunk_count(u64::MAX).is_err());
+    }
+
+    #[test]
+    fn test_is_streaming_helper() {
+        let mono = SegmentEntry::new(
+            "mono",
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+            0,
+        )
+        .expect("entry");
+        assert!(!mono.is_streaming());
+
+        let stream = SegmentEntry::new(
+            "stream",
+            0,
+            65564,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+            1,
+        )
+        .expect("entry");
+        assert!(stream.is_streaming());
     }
 }
