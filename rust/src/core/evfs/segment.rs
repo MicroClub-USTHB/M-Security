@@ -100,6 +100,27 @@ pub fn derive_segment_nonce(
 }
 
 // ---------------------------------------------------------------------------
+// Streaming segment support (per-chunk nonce + AAD)
+// ---------------------------------------------------------------------------
+
+/// Per-chunk AAD for vault streaming segments.
+/// Wire-compatible with the standalone streaming format's `ChunkAad`.
+pub type VaultChunkAad = crate::core::streaming::ChunkAad;
+
+/// Derive a unique nonce for a specific chunk within a streaming segment.
+///
+/// Reuses the existing HKDF-based nonce derivation with `chunk_index` as the
+/// index parameter and the segment's `generation` counter, producing unique
+/// nonces per chunk and per overwrite.
+pub fn derive_chunk_nonce(
+    nonce_key: &[u8],
+    chunk_index: u64,
+    generation: u64,
+) -> Result<Vec<u8>, CryptoError> {
+    derive_segment_nonce(nonce_key, chunk_index, generation, NONCE_LEN)
+}
+
+// ---------------------------------------------------------------------------
 // AEAD helpers (algorithm dispatch)
 // ---------------------------------------------------------------------------
 
@@ -907,5 +928,62 @@ mod tests {
         let mut after = vec![0u8; 256];
         file.read_exact(&mut after).expect("read");
         assert_eq!(after, vec![0xAA; 256]);
+    }
+
+    // -- Chunk nonce derivation (streaming segments) ------------------------
+
+    #[test]
+    fn test_chunk_nonce_deterministic() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n2 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        assert_eq!(n1, n2);
+        assert_eq!(n1.len(), NONCE_LEN);
+    }
+
+    #[test]
+    fn test_chunk_nonce_unique_per_chunk() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n0 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 1, 0).expect("nonce");
+        let n2 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 2, 0).expect("nonce");
+        assert_ne!(n0, n1);
+        assert_ne!(n1, n2);
+        assert_ne!(n0, n2);
+    }
+
+    #[test]
+    fn test_chunk_nonce_unique_per_generation() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n_gen0 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n_gen1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 1).expect("nonce");
+        assert_ne!(n_gen0, n_gen1);
+    }
+
+    #[test]
+    fn test_chunk_nonce_matches_segment_nonce() {
+        // derive_chunk_nonce(key, chunk_idx, gen) must equal
+        // derive_segment_nonce(key, chunk_idx, gen, NONCE_LEN)
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let chunk = derive_chunk_nonce(keys.nonce_key.as_bytes(), 42, 7).expect("chunk");
+        let segment =
+            derive_segment_nonce(keys.nonce_key.as_bytes(), 42, 7, NONCE_LEN).expect("segment");
+        assert_eq!(chunk, segment);
+    }
+
+    #[test]
+    fn test_vault_chunk_aad_wire_compat() {
+        // VaultChunkAad is a type alias for ChunkAad — verify wire format
+        use crate::core::streaming::AAD_SIZE;
+        let aad = VaultChunkAad {
+            index: 99,
+            is_final: true,
+        };
+        let bytes = aad.to_bytes();
+        assert_eq!(bytes.len(), AAD_SIZE);
+        // index = 99 LE
+        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 99);
+        // is_final = true
+        assert_eq!(bytes[8], 1);
     }
 }

@@ -287,6 +287,7 @@ pub fn vault_write(
         gen,
         checksum,
         effective_algo,
+        0, // monolithic (one-shot) segment
     )?;
     handle.index.add(entry)?;
 
