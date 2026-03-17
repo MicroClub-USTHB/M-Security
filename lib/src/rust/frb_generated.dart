@@ -3120,9 +3120,6 @@ class VaultHandleImpl extends RustOpaque implements VaultHandle {
   );
 
   /// Compute health information from the in-memory index only (no file I/O or WAL writes).
-  ///
-  /// The `#[must_use]` attribute is a Rust best practice indicating that the return value
-  /// of this function should not be silently ignored by callers.
   Future<VaultHealthInfo> health() =>
       RustLib.instance.api.crateApiEvfsTypesVaultHandleHealth(that: this);
 }

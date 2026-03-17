@@ -11,9 +11,6 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>
 abstract class VaultHandle implements RustOpaqueInterface {
   /// Compute health information from the in-memory index only (no file I/O or WAL writes).
-  ///
-  /// The `#[must_use]` attribute is a Rust best practice indicating that the return value
-  /// of this function should not be silently ignored by callers.
   Future<VaultHealthInfo> health();
 }
 
@@ -87,9 +84,6 @@ class VaultCapacityInfo {
 }
 
 /// Vault health and diagnostic info returned to callers.
-///
-/// `#[frb(non_opaque)]` tells the code generator to expose this as a direct Dart class
-/// with all these fields accessible, instead of hiding it behind a pointer.
 class VaultHealthInfo {
   final BigInt totalBytes;
   final BigInt usedBytes;
