@@ -186,24 +186,45 @@ final decrypted = await streamDecrypt(
 ```dart
 import 'package:m_security/m_security.dart';
 
-// Create a vault
-final vault = VaultService();
-await vault.create(path: '/path/to/my.vault', sizeBytes: 10 * 1024 * 1024);
-
-// Write a segment (with optional compression)
-await vault.writeSegment(
-  name: 'secret.txt',
-  data: utf8.encode('confidential'),
-  compression: CompressionAlgorithm.zstd,
+// Create a 10 MB vault with AES-256-GCM
+final handle = await VaultService.create(
+  path: '/path/to/my.vault',
+  key: key,
+  algorithm: 'aes-256-gcm',
+  capacityBytes: 10 * 1024 * 1024,
 );
 
-// Read it back
-final data = await vault.readSegment(name: 'secret.txt');
+// Write a segment (with optional compression)
+await VaultService.write(
+  handle: handle,
+  name: 'secret.txt',
+  data: utf8.encode('confidential'),
+  compression: CompressionConfig(algorithm: CompressionAlgorithm.zstd),
+);
+
+// Read it back (decompression is automatic)
+final data = await VaultService.read(handle: handle, name: 'secret.txt');
 
 // List segments, delete, close
-final segments = await vault.listSegments();
-await vault.deleteSegment(name: 'secret.txt');
-await vault.close();
+final segments = await VaultService.list(handle: handle);
+await VaultService.delete(handle: handle, name: 'secret.txt');
+await VaultService.close(handle: handle);
+```
+
+#### Vault Maintenance
+
+```dart
+// Health check (read-only, no I/O)
+final health = await VaultService.health(handle: handle);
+print('Consistent: ${health.isConsistent}');
+print('Fragmentation: ${(health.fragmentationRatio * 100).toStringAsFixed(1)}%');
+
+// Defragment — compact segments, coalesce free space (WAL-protected)
+final result = await VaultService.defragment(handle: handle);
+print('Moved ${result.segmentsMoved} segments, reclaimed ${result.bytesReclaimed} bytes');
+
+// Resize vault capacity (grow or shrink)
+await VaultService.resize(handle: handle, newCapacityBytes: 20 * 1024 * 1024);
 ```
 
 ### BLAKE3 & SHA-3-256 Hashing
@@ -328,7 +349,7 @@ flutter test integration_test/
 | **Streaming encryption** | Process large files in chunks with progress callbacks | v0.3.0 |
 | **Compression pipeline** | Zstd/Brotli compression integrated into streaming and EVFS | v0.3.0 |
 | **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0 |
-| **EVFS v2: Defrag & resize** | Online defragmentation and vault resizing | Planned |
+| **EVFS v2: Defrag & resize** | Online defragmentation, vault resizing, health diagnostics | v0.3.0 |
 | **EVFS v2: Key rotation** | Re-encrypt vault with new master key | Planned |
 | **Stealth storage** | Ephemeral secrets in Rust-managed memory with derived-path obfuscation | Planned |
 | **Hardware key wrap** | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock | Planned |
