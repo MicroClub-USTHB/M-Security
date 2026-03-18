@@ -6,9 +6,10 @@
 import '../core/error.dart';
 import '../frb_generated.dart';
 import 'compression.dart';
+import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `capacity_from_file_size`, `decrypt_index_blob`, `flush_index`, `parse_algorithm`, `read_encrypted_index`
+// These functions are ignored because they are not marked as `pub`: `vault_resize_grow_impl`, `vault_resize_shrink_impl`
 
 /// Create a new vault file at `path` with the given capacity.
 ///
@@ -57,6 +58,19 @@ Future<Uint8List> vaultRead({
 Future<void> vaultDelete({required VaultHandle handle, required String name}) =>
     RustLib.instance.api.crateApiEvfsVaultDelete(handle: handle, name: name);
 
+/// Resize vault data region capacity.
+///
+/// - Grow: extend file, CSPRNG-fill new space, relocate shadow index + WAL
+/// - Shrink: validate segments fit, relocate shadow + WAL, truncate file
+/// - Returns VaultFull if shrink would lose data
+Future<void> vaultResize({
+  required VaultHandle handle,
+  required BigInt newCapacity,
+}) => RustLib.instance.api.crateApiEvfsVaultResize(
+  handle: handle,
+  newCapacity: newCapacity,
+);
+
 /// List all segment names in the vault.
 Future<List<String>> vaultList({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultList(handle: handle);
@@ -65,45 +79,19 @@ Future<List<String>> vaultList({required VaultHandle handle}) =>
 Future<VaultCapacityInfo> vaultCapacity({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultCapacity(handle: handle);
 
+/// Get vault health/diagnostics (read-only).
+Future<VaultHealthInfo> vaultHealth({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultHealth(handle: handle);
+
+/// Defragment the vault: compact all segments toward the data region start,
+/// coalesce free space into a single contiguous block at the end.
+///
+/// Each segment move is individually WAL-protected for crash safety.
+/// Encrypted bytes are copied as-is (no re-encryption). The free tail
+/// is secure-erased with CSPRNG after all moves complete.
+Future<DefragResult> vaultDefragment({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultDefragment(handle: handle);
+
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
 Future<void> vaultClose({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>
-abstract class VaultHandle implements RustOpaqueInterface {}
-
-/// Capacity info returned to callers.
-class VaultCapacityInfo {
-  final BigInt totalBytes;
-  final BigInt usedBytes;
-  final BigInt freeListBytes;
-  final BigInt unallocatedBytes;
-  final BigInt segmentCount;
-
-  const VaultCapacityInfo({
-    required this.totalBytes,
-    required this.usedBytes,
-    required this.freeListBytes,
-    required this.unallocatedBytes,
-    required this.segmentCount,
-  });
-
-  @override
-  int get hashCode =>
-      totalBytes.hashCode ^
-      usedBytes.hashCode ^
-      freeListBytes.hashCode ^
-      unallocatedBytes.hashCode ^
-      segmentCount.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is VaultCapacityInfo &&
-          runtimeType == other.runtimeType &&
-          totalBytes == other.totalBytes &&
-          usedBytes == other.usedBytes &&
-          freeListBytes == other.freeListBytes &&
-          unallocatedBytes == other.unallocatedBytes &&
-          segmentCount == other.segmentCount;
-}

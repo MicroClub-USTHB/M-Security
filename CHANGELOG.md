@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.1 - 2026-03-18
+
+### Added
+
+- Vault defragmentation with crash-safe WAL operations and secure erase.
+- Vault resize (grow/shrink) with safe data relocation.
+- Vault health check with consistency invariant (`used + free_list + unallocated == total`).
+- Dynamic index sizing that scales with capacity (64KB per MB, min 64KB, max 16MB).
+- Dart `VaultService` wrappers for `defragment()`, `resize()`, and `health()`.
+
+### Changed
+
+- Improved crash safety during persistence operations.
+- Strengthened bounds checks and memory allocation limits.
+- Internal bindings regenerated and validated.
+
+### Security
+
+- No new information leaks, `index_size` remains deterministic from file size.
+- Enforced index size bounds (64KB–16MB).
+- Added safeguards against excessive memory usage.
+- Header tampering results in authentication failure (no data exposure).
+
 ## 0.3.0 - 2026-03-07
 
 ### Added

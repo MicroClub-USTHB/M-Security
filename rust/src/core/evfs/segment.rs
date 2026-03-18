@@ -144,10 +144,13 @@ fn aead_encrypt_aes_gcm(
     use aes_gcm::aead::{Aead, KeyInit, Payload};
     use aes_gcm::Aes256Gcm;
 
-    let cipher = Aes256Gcm::new_from_slice(key)
-        .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(key).map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
     let nonce = aes_gcm::Nonce::from_slice(nonce);
-    let payload = Payload { msg: plaintext, aad };
+    let payload = Payload {
+        msg: plaintext,
+        aad,
+    };
     cipher
         .encrypt(nonce, payload)
         .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))
@@ -162,8 +165,7 @@ fn aead_decrypt_aes_gcm(
     use aes_gcm::aead::{Aead, KeyInit, Payload};
     use aes_gcm::Aes256Gcm;
 
-    let cipher =
-        Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::DecryptionFailed)?;
+    let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::DecryptionFailed)?;
     let nonce = aes_gcm::Nonce::from_slice(nonce);
     let payload = Payload {
         msg: ciphertext,
@@ -186,7 +188,10 @@ fn aead_encrypt_chacha(
     let cipher = ChaCha20Poly1305::new_from_slice(key)
         .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
     let nonce = chacha20poly1305::Nonce::from_slice(nonce);
-    let payload = Payload { msg: plaintext, aad };
+    let payload = Payload {
+        msg: plaintext,
+        aad,
+    };
     cipher
         .encrypt(nonce, payload)
         .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))
@@ -201,8 +206,8 @@ fn aead_decrypt_chacha(
     use chacha20poly1305::aead::{Aead, KeyInit, Payload};
     use chacha20poly1305::ChaCha20Poly1305;
 
-    let cipher = ChaCha20Poly1305::new_from_slice(key)
-        .map_err(|_| CryptoError::DecryptionFailed)?;
+    let cipher =
+        ChaCha20Poly1305::new_from_slice(key).map_err(|_| CryptoError::DecryptionFailed)?;
     let nonce = chacha20poly1305::Nonce::from_slice(nonce);
     let payload = Payload {
         msg: ciphertext,
@@ -342,7 +347,13 @@ pub fn decrypt_segment(
         return Err(CryptoError::AuthenticationFailed);
     }
 
-    let decrypted = aead_decrypt(params.cipher_key, stored_nonce, ct_tag, &[], params.algorithm)?;
+    let decrypted = aead_decrypt(
+        params.cipher_key,
+        stored_nonce,
+        ct_tag,
+        &[],
+        params.algorithm,
+    )?;
 
     // Decompress if needed
     if compression != CompressionAlgorithm::None {
@@ -434,10 +445,7 @@ pub fn verify_checksum(data: &[u8], expected: &[u8; 32]) -> bool {
 /// Pre-allocate a vault file filled with CSPRNG random data.
 ///
 /// Writes in 64KB chunks to keep memory constant for large vaults.
-pub fn preallocate_vault(
-    file: &mut std::fs::File,
-    total_size: u64,
-) -> Result<(), CryptoError> {
+pub fn preallocate_vault(file: &mut std::fs::File, total_size: u64) -> Result<(), CryptoError> {
     use rand::{rngs::OsRng, RngCore};
 
     let mut remaining = total_size;
@@ -595,8 +603,7 @@ mod tests {
         let p = params(&keys, Algorithm::AesGcm, 0, 0);
 
         let (encrypted, effective) =
-            encrypt_segment(&p, plaintext, "test.txt", &no_compression_config())
-                .expect("encrypt");
+            encrypt_segment(&p, plaintext, "test.txt", &no_compression_config()).expect("encrypt");
         assert_eq!(effective, CompressionAlgorithm::None);
 
         let decrypted =
@@ -743,13 +750,11 @@ mod tests {
         let keys = derive_vault_keys(&test_master_key()).expect("derive");
         let plaintext = b"index payload bytes for testing roundtrip";
 
-        let encrypted =
-            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
-                .expect("encrypt");
+        let encrypted = encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
+            .expect("encrypt");
 
-        let decrypted =
-            decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, &encrypted)
-                .expect("decrypt");
+        let decrypted = decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, &encrypted)
+            .expect("decrypt");
 
         assert_eq!(decrypted, plaintext);
     }
@@ -759,9 +764,8 @@ mod tests {
         let keys = derive_vault_keys(&test_master_key()).expect("derive");
         let plaintext = b"index data";
 
-        let encrypted =
-            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 5, plaintext)
-                .expect("encrypt");
+        let encrypted = encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 5, plaintext)
+            .expect("encrypt");
 
         // Decrypt with wrong generation
         let result = decrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 6, &encrypted);
@@ -773,12 +777,10 @@ mod tests {
         let keys = derive_vault_keys(&test_master_key()).expect("derive");
         let plaintext = b"same index data";
 
-        let enc0 =
-            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
-                .expect("encrypt gen 0");
-        let enc1 =
-            encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 1, plaintext)
-                .expect("encrypt gen 1");
+        let enc0 = encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 0, plaintext)
+            .expect("encrypt gen 0");
+        let enc1 = encrypt_index(keys.index_key.as_bytes(), Algorithm::AesGcm, 1, plaintext)
+            .expect("encrypt gen 1");
 
         // Nonce (first 12 bytes) must differ
         assert_ne!(&enc0[..NONCE_LEN], &enc1[..NONCE_LEN]);

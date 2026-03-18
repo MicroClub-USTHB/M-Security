@@ -30,11 +30,11 @@ use crate::core::streaming::{
 };
 
 // Re-export impl functions for internal use and tests
+#[cfg(feature = "compression")]
+pub(crate) use compress::{compress_encrypt_file_impl, decrypt_decompress_file_impl};
 pub(crate) use decrypt::decrypt_file_impl;
 pub(crate) use encrypt::encrypt_file_impl;
 pub(crate) use hash::hash_file_feed;
-#[cfg(feature = "compression")]
-pub(crate) use compress::{compress_encrypt_file_impl, decrypt_decompress_file_impl};
 
 // -- Shared helpers -----------------------------------------------------------
 
