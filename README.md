@@ -1,6 +1,14 @@
+<div align="center">
+  <img src="assets/m-security.png" alt="M-Security Logo" width="200">
+</div>
+<br />
+
 # M-Security
 
 [![pub package](https://img.shields.io/pub/v/m_security.svg)](https://pub.dev/packages/m_security)
+[![pub points](https://img.shields.io/pub/points/m_security.svg?color=2E8B57)](https://pub.dev/packages/m_security/score)
+[![pub downloads](https://img.shields.io/pub/dm/m_security.svg?color=blue)](https://pub.dev/packages/m_security/score)
+[![Platforms](https://img.shields.io/badge/Platforms-Android%20|%20iOS%20|%20macOS%20|%20Linux%20|%20Windows-blueviolet)](#platform-support)
 [![CI](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml/badge.svg)](https://github.com/MicroClub-USTHB/M-Security/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
@@ -10,19 +18,20 @@ Built and maintained by the **Dev Department** of [MicroClub](https://github.com
 
 ## Features
 
-| Category | Algorithm / Feature | Highlights |
-|----------|---------------------|------------|
-| **AEAD Encryption** | AES-256-GCM | Industry-standard, hardware-accelerated on most CPUs |
-| | ChaCha20-Poly1305 | Optimized for mobile (no AES hardware needed) |
-| **Streaming Encryption** | AES-256-GCM / ChaCha20 | Chunk-based processing with progress callbacks |
-| **Compression** | Zstd, Brotli | Configurable levels, integrated into streaming and EVFS |
-| **Hashing** | BLAKE3 | Ultra-fast, one-shot and streaming |
-| | SHA-3-256 (Keccak) | NIST-standard, one-shot and streaming |
-| **Password Hashing** | Argon2id | PHC winner, Mobile and Desktop presets |
-| **Key Derivation** | HKDF-SHA256 | RFC 5869, extract-then-expand with domain separation |
-| **Encrypted VFS (EVFS)** | `.vault` container | Named segments, WAL recovery, shadow index, secure deletion |
+| Category                 | Algorithm / Feature    | Highlights                                                  |
+| ------------------------ | ---------------------- | ----------------------------------------------------------- |
+| **AEAD Encryption**      | AES-256-GCM            | Industry-standard, hardware-accelerated on most CPUs        |
+|                          | ChaCha20-Poly1305      | Optimized for mobile (no AES hardware needed)               |
+| **Streaming Encryption** | AES-256-GCM / ChaCha20 | Chunk-based processing with progress callbacks              |
+| **Compression**          | Zstd, Brotli           | Configurable levels, integrated into streaming and EVFS     |
+| **Hashing**              | BLAKE3                 | Ultra-fast, one-shot and streaming                          |
+|                          | SHA-3-256 (Keccak)     | NIST-standard, one-shot and streaming                       |
+| **Password Hashing**     | Argon2id               | PHC winner, Mobile and Desktop presets                      |
+| **Key Derivation**       | HKDF-SHA256            | RFC 5869, extract-then-expand with domain separation        |
+| **Encrypted VFS (EVFS)** | `.vault` container     | Named segments, WAL recovery, shadow index, secure deletion |
 
 **Security by design:**
+
 - All key material lives in Rust behind opaque handles; raw keys never cross FFI
 - Automatic memory zeroization on drop (`ZeroizeOnDrop`)
 - Nonces generated internally via OS-level CSPRNG (`OsRng`)
@@ -36,7 +45,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.3.0
+  m_security: ^0.3.1
 ```
 
 Then run:
@@ -50,18 +59,19 @@ flutter pub get
 M-Security compiles Rust code during the Flutter build. You need:
 
 - **Rust toolchain** (stable):
+
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
 
 - **Platform-specific tools:**
 
-  | Platform | Requirements |
-  |----------|-------------|
-  | Android | Android NDK (r27c recommended) |
-  | iOS / macOS | Xcode with command line tools |
-  | Linux | `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev` |
-  | Windows | Visual Studio Build Tools + LLVM |
+  | Platform    | Requirements                                                  |
+  | ----------- | ------------------------------------------------------------- |
+  | Android     | Android NDK (r27c recommended)                                |
+  | iOS / macOS | Xcode with command line tools                                 |
+  | Linux       | `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev` |
+  | Windows     | Visual Studio Build Tools + LLVM                              |
 
 Rust compilation is handled automatically by [Cargokit](https://github.com/nickhudson/cargokit) during `flutter build` / `flutter run`.
 
@@ -157,7 +167,7 @@ final prk = MHKDF.extract(ikm: masterKeyBytes, salt: saltBytes);
 final derived = await MHKDF.expand(prk: prk, info: infoBytes, outputLen: 32);
 ```
 
-Output length must be between 1 and 8160 bytes (RFC 5869 limit for SHA-256: 255 * 32).
+Output length must be between 1 and 8160 bytes (RFC 5869 limit for SHA-256: 255 \* 32).
 
 ### Streaming Encryption
 
@@ -254,7 +264,6 @@ await hasherReset(handle: hasher);
   <img src="assets/architecture.svg" alt="M-Security Architecture" width="600">
 </div>
 
-
 **Key design decisions:**
 
 - **Opaque handles.** `CipherHandle` and `HasherHandle` are `#[frb(opaque)]`. Dart holds a pointer, never raw key bytes.
@@ -310,22 +319,24 @@ hkdf_expand(prk, info, output_len)          -> Result<Vec<u8>>
 
 ## Platform Support
 
-| Platform | Target | Status |
-|----------|--------|--------|
-| Android | `aarch64-linux-android`, `armv7-linux-androideabi` | CI-tested |
-| iOS | `aarch64-apple-ios`, `aarch64-apple-ios-sim` | CI-tested |
-| macOS | `aarch64-apple-darwin`, `x86_64-apple-darwin` | Supported |
-| Linux | `x86_64-unknown-linux-gnu` | CI-tested |
-| Windows | `x86_64-pc-windows-msvc` | Supported |
+| Platform | Target                                             | Status    |
+| -------- | -------------------------------------------------- | --------- |
+| Android  | `aarch64-linux-android`, `armv7-linux-androideabi` | CI-tested |
+| iOS      | `aarch64-apple-ios`, `aarch64-apple-ios-sim`       | CI-tested |
+| macOS    | `aarch64-apple-darwin`, `x86_64-apple-darwin`      | Supported |
+| Linux    | `x86_64-unknown-linux-gnu`                         | CI-tested |
+| Windows  | `x86_64-pc-windows-msvc`                           | Supported |
 
 ## Testing
 
 **Rust unit tests** (79 tests including NIST/RFC test vectors):
+
 ```bash
 cd rust && cargo test
 ```
 
 **Dart integration tests** (63 tests across all features, requires a running device/simulator):
+
 ```bash
 cd example
 flutter test integration_test/
@@ -333,26 +344,26 @@ flutter test integration_test/
 
 ## Tech Stack
 
-| Component | Version |
-|-----------|---------|
-| Rust | stable |
-| Flutter Rust Bridge | 2.11.1 |
-| Dart SDK | ^3.10.8 |
-| Flutter SDK | >=3.3.0 |
+| Component           | Version |
+| ------------------- | ------- |
+| Rust                | stable  |
+| Flutter Rust Bridge | 2.11.1  |
+| Dart SDK            | ^3.10.8 |
+| Flutter SDK         | >=3.3.0 |
 
 **Rust crates:** `aes-gcm` 0.10, `chacha20poly1305` 0.10, `blake3` 1.8, `sha3` 0.10, `argon2` 0.5, `hkdf` 0.12, `zstd` 0.13, `brotli` 7.0, `zeroize` 1.8
 
 ## Roadmap
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Streaming encryption** | Process large files in chunks with progress callbacks | v0.3.0 |
-| **Compression pipeline** | Zstd/Brotli compression integrated into streaming and EVFS | v0.3.0 |
-| **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0 |
-| **EVFS v2: Defrag & resize** | Online defragmentation, vault resizing, health diagnostics | v0.3.0 |
-| **EVFS v2: Key rotation** | Re-encrypt vault with new master key | Planned |
-| **Stealth storage** | Ephemeral secrets in Rust-managed memory with derived-path obfuscation | Planned |
-| **Hardware key wrap** | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock | Planned |
+| Feature                                  | Description                                                                         | Status  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- | ------- |
+| **Streaming encryption**                 | Process large files in chunks with progress callbacks                               | v0.3.0  |
+| **Compression pipeline**                 | Zstd/Brotli compression integrated into streaming and EVFS                          | v0.3.0  |
+| **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0  |
+| **EVFS v2: Defrag & resize**             | Online defragmentation, vault resizing, health diagnostics                          | v0.3.1  |
+| **EVFS v2: Key rotation**                | Re-encrypt vault with new master key                                                | Planned |
+| **Stealth storage**                      | Ephemeral secrets in Rust-managed memory with derived-path obfuscation              | Planned |
+| **Hardware key wrap**                    | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock       | Planned |
 
 ## Contributing
 
