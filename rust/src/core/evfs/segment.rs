@@ -277,6 +277,20 @@ fn aead_decrypt_chacha(
 // AEAD helpers for vault API (random nonce, stored nonce)
 // ---------------------------------------------------------------------------
 
+/// Encrypt with a caller-supplied nonce. Returns `ciphertext || tag`.
+///
+/// Used by vault streaming writes where the nonce is derived deterministically
+/// and prepended by the caller.
+pub fn aead_encrypt_with_key(
+    key: &[u8],
+    nonce: &[u8],
+    plaintext: &[u8],
+    aad: &[u8],
+    algorithm: Algorithm,
+) -> Result<Vec<u8>, CryptoError> {
+    aead_encrypt(key, nonce, plaintext, aad, algorithm)
+}
+
 /// Encrypt with a random nonce. Returns `nonce || ciphertext || tag`.
 pub fn aead_encrypt_random_nonce(
     key: &[u8],
@@ -292,6 +306,41 @@ pub fn aead_encrypt_random_nonce(
     output.extend_from_slice(&nonce);
     output.extend_from_slice(&ct_tag);
     Ok(output)
+}
+
+/// Decrypt a single vault streaming chunk.
+///
+/// Input is `nonce || ciphertext || tag`. The stored nonce is verified
+/// against the derived chunk nonce using constant-time comparison.
+pub fn decrypt_vault_chunk(
+    cipher_key: &[u8],
+    nonce_key: &[u8],
+    algorithm: Algorithm,
+    chunk_data: &[u8],
+    chunk_index: u64,
+    generation: u64,
+    is_final: bool,
+) -> Result<Vec<u8>, CryptoError> {
+    if chunk_data.len() < NONCE_LEN + TAG_LEN {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+
+    let (stored_nonce, ct_tag) = chunk_data.split_at(NONCE_LEN);
+
+    // Verify nonce matches derived value
+    let expected_nonce = derive_chunk_nonce(nonce_key, chunk_index, generation)?;
+    if stored_nonce.ct_ne(&expected_nonce).into() {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+
+    let aad = VaultChunkAad {
+        generation,
+        chunk_index,
+        is_final,
+    }
+    .to_bytes();
+
+    aead_decrypt(cipher_key, stored_nonce, ct_tag, &aad, algorithm)
 }
 
 /// Decrypt data where the nonce is stored as a prefix.

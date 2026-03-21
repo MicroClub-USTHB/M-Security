@@ -1715,3 +1715,281 @@ fn test_tamper_with_chunk_detected() {
 
     vault_close(handle).expect("close");
 }
+
+// -- Streaming Write --------------------------------------------------------
+
+/// Helper: stream-write data in fixed-size pieces.
+fn stream_write_chunks(
+    handle: &mut VaultHandle,
+    name: &str,
+    data: &[u8],
+    piece_size: usize,
+) -> Result<(), CryptoError> {
+    let chunks: Vec<Vec<u8>> = data
+        .chunks(piece_size)
+        .map(|c| c.to_vec())
+        .collect();
+    vault_write_stream(
+        handle,
+        name.to_string(),
+        data.len() as u64,
+        chunks.into_iter(),
+    )
+}
+
+#[test]
+fn test_stream_write_read_roundtrip() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    // 2MB vault to fit the streaming overhead
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data = vec![0x42u8; 200_000]; // ~3 chunks
+    stream_write_chunks(&mut handle, "video.bin", &data, 4096).expect("stream write");
+
+    let readback = vault_read(&mut handle, "video.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_single_byte() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let data = vec![0xAA; 1];
+    stream_write_chunks(&mut handle, "tiny.bin", &data, 1).expect("stream write");
+
+    let readback = vault_read(&mut handle, "tiny.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_empty_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    // 0 bytes — still produces 1 padded chunk
+    vault_write_stream(
+        &mut handle,
+        "empty.bin".into(),
+        0,
+        std::iter::empty(),
+    )
+    .expect("stream write empty");
+
+    let readback = vault_read(&mut handle, "empty.bin".into()).expect("read");
+    assert!(readback.is_empty());
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_exact_chunk_boundary() {
+    use crate::core::streaming::CHUNK_SIZE;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    // Exactly CHUNK_SIZE bytes — triggers the extra empty padded chunk
+    let data = vec![0xBB; CHUNK_SIZE];
+    stream_write_chunks(&mut handle, "aligned.bin", &data, CHUNK_SIZE).expect("stream write");
+
+    let readback = vault_read(&mut handle, "aligned.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    // Verify chunk_count = 2 (1 full + 1 empty padded)
+    let entry = handle.index.find("aligned.bin").expect("entry");
+    assert_eq!(entry.chunk_count, 2);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_overwrite_existing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    // Write original (monolithic)
+    vault_write(
+        &mut handle,
+        "doc.txt".into(),
+        b"original data".to_vec(),
+        None,
+    )
+    .expect("write");
+
+    // Overwrite with streaming (larger)
+    let new_data = vec![0xCC; 100_000];
+    stream_write_chunks(&mut handle, "doc.txt", &new_data, 8192).expect("stream overwrite");
+
+    let readback = vault_read(&mut handle, "doc.txt".into()).expect("read");
+    assert_eq!(readback, new_data);
+
+    // Verify it's now a streaming segment
+    let entry = handle.index.find("doc.txt").expect("entry");
+    assert!(entry.is_streaming());
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_overwrite_with_smaller() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    // Write original (streaming, large)
+    let original = vec![0xAA; 200_000];
+    stream_write_chunks(&mut handle, "file.bin", &original, 4096).expect("write large");
+
+    // Overwrite with smaller streaming segment
+    let smaller = vec![0xBB; 1000];
+    stream_write_chunks(&mut handle, "file.bin", &smaller, 500).expect("write small");
+
+    let readback = vault_read(&mut handle, "file.bin".into()).expect("read");
+    assert_eq!(readback, smaller);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_wrong_size_too_few_bytes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    // Claim 1000 bytes but provide only 500
+    let data = vec![0xAA; 500];
+    let result = vault_write_stream(
+        &mut handle,
+        "bad.bin".into(),
+        1000,
+        vec![data].into_iter(),
+    );
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("underflow"), "Expected underflow error: {err}");
+}
+
+#[test]
+fn test_stream_write_wrong_size_too_many_bytes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    // Claim 500 bytes but provide 1000
+    let data = vec![0xAA; 1000];
+    let result = vault_write_stream(
+        &mut handle,
+        "bad.bin".into(),
+        500,
+        vec![data].into_iter(),
+    );
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("exceeded"), "Expected exceeded error: {err}");
+}
+
+#[test]
+fn test_stream_write_persist_reopen() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_path(&dir);
+
+    let data = vec![0xDD; 150_000];
+    {
+        let mut handle =
+            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 2 * 1024 * 1024)
+                .expect("create");
+        stream_write_chunks(&mut handle, "persist.bin", &data, 4096).expect("stream write");
+        vault_close(handle).expect("close");
+    }
+
+    // Reopen and verify
+    let mut handle = vault_open(path, test_key()).expect("open");
+    let readback = vault_read(&mut handle, "persist.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_chacha20() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir
+        .path()
+        .join("chacha.vault")
+        .to_str()
+        .expect("path")
+        .to_string();
+    let mut handle =
+        vault_create(path, test_key(), "chacha20-poly1305".into(), 2 * 1024 * 1024)
+            .expect("create");
+
+    let data = vec![0xEE; 100_000];
+    stream_write_chunks(&mut handle, "chacha.bin", &data, 8192).expect("stream write");
+
+    let readback = vault_read(&mut handle, "chacha.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_arbitrary_input_sizes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    // Provide data in irregular chunks (1, 7, 100, 50000, 3, ...)
+    let total = 100_000usize;
+    let data: Vec<u8> = (0..total).map(|i| (i % 256) as u8).collect();
+
+    let pieces = vec![
+        data[..1].to_vec(),
+        data[1..8].to_vec(),
+        data[8..108].to_vec(),
+        data[108..50108].to_vec(),
+        data[50108..50111].to_vec(),
+        data[50111..].to_vec(),
+    ];
+
+    vault_write_stream(
+        &mut handle,
+        "irregular.bin".into(),
+        total as u64,
+        pieces.into_iter(),
+    )
+    .expect("stream write");
+
+    let readback = vault_read(&mut handle, "irregular.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_write_coexists_with_monolithic() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    // Write monolithic
+    vault_write(&mut handle, "mono.txt".into(), b"mono data".to_vec(), None)
+        .expect("write mono");
+
+    // Write streaming
+    let stream_data = vec![0xFF; 80_000];
+    stream_write_chunks(&mut handle, "stream.bin", &stream_data, 4096)
+        .expect("stream write");
+
+    // Read both back
+    let mono = vault_read(&mut handle, "mono.txt".into()).expect("read mono");
+    assert_eq!(mono, b"mono data");
+
+    let stream = vault_read(&mut handle, "stream.bin".into()).expect("read stream");
+    assert_eq!(stream, stream_data);
+
+    // Verify types
+    assert!(!handle.index.find("mono.txt").unwrap().is_streaming());
+    assert!(handle.index.find("stream.bin").unwrap().is_streaming());
+
+    vault_close(handle).expect("close");
+}

@@ -329,7 +329,8 @@ pub fn vault_write(
     Ok(())
 }
 
-/// Read a named segment. Decompression is automatic.
+/// Read a named segment. Handles both monolithic and streaming segments.
+/// Decompression is automatic for monolithic segments.
 #[cfg(feature = "compression")]
 pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, CryptoError> {
     let entry = handle
@@ -506,7 +507,6 @@ pub fn vault_read_stream(
         let mut encrypted = vec![0u8; crate::core::streaming::ENCRYPTED_CHUNK_SIZE];
         handle.file.read_exact(&mut encrypted)?;
 
-        // Derive nonce exclusively for this chunk iteration
         let expected_nonce =
             segment::derive_chunk_nonce(handle.keys.nonce_key.as_bytes(), i as u64, seg_gen)?;
 
@@ -549,8 +549,6 @@ pub fn vault_read_stream(
         };
 
         hasher.update(&final_data);
-
-        // Pass data back to Flutter side ignoring results on dropped listener endpoints
         let _ = sink.add(final_data);
         let _ = on_progress.add(((i + 1) as f64) / (chunk_count as f64));
     }
@@ -563,6 +561,200 @@ pub fn vault_read_stream(
             )));
         }
     }
+
+    Ok(())
+}
+
+/// Write (or overwrite) a named segment using streaming chunked encryption.
+#[cfg(feature = "compression")]
+pub fn vault_write_stream(
+    handle: &mut VaultHandle,
+    name: String,
+    total_plaintext_size: u64,
+    data_stream: impl Iterator<Item = Vec<u8>>,
+) -> Result<(), CryptoError> {
+    use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
+
+    let expected_chunks = format::streaming_chunk_count(total_plaintext_size)?;
+    let total_encrypted_size = format::streaming_segment_size(total_plaintext_size)?;
+
+    let gen = handle.index.next_gen();
+
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
+    handle
+        .wal
+        .begin(WalOp::WriteSegment, &old_encrypted_index)?;
+
+    if let Some(old_entry) = handle.index.remove(&name) {
+        segment::secure_erase_region(
+            &mut handle.file,
+            format::data_region_offset(handle.index_pad_size) + old_entry.offset,
+            old_entry.size,
+        )?;
+        handle.index.deallocate(old_entry.offset, old_entry.size);
+    }
+
+    let offset = handle.index.allocate(total_encrypted_size)?;
+    let data_off = format::data_region_offset(handle.index_pad_size);
+
+    let mut hasher = blake3::Hasher::new();
+    let mut chunk_buf = vec![0u8; CHUNK_SIZE];
+    let mut buf_len = 0usize;
+    let mut total_received: u64 = 0;
+    let mut chunk_index: u64 = 0;
+    let nonce_key = handle.keys.nonce_key.as_bytes();
+    let cipher_key = handle.keys.cipher_key.as_bytes();
+    let algorithm = handle.algorithm;
+
+    for mut input in data_stream {
+        hasher.update(&input);
+        total_received += input.len() as u64;
+
+        if total_received > total_plaintext_size {
+            input.zeroize();
+            chunk_buf.zeroize();
+            return Err(CryptoError::InvalidParameter(format!(
+                "stream exceeded total_plaintext_size: received >{total_received}, \
+                 expected {total_plaintext_size}"
+            )));
+        }
+
+        let mut pos = 0;
+        while pos < input.len() {
+            let take = std::cmp::min(CHUNK_SIZE - buf_len, input.len() - pos);
+            chunk_buf[buf_len..buf_len + take].copy_from_slice(&input[pos..pos + take]);
+            buf_len += take;
+            pos += take;
+
+            if buf_len == CHUNK_SIZE {
+                let abs_off = chunk_abs_offset(data_off, offset, chunk_index)?;
+                write_encrypted_chunk(
+                    &mut handle.file,
+                    cipher_key,
+                    nonce_key,
+                    algorithm,
+                    &chunk_buf[..CHUNK_SIZE],
+                    chunk_index,
+                    gen,
+                    false,
+                    abs_off,
+                )?;
+                chunk_index += 1;
+                buf_len = 0;
+            }
+        }
+        input.zeroize();
+    }
+
+    if total_received != total_plaintext_size {
+        chunk_buf.zeroize();
+        return Err(CryptoError::InvalidParameter(format!(
+            "stream underflow: received {total_received} bytes, \
+             expected {total_plaintext_size}"
+        )));
+    }
+
+    let mut padded = pad_last_chunk(&chunk_buf[..buf_len])?;
+    chunk_buf.zeroize();
+    let final_off = chunk_abs_offset(data_off, offset, chunk_index)?;
+    let final_result = write_encrypted_chunk(
+        &mut handle.file,
+        cipher_key,
+        nonce_key,
+        algorithm,
+        &padded,
+        chunk_index,
+        gen,
+        true,
+        final_off,
+    );
+    padded.zeroize();
+    final_result?;
+
+    let actual_chunks = chunk_index + 1;
+    if actual_chunks != expected_chunks as u64 {
+        return Err(CryptoError::VaultCorrupted(format!(
+            "chunk count mismatch: wrote {actual_chunks}, expected {expected_chunks}"
+        )));
+    }
+
+    let checksum: [u8; 32] = hasher.finalize().into();
+
+    let entry = SegmentEntry::new(
+        &name,
+        offset,
+        total_encrypted_size,
+        gen,
+        checksum,
+        CompressionAlgorithm::None,
+        expected_chunks,
+    )?;
+    handle.index.add(entry)?;
+
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+        handle.index_pad_size,
+    )?;
+
+    handle.wal.commit()?;
+
+    Ok(())
+}
+
+fn chunk_abs_offset(data_off: u64, seg_offset: u64, chunk_index: u64) -> Result<u64, CryptoError> {
+    use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+    chunk_index
+        .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
+        .and_then(|co| data_off.checked_add(seg_offset)?.checked_add(co))
+        .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn write_encrypted_chunk(
+    file: &mut File,
+    cipher_key: &[u8],
+    nonce_key: &[u8],
+    algorithm: crate::core::format::Algorithm,
+    plaintext: &[u8],
+    chunk_index: u64,
+    generation: u64,
+    is_final: bool,
+    abs_offset: u64,
+) -> Result<(), CryptoError> {
+    use crate::core::streaming::{CHUNK_SIZE, NONCE_SIZE};
+
+    if plaintext.len() != CHUNK_SIZE {
+        return Err(CryptoError::InvalidParameter(format!(
+            "chunk plaintext must be {CHUNK_SIZE} bytes, got {}",
+            plaintext.len()
+        )));
+    }
+
+    let nonce = segment::derive_chunk_nonce(nonce_key, chunk_index, generation)?;
+    let aad = segment::VaultChunkAad {
+        generation,
+        chunk_index,
+        is_final,
+    }
+    .to_bytes();
+
+    let ct_tag = segment::aead_encrypt_with_key(cipher_key, &nonce, plaintext, &aad, algorithm)?;
+
+    let mut wire = Vec::with_capacity(NONCE_SIZE + ct_tag.len());
+    wire.extend_from_slice(&nonce);
+    wire.extend_from_slice(&ct_tag);
+
+    file.seek(SeekFrom::Start(abs_offset))?;
+    file.write_all(&wire)?;
+    file.sync_all()?;
 
     Ok(())
 }

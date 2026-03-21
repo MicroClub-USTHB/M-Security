@@ -79,29 +79,39 @@ pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, Cry
 /// Compute the total encrypted size for a streaming segment.
 ///
 /// Each 64KB plaintext chunk encrypts to `ENCRYPTED_CHUNK_SIZE` bytes
-/// (nonce + ciphertext + tag). The last chunk is padded to uniform size.
+/// (nonce + ciphertext + tag). The final chunk is always length-prefixed
+/// and padded to uniform size (`pad_last_chunk`), so CHUNK_SIZE-aligned
+/// plaintexts require an extra empty padded chunk (matching the standalone
+/// streaming encrypt convention).
 ///
 /// Returns `Err` if the result overflows `u64`.
 pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
-    use crate::core::streaming::{CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE};
-    if plaintext_size == 0 {
-        return Ok(0);
-    }
-    let chunk_count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
-    chunk_count
+    use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+    let count = streaming_chunk_count(plaintext_size)? as u64;
+    count
         .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
         .ok_or_else(|| CryptoError::InvalidParameter("streaming segment size overflows u64".into()))
 }
 
 /// Compute the number of chunks needed for a given plaintext size.
 ///
+/// The final chunk always uses `pad_last_chunk` (4-byte length prefix),
+/// so its max payload is `CHUNK_SIZE - 4`. When the plaintext is exactly
+/// CHUNK_SIZE-aligned, an extra empty padded chunk is appended. An empty
+/// segment (0 bytes) produces one chunk containing padded empty data.
+///
 /// Returns `Err` if the count exceeds `u32::MAX`.
 pub fn streaming_chunk_count(plaintext_size: u64) -> Result<u32, CryptoError> {
     use crate::core::streaming::CHUNK_SIZE;
     if plaintext_size == 0 {
-        return Ok(0);
+        return Ok(1);
     }
-    let count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
+    let base = plaintext_size.div_ceil(CHUNK_SIZE as u64);
+    let count = if plaintext_size.is_multiple_of(CHUNK_SIZE as u64) {
+        base + 1
+    } else {
+        base
+    };
     u32::try_from(count)
         .map_err(|_| CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into()))
 }
@@ -1678,12 +1688,12 @@ mod tests {
     #[test]
     fn test_streaming_segment_size_multiple_chunks() {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
-        // 64KB + 1 byte → 2 chunks
+        // 64KB + 1 byte → 2 chunks (last is partial, padded)
         assert_eq!(
             streaming_segment_size(64 * 1024 + 1).expect("expected size"),
             2 * ENCRYPTED_CHUNK_SIZE as u64
         );
-        // 5 full chunks
+        // 5 * 64KB → 5 full + 1 empty padded = 6 chunks
         assert_eq!(
             streaming_segment_size(5 * 64 * 1024).expect("expected size"),
             5 * ENCRYPTED_CHUNK_SIZE as u64
