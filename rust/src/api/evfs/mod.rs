@@ -16,6 +16,7 @@ use crate::core::evfs::format::{
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
+use crate::frb_generated::StreamSink;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -454,6 +455,116 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     }
 
     Ok(plaintext)
+}
+
+/// Read a named segment sequentially through a stream. Decompression is automatic.
+#[cfg(feature = "compression")]
+pub fn vault_read_stream(
+    handle: &mut VaultHandle,
+    name: String,
+    verify_checksum: bool,
+    sink: StreamSink<Vec<u8>>,
+    on_progress: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    let entry = handle
+        .index
+        .find(&name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.clone()))?;
+
+    let seg_offset = entry.offset;
+    let seg_gen = entry.generation;
+    let seg_compression = entry.compression;
+    let seg_checksum = entry.checksum;
+    let chunk_count = entry.chunk_count;
+
+    // INTEROP: If chunk_count is 0, this is a monolithic segment. Handle with a one-shot read.
+    if chunk_count == 0 {
+        let plaintext = vault_read(handle, name)?;
+        let _ = sink.add(plaintext);
+        let _ = on_progress.add(1.0);
+        return Ok(());
+    }
+
+    let data_region = format::data_region_offset(handle.index_pad_size);
+    let mut hasher = blake3::Hasher::new();
+    let mut decompressor = if seg_compression != CompressionAlgorithm::None {
+        Some(crate::core::compression::streaming::new_decompressor(
+            seg_compression,
+        )?)
+    } else {
+        None
+    };
+
+    let mut decomp_buf = Vec::with_capacity(crate::core::streaming::CHUNK_SIZE * 2);
+
+    for i in 0..chunk_count {
+        let chunk_offset = data_region
+            + seg_offset
+            + (i as u64 * crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64);
+        handle.file.seek(SeekFrom::Start(chunk_offset))?;
+
+        let mut encrypted = vec![0u8; crate::core::streaming::ENCRYPTED_CHUNK_SIZE];
+        handle.file.read_exact(&mut encrypted)?;
+
+        // Derive nonce exclusively for this chunk iteration
+        let expected_nonce =
+            segment::derive_chunk_nonce(handle.keys.nonce_key.as_bytes(), i as u64, seg_gen)?;
+
+        let (stored_nonce, _) = encrypted.split_at(crate::core::streaming::NONCE_SIZE);
+        if stored_nonce.ct_ne(&expected_nonce).into() {
+            return Err(CryptoError::AuthenticationFailed);
+        }
+
+        let is_final = i == chunk_count - 1;
+        let aad = segment::VaultChunkAad {
+            generation: seg_gen,
+            chunk_index: i as u64,
+            is_final,
+        }
+        .to_bytes();
+
+        let decrypted = segment::aead_decrypt_with_stored_nonce(
+            handle.keys.cipher_key.as_bytes(),
+            &encrypted,
+            &aad,
+            handle.algorithm,
+        )?;
+
+        let plaintext = if is_final {
+            crate::core::streaming::strip_last_chunk_padding(&decrypted)?
+        } else {
+            decrypted
+        };
+
+        let final_data = if let Some(ref mut dec) = decompressor {
+            dec.decompress_chunk(&plaintext, &mut decomp_buf)?;
+            if is_final {
+                dec.finish(&mut decomp_buf)?;
+            }
+            let data = decomp_buf.clone();
+            decomp_buf.clear();
+            data
+        } else {
+            plaintext
+        };
+
+        hasher.update(&final_data);
+
+        // Pass data back to Flutter side ignoring results on dropped listener endpoints
+        let _ = sink.add(final_data);
+        let _ = on_progress.add(((i + 1) as f64) / (chunk_count as f64));
+    }
+
+    if verify_checksum {
+        let actual_checksum = hasher.finalize();
+        if actual_checksum.as_bytes().ct_ne(&seg_checksum).into() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 /// Delete a named segment. The region is secure-erased and returned to the
