@@ -16,6 +16,7 @@ use crate::core::evfs::format::{
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
+use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
 use std::fs::{File, OpenOptions};
@@ -59,7 +60,14 @@ pub fn vault_create(
 
     // Create empty index and flush to primary + shadow
     let index = SegmentIndex::new(capacity_bytes);
-    flush_index(&mut file, &index, &keys, algo, capacity_bytes, index_pad_size)?;
+    flush_index(
+        &mut file,
+        &index,
+        &keys,
+        algo,
+        capacity_bytes,
+        index_pad_size,
+    )?;
 
     // Create fresh WAL (checkpoint to clear any stale data)
     let mut wal = WriteAheadLog::open(&path)?;
@@ -122,7 +130,8 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
             let mut backup = File::open(&defrag_backup_path)
                 .map_err(|e| CryptoError::IoError(format!("defrag backup open: {e}")))?;
             let mut hdr = [0u8; 16];
-            backup.read_exact(&mut hdr)
+            backup
+                .read_exact(&mut hdr)
                 .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup header: {e}")))?;
             let offset = u64::from_le_bytes([
                 hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7],
@@ -137,7 +146,8 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
                 )));
             }
             let mut data = vec![0u8; size as usize];
-            backup.read_exact(&mut data)
+            backup
+                .read_exact(&mut data)
                 .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup data: {e}")))?;
             file.seek(SeekFrom::Start(data_off + offset))?;
             file.write_all(&data)?;
@@ -193,7 +203,14 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // derive the same nonce with potentially different plaintext.
     if wal_recovered {
         index.next_generation = index.next_generation.saturating_add(1);
-        flush_index(&mut file, &index, &keys, algorithm, index.capacity, index_pad_size)?;
+        flush_index(
+            &mut file,
+            &index,
+            &keys,
+            algorithm,
+            index.capacity,
+            index_pad_size,
+        )?;
     }
 
     // Post-recovery reconciliation: if an interrupted resize left the file
@@ -254,7 +271,11 @@ pub fn vault_write(
     data.zeroize();
 
     // 3. WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle
         .wal
         .begin(WalOp::WriteSegment, &old_encrypted_index)?;
@@ -273,9 +294,9 @@ pub fn vault_write(
     let offset = handle.index.allocate(encrypted.len() as u64)?;
 
     // 6. Write encrypted segment at allocated offset + fsync before index update
-    handle
-        .file
-        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + offset))?;
+    handle.file.seek(SeekFrom::Start(
+        format::data_region_offset(handle.index_pad_size) + offset,
+    ))?;
     handle.file.write_all(&encrypted)?;
     handle.file.sync_all()?;
 
@@ -320,16 +341,98 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     let seg_gen = entry.generation;
     let seg_compression = entry.compression;
     let seg_checksum = entry.checksum;
+    let chunk_count = entry.chunk_count;
 
-    // Read encrypted data from disk
+    // INTEROP: If the segment is chunked, reassemble it into a single vector
+    if chunk_count > 0 {
+        let data_region = format::data_region_offset(handle.index_pad_size);
+        let mut hasher = blake3::Hasher::new();
+        let mut decompressor = if seg_compression != CompressionAlgorithm::None {
+            Some(crate::core::compression::streaming::new_decompressor(
+                seg_compression,
+            )?)
+        } else {
+            None
+        };
+
+        let mut decomp_buf = Vec::with_capacity(crate::core::streaming::CHUNK_SIZE * 2);
+        let mut full_plaintext = Vec::new();
+
+        for i in 0..chunk_count {
+            let chunk_offset = data_region
+                + seg_offset
+                + (i as u64 * crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64);
+            handle.file.seek(SeekFrom::Start(chunk_offset))?;
+
+            let mut encrypted = vec![0u8; crate::core::streaming::ENCRYPTED_CHUNK_SIZE];
+            handle.file.read_exact(&mut encrypted)?;
+
+            // Verify independent chunk nonce
+            let expected_nonce =
+                segment::derive_chunk_nonce(handle.keys.nonce_key.as_bytes(), i as u64, seg_gen)?;
+            let (stored_nonce, _) = encrypted.split_at(crate::core::streaming::NONCE_SIZE);
+            if stored_nonce.ct_ne(&expected_nonce).into() {
+                return Err(CryptoError::AuthenticationFailed);
+            }
+
+            let is_final = i == chunk_count - 1;
+            let aad = segment::VaultChunkAad {
+                generation: seg_gen,
+                chunk_index: i as u64,
+                is_final,
+            }
+            .to_bytes();
+
+            let decrypted = segment::aead_decrypt_with_stored_nonce(
+                handle.keys.cipher_key.as_bytes(),
+                &encrypted,
+                &aad,
+                handle.algorithm,
+            )?;
+
+            // Strip padding purely from the final chunk
+            let plaintext = if is_final {
+                crate::core::streaming::strip_last_chunk_padding(&decrypted)?
+            } else {
+                decrypted
+            };
+
+            let final_data = if let Some(ref mut dec) = decompressor {
+                dec.decompress_chunk(&plaintext, &mut decomp_buf)?;
+                if is_final {
+                    dec.finish(&mut decomp_buf)?;
+                }
+                let data = decomp_buf.clone();
+                decomp_buf.clear();
+                data
+            } else {
+                plaintext
+            };
+
+            hasher.update(&final_data);
+            full_plaintext.extend_from_slice(&final_data);
+        }
+
+        // Verify full file integrity using BLAKE3 Checksum
+        let actual_checksum = hasher.finalize();
+        if actual_checksum.as_bytes().ct_ne(&seg_checksum).into() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+
+        return Ok(full_plaintext);
+    }
+
+    // Existing monolithic read logic (used when chunk_count == 0)
     let read_len = usize::try_from(seg_size).map_err(|_| {
         CryptoError::VaultCorrupted(format!(
             "segment size {seg_size} exceeds platform address space"
         ))
     })?;
-    handle
-        .file
-        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + seg_offset))?;
+    handle.file.seek(SeekFrom::Start(
+        format::data_region_offset(handle.index_pad_size) + seg_offset,
+    ))?;
     let mut encrypted = vec![0u8; read_len];
     handle.file.read_exact(&mut encrypted)?;
 
@@ -358,7 +461,11 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
 #[cfg(feature = "compression")]
 pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), CryptoError> {
     // WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle
         .wal
         .begin(WalOp::DeleteSegment, &old_encrypted_index)?;
@@ -417,7 +524,11 @@ fn vault_resize_grow_impl(
     old_capacity: u64,
     new_capacity: u64,
 ) -> Result<(), CryptoError> {
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Extend file and CSPRNG-fill new space (also overwrites old shadow position)
@@ -466,7 +577,11 @@ fn vault_resize_shrink_impl(
     }
 
     // WAL begin — journal the current encrypted index for crash recovery.
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Update index metadata for the new capacity.
@@ -571,9 +686,9 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
                 m.size
             ))
         })?;
-        handle
-            .file
-            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.old_offset))?;
+        handle.file.seek(SeekFrom::Start(
+            format::data_region_offset(handle.index_pad_size) + m.old_offset,
+        ))?;
         let mut buf = vec![0u8; read_len];
         handle.file.read_exact(&mut buf)?;
 
@@ -591,15 +706,19 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         }
 
         // Journal current encrypted index before mutation
-        let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+        let old_encrypted_index = read_encrypted_index(
+            &mut handle.file,
+            PRIMARY_INDEX_OFFSET,
+            format::encrypted_index_size(handle.index_pad_size),
+        )?;
         handle
             .wal
             .begin(WalOp::WriteSegment, &old_encrypted_index)?;
 
         // Write to new target offset and fsync
-        handle
-            .file
-            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.new_offset))?;
+        handle.file.seek(SeekFrom::Start(
+            format::data_region_offset(handle.index_pad_size) + m.new_offset,
+        ))?;
         handle.file.write_all(&buf)?;
         buf.zeroize();
         handle.file.sync_all()?;
