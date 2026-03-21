@@ -386,12 +386,12 @@ fn vault_read_streaming(
     let mut chunk_buf = vec![0u8; ENCRYPTED_CHUNK_SIZE];
 
     for i in 0..chunk_count as u64 {
-        let chunk_offset = data_off + seg_offset + i * ENCRYPTED_CHUNK_SIZE as u64;
+        let chunk_offset = chunk_abs_offset(data_off, seg_offset, i)?;
         handle.file.seek(SeekFrom::Start(chunk_offset))?;
         handle.file.read_exact(&mut chunk_buf)?;
 
         let is_final = i == (chunk_count as u64 - 1);
-        let decrypted = segment::decrypt_vault_chunk(
+        let mut decrypted = segment::decrypt_vault_chunk(
             cipher_key,
             nonce_key,
             algorithm,
@@ -403,9 +403,11 @@ fn vault_read_streaming(
 
         if is_final {
             let real_data = strip_last_chunk_padding(&decrypted)?;
+            decrypted.zeroize();
             plaintext.extend_from_slice(&real_data);
         } else {
             plaintext.extend_from_slice(&decrypted);
+            decrypted.zeroize();
         }
     }
 
@@ -439,7 +441,7 @@ pub fn vault_write_stream(
     total_plaintext_size: u64,
     data_stream: impl Iterator<Item = Vec<u8>>,
 ) -> Result<(), CryptoError> {
-    use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE};
+    use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
 
     let expected_chunks = format::streaming_chunk_count(total_plaintext_size)?;
     let total_encrypted_size = format::streaming_segment_size(total_plaintext_size)?;
@@ -503,6 +505,7 @@ pub fn vault_write_stream(
             // Flush full buffers as non-final. The final padded chunk is
             // always written after the loop (matching standalone encrypt).
             if buf_len == CHUNK_SIZE {
+                let abs_off = chunk_abs_offset(data_off, offset, chunk_index)?;
                 write_encrypted_chunk(
                     &mut handle.file,
                     cipher_key,
@@ -512,7 +515,7 @@ pub fn vault_write_stream(
                     chunk_index,
                     gen,
                     false,
-                    data_off + offset + chunk_index * ENCRYPTED_CHUNK_SIZE as u64,
+                    abs_off,
                 )?;
                 chunk_index += 1;
                 buf_len = 0;
@@ -531,9 +534,10 @@ pub fn vault_write_stream(
     }
 
     // Write final padded chunk (may be empty for CHUNK_SIZE-aligned data)
-    let padded = pad_last_chunk(&chunk_buf[..buf_len])?;
+    let mut padded = pad_last_chunk(&chunk_buf[..buf_len])?;
     chunk_buf.zeroize();
-    write_encrypted_chunk(
+    let final_off = chunk_abs_offset(data_off, offset, chunk_index)?;
+    let final_result = write_encrypted_chunk(
         &mut handle.file,
         cipher_key,
         nonce_key,
@@ -542,8 +546,10 @@ pub fn vault_write_stream(
         chunk_index,
         gen,
         true,
-        data_off + offset + chunk_index * ENCRYPTED_CHUNK_SIZE as u64,
-    )?;
+        final_off,
+    );
+    padded.zeroize();
+    final_result?;
 
     // Verify chunk count matches expectation
     let actual_chunks = chunk_index + 1;
@@ -582,6 +588,15 @@ pub fn vault_write_stream(
     handle.wal.commit()?;
 
     Ok(())
+}
+
+/// Compute the absolute file offset for a chunk, using checked arithmetic.
+fn chunk_abs_offset(data_off: u64, seg_offset: u64, chunk_index: u64) -> Result<u64, CryptoError> {
+    use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+    chunk_index
+        .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
+        .and_then(|co| data_off.checked_add(seg_offset)?.checked_add(co))
+        .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))
 }
 
 /// Encrypt a single plaintext chunk and write it to the vault file at the given
