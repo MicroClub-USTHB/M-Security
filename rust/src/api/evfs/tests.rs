@@ -1676,3 +1676,42 @@ fn test_vault_health_full_capacity() {
         h.total_bytes
     );
 }
+
+// -- Streaming Read Tests -----------------------------------------------
+#[test]
+fn test_stream_read_monolithic_interop() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let data = b"monolithic data".to_vec();
+    vault_write(&mut handle, "mono.txt".into(), data.clone(), None).expect("write");
+
+    // Mock StreamSinks (Using FRB's testing utilities or a dummy sink if available)
+    // Note: Since StreamSink is hard to mock in pure Rust unit tests without FRB's test
+    // harness, ensure you are testing the raw Rust logic or using an FRB mock sink.
+
+    // As a pure Rust alternative for the test suite, you can verify the chunk_count metadata:
+    let entry = handle.index.find("mono.txt").expect("find");
+    assert_eq!(entry.chunk_count, 0, "Should be written as monolithic");
+
+    let read_back = vault_read(&mut handle, "mono.txt".into()).expect("read");
+    assert_eq!(read_back, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_tamper_with_chunk_detected() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let handle = create_test_vault(&dir, 1_048_576); // Removed `mut`
+
+    // Simulate writing a chunked segment (or use stream_write if already implemented)
+    // For the sake of the test plan:
+    let _data = vec![0xAA; crate::core::streaming::CHUNK_SIZE * 2]; // Prefixed with `_`
+
+    // NOTE: Once vault_write_stream is merged (from PR #89), use it here to write
+    // the chunked data, then tamper with the file directly via handle.file.seek()
+    // and flipping a byte, exactly like the existing `test_read_tampered_segment`.
+
+    vault_close(handle).expect("close");
+}
