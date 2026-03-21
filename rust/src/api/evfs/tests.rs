@@ -1677,20 +1677,15 @@ fn test_vault_health_full_capacity() {
     );
 }
 
-// -- Streaming Read Tests -----------------------------------------------
+// -- Streaming Read & Interop Tests -------------------------------------
 #[test]
-fn test_stream_read_monolithic_interop() {
+fn test_oneshot_write_oneshot_read_interop() {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut handle = create_test_vault(&dir, 1_048_576);
 
     let data = b"monolithic data".to_vec();
     vault_write(&mut handle, "mono.txt".into(), data.clone(), None).expect("write");
 
-    // Mock StreamSinks (Using FRB's testing utilities or a dummy sink if available)
-    // Note: Since StreamSink is hard to mock in pure Rust unit tests without FRB's test
-    // harness, ensure you are testing the raw Rust logic or using an FRB mock sink.
-
-    // As a pure Rust alternative for the test suite, you can verify the chunk_count metadata:
     let entry = handle.index.find("mono.txt").expect("find");
     assert_eq!(entry.chunk_count, 0, "Should be written as monolithic");
 
@@ -1701,17 +1696,146 @@ fn test_stream_read_monolithic_interop() {
 }
 
 #[test]
+fn test_stream_write_oneshot_read_matches_interop() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 5_000_000);
+
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    // 3 full chunks, 1 partial padded chunk
+    let data = vec![0x77; chunk_size * 3 + 1234];
+
+    // Write using stream
+    let chunks: Vec<Vec<u8>> = data.chunks(chunk_size).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "streamed.bin".into(),
+        data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("stream write");
+
+    let entry = handle.index.find("streamed.bin").expect("find");
+    assert!(entry.chunk_count > 0, "Should be written as chunked");
+
+    // Read using one-shot (interop) testing the chunk-assembly loop
+    let read_back = vault_read(&mut handle, "streamed.bin".into()).expect("read");
+    assert_eq!(read_back, data, "Data should match byte-for-byte");
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
 fn test_tamper_with_chunk_detected() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let handle = create_test_vault(&dir, 1_048_576); // Removed `mut`
+    let mut handle = create_test_vault(&dir, 1_048_576);
 
-    // Simulate writing a chunked segment (or use stream_write if already implemented)
-    // For the sake of the test plan:
-    let _data = vec![0xAA; crate::core::streaming::CHUNK_SIZE * 2]; // Prefixed with `_`
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    let data = vec![0xAA; chunk_size * 2];
 
-    // NOTE: Once vault_write_stream is merged (from PR #89), use it here to write
-    // the chunked data, then tamper with the file directly via handle.file.seek()
-    // and flipping a byte, exactly like the existing `test_read_tampered_segment`.
+    let chunks = vec![data[..chunk_size].to_vec(), data[chunk_size..].to_vec()];
+    vault_write_stream(
+        &mut handle,
+        "streamed.txt".into(),
+        data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("stream write");
+
+    let entry = handle.index.find("streamed.txt").expect("find");
+    let disk_offset =
+        crate::core::evfs::format::data_region_offset(handle.index_pad_size) + entry.offset;
+
+    // Seek past nonce (12 bytes) and flip a ciphertext byte in the first chunk
+    handle
+        .file
+        .seek(SeekFrom::Start(disk_offset + 13))
+        .expect("seek");
+    handle.file.write_all(&[0xFF]).expect("tamper");
+    handle.file.sync_all().expect("sync");
+
+    let result = vault_read(&mut handle, "streamed.txt".into());
+    assert!(
+        matches!(result, Err(CryptoError::AuthenticationFailed)),
+        "Should detect chunk tampering via independent AEAD"
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_reordered_chunks_detected() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    let enc_chunk_size = crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64;
+    let data = vec![0xBB; chunk_size * 2];
+
+    let chunks = vec![data[..chunk_size].to_vec(), data[chunk_size..].to_vec()];
+    vault_write_stream(
+        &mut handle,
+        "reorder.bin".into(),
+        data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("stream write");
+
+    let entry = handle.index.find("reorder.bin").expect("find");
+    let disk_offset =
+        crate::core::evfs::format::data_region_offset(handle.index_pad_size) + entry.offset;
+
+    // Read chunk 0 and chunk 1
+    let mut c0 = vec![0u8; enc_chunk_size as usize];
+    let mut c1 = vec![0u8; enc_chunk_size as usize];
+
+    handle
+        .file
+        .seek(SeekFrom::Start(disk_offset))
+        .expect("seek");
+    handle.file.read_exact(&mut c0).expect("read c0");
+    handle.file.read_exact(&mut c1).expect("read c1");
+
+    // Swap them on disk
+    handle
+        .file
+        .seek(SeekFrom::Start(disk_offset))
+        .expect("seek");
+    handle.file.write_all(&c1).expect("write c1");
+    handle.file.write_all(&c0).expect("write c0");
+    handle.file.sync_all().expect("sync");
+
+    let result = vault_read(&mut handle, "reorder.bin".into());
+    assert!(
+        matches!(result, Err(CryptoError::AuthenticationFailed)),
+        "Should detect chunk reordering due to index mismatch in AAD"
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_integrity_checksum_failure_on_stream() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let data = vec![0xCC; 1000];
+    vault_write_stream(
+        &mut handle,
+        "checksum.bin".into(),
+        data.len() as u64,
+        vec![data].into_iter(),
+    )
+    .expect("write");
+
+    // Manually corrupt the checksum stored in the Segment Index
+    let entry = handle.index.find_mut("checksum.bin").expect("find");
+    entry.checksum[0] ^= 0xFF;
+
+    let result = vault_read(&mut handle, "checksum.bin".into());
+    assert!(
+        matches!(result, Err(CryptoError::VaultCorrupted(_))),
+        "Should detect BLAKE3 checksum mismatch even if AEAD passes"
+    );
 
     vault_close(handle).expect("close");
 }
@@ -1725,10 +1849,7 @@ fn stream_write_chunks(
     data: &[u8],
     piece_size: usize,
 ) -> Result<(), CryptoError> {
-    let chunks: Vec<Vec<u8>> = data
-        .chunks(piece_size)
-        .map(|c| c.to_vec())
-        .collect();
+    let chunks: Vec<Vec<u8>> = data.chunks(piece_size).map(|c| c.to_vec()).collect();
     vault_write_stream(
         handle,
         name.to_string(),
@@ -1772,13 +1893,8 @@ fn test_stream_write_empty_segment() {
     let mut handle = create_test_vault(&dir, 1_048_576);
 
     // 0 bytes — still produces 1 padded chunk
-    vault_write_stream(
-        &mut handle,
-        "empty.bin".into(),
-        0,
-        std::iter::empty(),
-    )
-    .expect("stream write empty");
+    vault_write_stream(&mut handle, "empty.bin".into(), 0, std::iter::empty())
+        .expect("stream write empty");
 
     let readback = vault_read(&mut handle, "empty.bin".into()).expect("read");
     assert!(readback.is_empty());
@@ -1861,14 +1977,11 @@ fn test_stream_write_wrong_size_too_few_bytes() {
 
     // Claim 1000 bytes but provide only 500
     let data = vec![0xAA; 500];
-    let result = vault_write_stream(
-        &mut handle,
-        "bad.bin".into(),
-        1000,
-        vec![data].into_iter(),
-    );
+    let result = vault_write_stream(&mut handle, "bad.bin".into(), 1000, vec![data].into_iter());
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = result
+        .expect_err("expected an error (underflow)")
+        .to_string();
     assert!(err.contains("underflow"), "Expected underflow error: {err}");
 }
 
@@ -1879,14 +1992,11 @@ fn test_stream_write_wrong_size_too_many_bytes() {
 
     // Claim 500 bytes but provide 1000
     let data = vec![0xAA; 1000];
-    let result = vault_write_stream(
-        &mut handle,
-        "bad.bin".into(),
-        500,
-        vec![data].into_iter(),
-    );
+    let result = vault_write_stream(&mut handle, "bad.bin".into(), 500, vec![data].into_iter());
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = result
+        .expect_err("expected an error (exceeded)")
+        .to_string();
     assert!(err.contains("exceeded"), "Expected exceeded error: {err}");
 }
 
@@ -1897,9 +2007,13 @@ fn test_stream_write_persist_reopen() {
 
     let data = vec![0xDD; 150_000];
     {
-        let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 2 * 1024 * 1024)
-                .expect("create");
+        let mut handle = vault_create(
+            path.clone(),
+            test_key(),
+            "aes-256-gcm".into(),
+            2 * 1024 * 1024,
+        )
+        .expect("create");
         stream_write_chunks(&mut handle, "persist.bin", &data, 4096).expect("stream write");
         vault_close(handle).expect("close");
     }
@@ -1921,9 +2035,13 @@ fn test_stream_write_chacha20() {
         .to_str()
         .expect("path")
         .to_string();
-    let mut handle =
-        vault_create(path, test_key(), "chacha20-poly1305".into(), 2 * 1024 * 1024)
-            .expect("create");
+    let mut handle = vault_create(
+        path,
+        test_key(),
+        "chacha20-poly1305".into(),
+        2 * 1024 * 1024,
+    )
+    .expect("create");
 
     let data = vec![0xEE; 100_000];
     stream_write_chunks(&mut handle, "chacha.bin", &data, 8192).expect("stream write");
@@ -1972,13 +2090,11 @@ fn test_stream_write_coexists_with_monolithic() {
     let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
 
     // Write monolithic
-    vault_write(&mut handle, "mono.txt".into(), b"mono data".to_vec(), None)
-        .expect("write mono");
+    vault_write(&mut handle, "mono.txt".into(), b"mono data".to_vec(), None).expect("write mono");
 
     // Write streaming
     let stream_data = vec![0xFF; 80_000];
-    stream_write_chunks(&mut handle, "stream.bin", &stream_data, 4096)
-        .expect("stream write");
+    stream_write_chunks(&mut handle, "stream.bin", &stream_data, 4096).expect("stream write");
 
     // Read both back
     let mono = vault_read(&mut handle, "mono.txt".into()).expect("read mono");
@@ -1988,8 +2104,16 @@ fn test_stream_write_coexists_with_monolithic() {
     assert_eq!(stream, stream_data);
 
     // Verify types
-    assert!(!handle.index.find("mono.txt").unwrap().is_streaming());
-    assert!(handle.index.find("stream.bin").unwrap().is_streaming());
+    assert!(!handle
+        .index
+        .find("mono.txt")
+        .expect("mono.txt missing")
+        .is_streaming());
+    assert!(handle
+        .index
+        .find("stream.bin")
+        .expect("stream.bin missing")
+        .is_streaming());
 
     vault_close(handle).expect("close");
 }

@@ -80,9 +80,9 @@ pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, Cry
 ///
 /// Each 64KB plaintext chunk encrypts to `ENCRYPTED_CHUNK_SIZE` bytes
 /// (nonce + ciphertext + tag). The final chunk is always length-prefixed
-/// and padded to uniform size (`pad_last_chunk`), so CHUNK_SIZE-aligned
-/// plaintexts require an extra empty padded chunk (matching the standalone
-/// streaming encrypt convention).
+/// and padded to uniform size (`pad_last_chunk`). Exact CHUNK_SIZE-aligned
+/// plaintexts do NOT add an extra empty padded chunk here (the index-level
+/// representation treats zero-length segments as zero size).
 ///
 /// Returns `Err` if the result overflows `u64`.
 pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
@@ -103,15 +103,29 @@ pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
 /// Returns `Err` if the count exceeds `u32::MAX`.
 pub fn streaming_chunk_count(plaintext_size: u64) -> Result<u32, CryptoError> {
     use crate::core::streaming::CHUNK_SIZE;
+
+    // Empty plaintext => one padded chunk.
     if plaintext_size == 0 {
         return Ok(1);
     }
-    let base = plaintext_size.div_ceil(CHUNK_SIZE as u64);
-    let count = if plaintext_size.is_multiple_of(CHUNK_SIZE as u64) {
-        base + 1
+
+    let chunk_size = CHUNK_SIZE as u64;
+
+    // Compute ceil division safely: (plaintext_size + chunk_size - 1) / chunk_size
+    let base = plaintext_size
+        .checked_add(chunk_size - 1)
+        .ok_or_else(|| CryptoError::InvalidParameter("streaming chunk count overflow".into()))?
+        / chunk_size;
+
+    // If plaintext is exactly a multiple of CHUNK_SIZE, add an extra empty padded
+    // chunk (protocol convention). Otherwise `base` is already the correct count.
+    let count = if plaintext_size.is_multiple_of(chunk_size) {
+        base.checked_add(1)
+            .ok_or_else(|| CryptoError::InvalidParameter("streaming chunk count overflow".into()))?
     } else {
         base
     };
+
     u32::try_from(count)
         .map_err(|_| CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into()))
 }
@@ -1667,7 +1681,12 @@ mod tests {
 
     #[test]
     fn test_streaming_segment_size_zero() {
-        assert_eq!(streaming_segment_size(0).expect("expected size"), 0);
+        use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+        // Empty segment produces one padded encrypted chunk
+        assert_eq!(
+            streaming_segment_size(0).expect("expected size"),
+            ENCRYPTED_CHUNK_SIZE as u64
+        );
     }
 
     #[test]
@@ -1679,9 +1698,10 @@ mod tests {
             ENCRYPTED_CHUNK_SIZE as u64
         );
         // Exactly one chunk
+        // Exactly CHUNK_SIZE plaintext triggers an extra empty padded chunk => 2 chunks
         assert_eq!(
             streaming_segment_size(64 * 1024).expect("expected size"),
-            ENCRYPTED_CHUNK_SIZE as u64
+            2 * ENCRYPTED_CHUNK_SIZE as u64
         );
     }
 
@@ -1696,7 +1716,7 @@ mod tests {
         // 5 * 64KB → 5 full + 1 empty padded = 6 chunks
         assert_eq!(
             streaming_segment_size(5 * 64 * 1024).expect("expected size"),
-            5 * ENCRYPTED_CHUNK_SIZE as u64
+            6 * ENCRYPTED_CHUNK_SIZE as u64
         );
     }
 
@@ -1707,16 +1727,18 @@ mod tests {
 
     #[test]
     fn test_streaming_chunk_count_values() {
-        assert_eq!(streaming_chunk_count(0).expect("expected count"), 0);
+        // empty => one padded chunk
+        assert_eq!(streaming_chunk_count(0).expect("expected count"), 1);
         assert_eq!(streaming_chunk_count(1).expect("expected count"), 1);
-        assert_eq!(streaming_chunk_count(64 * 1024).expect("expected count"), 1);
+        assert_eq!(streaming_chunk_count(64 * 1024).expect("expected count"), 2);
         assert_eq!(
             streaming_chunk_count(64 * 1024 + 1).expect("expected count"),
             2
         );
+        // exact multiples add an extra padded empty chunk
         assert_eq!(
             streaming_chunk_count(5 * 64 * 1024).expect("expected count"),
-            5
+            6
         );
     }
 
