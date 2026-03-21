@@ -90,9 +90,7 @@ pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
     let chunk_count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
     chunk_count
         .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
-        .ok_or_else(|| {
-            CryptoError::InvalidParameter("streaming segment size overflows u64".into())
-        })
+        .ok_or_else(|| CryptoError::InvalidParameter("streaming segment size overflows u64".into()))
 }
 
 /// Compute the number of chunks needed for a given plaintext size.
@@ -104,9 +102,8 @@ pub fn streaming_chunk_count(plaintext_size: u64) -> Result<u32, CryptoError> {
         return Ok(0);
     }
     let count = plaintext_size.div_ceil(CHUNK_SIZE as u64);
-    u32::try_from(count).map_err(|_| {
-        CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into())
-    })
+    u32::try_from(count)
+        .map_err(|_| CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into()))
 }
 
 // ---------------------------------------------------------------------------
@@ -814,7 +811,15 @@ mod tests {
 
     #[test]
     fn test_segment_entry_name_empty() {
-        let e = SegmentEntry::new("", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None, 0);
+        let e = SegmentEntry::new(
+            "",
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+            0,
+        );
         assert!(e.is_err());
     }
 
@@ -860,7 +865,9 @@ mod tests {
     #[test]
     fn test_segment_index_roundtrip() {
         let idx = make_test_index();
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
@@ -901,7 +908,9 @@ mod tests {
             )
             .expect("entry"),
         );
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
@@ -931,7 +940,9 @@ mod tests {
                 .expect("entry"),
             );
         }
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
@@ -953,7 +964,9 @@ mod tests {
             offset: 1000,
             size: 300,
         });
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
         assert_eq!(
@@ -997,8 +1010,8 @@ mod tests {
     #[test]
     fn test_segment_index_overflow_min_pad() {
         let mut idx = SegmentIndex::new(512 * 1024); // 512KB → MIN_INDEX_PAD_SIZE
-        // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 + 4 = 318 bytes.
-        // Index header is 32 bytes. (65536 - 32) / 318 ≈ 205 entries max.
+                                                     // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 + 4 = 318 bytes.
+                                                     // Index header is 32 bytes. (65536 - 32) / 318 ≈ 205 entries max.
         for i in 0..210 {
             let name = format!("{:0>255}", i);
             idx.entries.push(
@@ -1532,7 +1545,8 @@ mod tests {
 
         let moves = idx.plan_defrag();
         for m in &moves {
-            idx.apply_move(m.entry_index, m.new_offset).expect("apply_move");
+            idx.apply_move(m.entry_index, m.new_offset)
+                .expect("apply_move");
         }
         idx.complete_defrag();
 
@@ -1589,7 +1603,9 @@ mod tests {
             .expect("entry"),
         );
 
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries[0].chunk_count, 0);
@@ -1614,7 +1630,9 @@ mod tests {
             chunk_count: 5,
         });
 
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let result = SegmentIndex::from_bytes(&bytes);
         assert!(result.is_err());
         let err = result.expect_err("should fail").to_string();
@@ -1631,22 +1649,30 @@ mod tests {
             compression: CompressionAlgorithm::None,
             chunk_count: 5,
         });
-        let bytes2 = idx2.to_bytes(compute_index_size(idx2.capacity)).expect("serialize");
+        let bytes2 = idx2
+            .to_bytes(compute_index_size(idx2.capacity))
+            .expect("serialize");
         assert!(SegmentIndex::from_bytes(&bytes2).is_ok());
     }
 
     #[test]
     fn test_streaming_segment_size_zero() {
-        assert_eq!(streaming_segment_size(0).unwrap(), 0);
+        assert_eq!(streaming_segment_size(0).expect("expected size"), 0);
     }
 
     #[test]
     fn test_streaming_segment_size_single_chunk() {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
         // 1 byte → 1 chunk
-        assert_eq!(streaming_segment_size(1).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
+        assert_eq!(
+            streaming_segment_size(1).expect("expected size"),
+            ENCRYPTED_CHUNK_SIZE as u64
+        );
         // Exactly one chunk
-        assert_eq!(streaming_segment_size(64 * 1024).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
+        assert_eq!(
+            streaming_segment_size(64 * 1024).expect("expected size"),
+            ENCRYPTED_CHUNK_SIZE as u64
+        );
     }
 
     #[test]
@@ -1654,12 +1680,12 @@ mod tests {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
         // 64KB + 1 byte → 2 chunks
         assert_eq!(
-            streaming_segment_size(64 * 1024 + 1).unwrap(),
+            streaming_segment_size(64 * 1024 + 1).expect("expected size"),
             2 * ENCRYPTED_CHUNK_SIZE as u64
         );
         // 5 full chunks
         assert_eq!(
-            streaming_segment_size(5 * 64 * 1024).unwrap(),
+            streaming_segment_size(5 * 64 * 1024).expect("expected size"),
             5 * ENCRYPTED_CHUNK_SIZE as u64
         );
     }
@@ -1671,11 +1697,17 @@ mod tests {
 
     #[test]
     fn test_streaming_chunk_count_values() {
-        assert_eq!(streaming_chunk_count(0).unwrap(), 0);
-        assert_eq!(streaming_chunk_count(1).unwrap(), 1);
-        assert_eq!(streaming_chunk_count(64 * 1024).unwrap(), 1);
-        assert_eq!(streaming_chunk_count(64 * 1024 + 1).unwrap(), 2);
-        assert_eq!(streaming_chunk_count(5 * 64 * 1024).unwrap(), 5);
+        assert_eq!(streaming_chunk_count(0).expect("expected count"), 0);
+        assert_eq!(streaming_chunk_count(1).expect("expected count"), 1);
+        assert_eq!(streaming_chunk_count(64 * 1024).expect("expected count"), 1);
+        assert_eq!(
+            streaming_chunk_count(64 * 1024 + 1).expect("expected count"),
+            2
+        );
+        assert_eq!(
+            streaming_chunk_count(5 * 64 * 1024).expect("expected count"),
+            5
+        );
     }
 
     #[test]

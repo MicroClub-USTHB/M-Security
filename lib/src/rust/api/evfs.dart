@@ -53,6 +53,21 @@ Future<Uint8List> vaultRead({
   required String name,
 }) => RustLib.instance.api.crateApiEvfsVaultRead(handle: handle, name: name);
 
+/// Read a named segment sequentially through a stream. Decompression is automatic.
+Future<void> vaultReadStream({
+  required VaultHandle handle,
+  required String name,
+  required bool verifyChecksum,
+  required RustStreamSink<Uint8List> sink,
+  required RustStreamSink<double> onProgress,
+}) => RustLib.instance.api.crateApiEvfsVaultReadStream(
+  handle: handle,
+  name: name,
+  verifyChecksum: verifyChecksum,
+  sink: sink,
+  onProgress: onProgress,
+);
+
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
 Future<void> vaultDelete({required VaultHandle handle, required String name}) =>
