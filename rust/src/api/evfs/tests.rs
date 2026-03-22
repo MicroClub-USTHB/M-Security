@@ -2117,3 +2117,265 @@ fn test_stream_write_coexists_with_monolithic() {
 
     vault_close(handle).expect("close");
 }
+
+// -- Streaming Read (via decrypt_streaming_chunks) --------------------------
+
+/// Helper: stream-read all chunks into a Vec, returning (data, chunk_indices, checksum).
+fn stream_read_chunks(
+    handle: &mut VaultHandle,
+    name: &str,
+) -> Result<(Vec<u8>, Vec<u32>, [u8; 32]), CryptoError> {
+    let entry = handle
+        .index
+        .find(name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.into()))?;
+
+    let seg_offset = entry.offset;
+    let seg_gen = entry.generation;
+    let seg_compression = entry.compression;
+    let chunk_count = entry.chunk_count;
+
+    let mut collected = Vec::new();
+    let mut indices = Vec::new();
+
+    let checksum = decrypt_streaming_chunks(
+        &mut handle.file,
+        handle.keys.cipher_key.as_bytes(),
+        handle.keys.nonce_key.as_bytes(),
+        handle.algorithm,
+        handle.index_pad_size,
+        seg_offset,
+        seg_gen,
+        seg_compression,
+        chunk_count,
+        |data, i| {
+            collected.extend_from_slice(&data);
+            indices.push(i);
+            Ok(())
+        },
+    )?;
+
+    Ok((collected, indices, checksum))
+}
+
+#[test]
+fn test_stream_read_matches_oneshot_read() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data = vec![0x42u8; 200_000];
+    stream_write_chunks(&mut handle, "video.bin", &data, 4096).expect("stream write");
+
+    let oneshot = vault_read(&mut handle, "video.bin".into()).expect("oneshot read");
+    let (streamed, _, _) = stream_read_chunks(&mut handle, "video.bin").expect("stream read");
+
+    assert_eq!(streamed, oneshot, "streaming and one-shot must be byte-identical");
+    assert_eq!(streamed, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_checksum_matches_stored() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data = vec![0xAA; 150_000];
+    stream_write_chunks(&mut handle, "file.bin", &data, 8192).expect("stream write");
+
+    let stored_checksum = handle.index.find("file.bin").expect("find").checksum;
+    let (_, _, computed_checksum) =
+        stream_read_chunks(&mut handle, "file.bin").expect("stream read");
+
+    assert_eq!(computed_checksum, stored_checksum);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_progress_indices() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    let data = vec![0xBB; chunk_size * 3 + 1234];
+    stream_write_chunks(&mut handle, "prog.bin", &data, chunk_size).expect("stream write");
+
+    let chunk_count = handle.index.find("prog.bin").expect("find").chunk_count;
+    let (collected, indices, _) =
+        stream_read_chunks(&mut handle, "prog.bin").expect("stream read");
+
+    assert_eq!(collected, data);
+    assert_eq!(indices.len(), chunk_count as usize);
+    let expected: Vec<u32> = (0..chunk_count).collect();
+    assert_eq!(indices, expected);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_single_byte() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let data = vec![0xCC; 1];
+    stream_write_chunks(&mut handle, "tiny.bin", &data, 1).expect("stream write");
+
+    let (collected, indices, _) =
+        stream_read_chunks(&mut handle, "tiny.bin").expect("stream read");
+
+    assert_eq!(collected, data);
+    assert_eq!(indices.len(), 1);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_empty_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    vault_write_stream(&mut handle, "empty.bin".into(), 0, std::iter::empty())
+        .expect("stream write empty");
+
+    let (collected, indices, _) =
+        stream_read_chunks(&mut handle, "empty.bin").expect("stream read");
+
+    assert!(collected.is_empty());
+    assert_eq!(indices.len(), 1);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_exact_chunk_boundary() {
+    use crate::core::streaming::CHUNK_SIZE;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data = vec![0xDD; CHUNK_SIZE];
+    stream_write_chunks(&mut handle, "aligned.bin", &data, CHUNK_SIZE).expect("stream write");
+
+    let (collected, _, checksum) =
+        stream_read_chunks(&mut handle, "aligned.bin").expect("stream read");
+
+    assert_eq!(collected, data);
+    let stored = handle.index.find("aligned.bin").expect("find").checksum;
+    assert_eq!(checksum, stored);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_large_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 12 * 1024 * 1024);
+
+    let data: Vec<u8> = (0..10_000_000).map(|i| (i % 251) as u8).collect();
+    stream_write_chunks(&mut handle, "big.bin", &data, 65536).expect("stream write");
+
+    let (collected, indices, checksum) =
+        stream_read_chunks(&mut handle, "big.bin").expect("stream read");
+
+    assert_eq!(collected.len(), data.len());
+    assert_eq!(collected, data);
+    assert!(!indices.is_empty());
+    assert_eq!(
+        checksum,
+        handle.index.find("big.bin").expect("find").checksum
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_tamper_detected() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    let data = vec![0xEE; chunk_size * 2];
+    stream_write_chunks(&mut handle, "tamper.bin", &data, chunk_size).expect("stream write");
+
+    let entry = handle.index.find("tamper.bin").expect("find");
+    let disk_offset =
+        crate::core::evfs::format::data_region_offset(handle.index_pad_size) + entry.offset;
+
+    handle
+        .file
+        .seek(std::io::SeekFrom::Start(disk_offset + 13))
+        .expect("seek");
+    handle.file.write_all(&[0xFF]).expect("tamper");
+    handle.file.sync_all().expect("sync");
+
+    let result = stream_read_chunks(&mut handle, "tamper.bin");
+    assert!(
+        matches!(result, Err(CryptoError::AuthenticationFailed)),
+        "Should detect chunk tampering via streaming read"
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_reorder_detected() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let chunk_size = crate::core::streaming::CHUNK_SIZE;
+    let enc_chunk_size = crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64;
+    let data = vec![0xFF; chunk_size * 2];
+    stream_write_chunks(&mut handle, "reorder.bin", &data, chunk_size).expect("stream write");
+
+    let entry = handle.index.find("reorder.bin").expect("find");
+    let disk_offset =
+        crate::core::evfs::format::data_region_offset(handle.index_pad_size) + entry.offset;
+
+    let mut c0 = vec![0u8; enc_chunk_size as usize];
+    let mut c1 = vec![0u8; enc_chunk_size as usize];
+    handle
+        .file
+        .seek(std::io::SeekFrom::Start(disk_offset))
+        .expect("seek");
+    handle.file.read_exact(&mut c0).expect("read c0");
+    handle.file.read_exact(&mut c1).expect("read c1");
+    handle
+        .file
+        .seek(std::io::SeekFrom::Start(disk_offset))
+        .expect("seek");
+    handle.file.write_all(&c1).expect("write c1");
+    handle.file.write_all(&c0).expect("write c0");
+    handle.file.sync_all().expect("sync");
+
+    let result = stream_read_chunks(&mut handle, "reorder.bin");
+    assert!(
+        matches!(result, Err(CryptoError::AuthenticationFailed)),
+        "Should detect chunk reordering via streaming read"
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_stream_read_chacha20() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir
+        .path()
+        .join("test.vault")
+        .to_str()
+        .expect("path")
+        .to_string();
+    let mut handle =
+        vault_create(path, test_key(), "chacha20-poly1305".into(), 2 * 1024 * 1024)
+            .expect("create");
+
+    let data = vec![0x77; 200_000];
+    stream_write_chunks(&mut handle, "chacha.bin", &data, 4096).expect("stream write");
+
+    let (collected, _, _) =
+        stream_read_chunks(&mut handle, "chacha.bin").expect("stream read");
+    assert_eq!(collected, data);
+
+    vault_close(handle).expect("close");
+}
