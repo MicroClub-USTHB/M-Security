@@ -1066,9 +1066,15 @@ mod tests {
         let bytes = aad.to_bytes();
         assert_eq!(bytes.len(), VAULT_CHUNK_AAD_SIZE);
         // generation = 3 LE
-        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 3);
+        assert_eq!(
+            u64::from_le_bytes(bytes[0..8].try_into().expect("valid slice")),
+            3
+        );
         // chunk_index = 99 LE
-        assert_eq!(u64::from_le_bytes(bytes[8..16].try_into().unwrap()), 99);
+        assert_eq!(
+            u64::from_le_bytes(bytes[8..16].try_into().expect("valid slice")),
+            99
+        );
         // is_final = true
         assert_eq!(bytes[16], 1);
     }

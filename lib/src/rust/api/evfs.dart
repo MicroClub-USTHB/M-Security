@@ -9,7 +9,8 @@ import 'compression.dart';
 import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `vault_resize_grow_impl`, `vault_resize_shrink_impl`
+// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
+// These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `vault_write_stream`
 
 /// Create a new vault file at `path` with the given capacity.
 ///
@@ -47,11 +48,27 @@ Future<void> vaultWrite({
   compression: compression,
 );
 
-/// Read a named segment. Decompression is automatic.
+/// Read a named segment. Handles both monolithic and streaming segments.
+/// Decompression is automatic for monolithic segments.
 Future<Uint8List> vaultRead({
   required VaultHandle handle,
   required String name,
 }) => RustLib.instance.api.crateApiEvfsVaultRead(handle: handle, name: name);
+
+/// Read a named segment sequentially through a stream. Decompression is automatic.
+Future<void> vaultReadStream({
+  required VaultHandle handle,
+  required String name,
+  required bool verifyChecksum,
+  required RustStreamSink<Uint8List> sink,
+  required RustStreamSink<double> onProgress,
+}) => RustLib.instance.api.crateApiEvfsVaultReadStream(
+  handle: handle,
+  name: name,
+  verifyChecksum: verifyChecksum,
+  sink: sink,
+  onProgress: onProgress,
+);
 
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.

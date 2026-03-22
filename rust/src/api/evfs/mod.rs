@@ -16,6 +16,8 @@ use crate::core::evfs::format::{
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
+use crate::frb_generated::StreamSink;
+use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
 use std::fs::{File, OpenOptions};
@@ -59,7 +61,14 @@ pub fn vault_create(
 
     // Create empty index and flush to primary + shadow
     let index = SegmentIndex::new(capacity_bytes);
-    flush_index(&mut file, &index, &keys, algo, capacity_bytes, index_pad_size)?;
+    flush_index(
+        &mut file,
+        &index,
+        &keys,
+        algo,
+        capacity_bytes,
+        index_pad_size,
+    )?;
 
     // Create fresh WAL (checkpoint to clear any stale data)
     let mut wal = WriteAheadLog::open(&path)?;
@@ -122,7 +131,8 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
             let mut backup = File::open(&defrag_backup_path)
                 .map_err(|e| CryptoError::IoError(format!("defrag backup open: {e}")))?;
             let mut hdr = [0u8; 16];
-            backup.read_exact(&mut hdr)
+            backup
+                .read_exact(&mut hdr)
                 .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup header: {e}")))?;
             let offset = u64::from_le_bytes([
                 hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7],
@@ -137,7 +147,8 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
                 )));
             }
             let mut data = vec![0u8; size as usize];
-            backup.read_exact(&mut data)
+            backup
+                .read_exact(&mut data)
                 .map_err(|e| CryptoError::VaultCorrupted(format!("defrag backup data: {e}")))?;
             file.seek(SeekFrom::Start(data_off + offset))?;
             file.write_all(&data)?;
@@ -193,7 +204,14 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // derive the same nonce with potentially different plaintext.
     if wal_recovered {
         index.next_generation = index.next_generation.saturating_add(1);
-        flush_index(&mut file, &index, &keys, algorithm, index.capacity, index_pad_size)?;
+        flush_index(
+            &mut file,
+            &index,
+            &keys,
+            algorithm,
+            index.capacity,
+            index_pad_size,
+        )?;
     }
 
     // Post-recovery reconciliation: if an interrupted resize left the file
@@ -254,7 +272,11 @@ pub fn vault_write(
     data.zeroize();
 
     // 3. WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle
         .wal
         .begin(WalOp::WriteSegment, &old_encrypted_index)?;
@@ -273,9 +295,9 @@ pub fn vault_write(
     let offset = handle.index.allocate(encrypted.len() as u64)?;
 
     // 6. Write encrypted segment at allocated offset + fsync before index update
-    handle
-        .file
-        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + offset))?;
+    handle.file.seek(SeekFrom::Start(
+        format::data_region_offset(handle.index_pad_size) + offset,
+    ))?;
     handle.file.write_all(&encrypted)?;
     handle.file.sync_all()?;
 
@@ -321,28 +343,45 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     let seg_gen = entry.generation;
     let seg_compression = entry.compression;
     let seg_checksum = entry.checksum;
-    let seg_chunk_count = entry.chunk_count;
+    let chunk_count = entry.chunk_count;
 
-    if seg_chunk_count > 0 {
-        return vault_read_streaming(
-            handle,
-            &name,
+    // INTEROP: If the segment is chunked, reassemble it into a single vector
+    if chunk_count > 0 {
+        let mut full_plaintext = Vec::new();
+        let checksum = decrypt_streaming_chunks(
+            &mut handle.file,
+            handle.keys.cipher_key.as_bytes(),
+            handle.keys.nonce_key.as_bytes(),
+            handle.algorithm,
+            handle.index_pad_size,
             seg_offset,
             seg_gen,
-            seg_checksum,
-            seg_chunk_count,
-        );
+            seg_compression,
+            chunk_count,
+            |data, _| {
+                full_plaintext.extend_from_slice(&data);
+                Ok(())
+            },
+        )?;
+
+        if checksum.ct_ne(&seg_checksum).into() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+
+        return Ok(full_plaintext);
     }
 
-    // Monolithic segment — read all at once
+    // Existing monolithic read logic (used when chunk_count == 0)
     let read_len = usize::try_from(seg_size).map_err(|_| {
         CryptoError::VaultCorrupted(format!(
             "segment size {seg_size} exceeds platform address space"
         ))
     })?;
-    handle
-        .file
-        .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + seg_offset))?;
+    handle.file.seek(SeekFrom::Start(
+        format::data_region_offset(handle.index_pad_size) + seg_offset,
+    ))?;
     let mut encrypted = vec![0u8; read_len];
     handle.file.read_exact(&mut encrypted)?;
 
@@ -366,74 +405,61 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     Ok(plaintext)
 }
 
-/// Read a streaming (chunked) segment, decrypting each chunk individually.
+/// Read a named segment sequentially through a stream. Decompression is automatic.
 #[cfg(feature = "compression")]
-fn vault_read_streaming(
+pub fn vault_read_stream(
     handle: &mut VaultHandle,
-    name: &str,
-    seg_offset: u64,
-    generation: u64,
-    expected_checksum: [u8; 32],
-    chunk_count: u32,
-) -> Result<Vec<u8>, CryptoError> {
-    use crate::core::streaming::{strip_last_chunk_padding, ENCRYPTED_CHUNK_SIZE};
+    name: String,
+    verify_checksum: bool,
+    sink: StreamSink<Vec<u8>>,
+    on_progress: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    let entry = handle
+        .index
+        .find(&name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.clone()))?;
 
-    let data_off = format::data_region_offset(handle.index_pad_size);
-    let cipher_key = handle.keys.cipher_key.as_bytes();
-    let nonce_key = handle.keys.nonce_key.as_bytes();
-    let algorithm = handle.algorithm;
-    let mut plaintext = Vec::new();
-    let mut chunk_buf = vec![0u8; ENCRYPTED_CHUNK_SIZE];
+    let seg_offset = entry.offset;
+    let seg_gen = entry.generation;
+    let seg_compression = entry.compression;
+    let seg_checksum = entry.checksum;
+    let chunk_count = entry.chunk_count;
 
-    for i in 0..chunk_count as u64 {
-        let chunk_offset = chunk_abs_offset(data_off, seg_offset, i)?;
-        handle.file.seek(SeekFrom::Start(chunk_offset))?;
-        handle.file.read_exact(&mut chunk_buf)?;
-
-        let is_final = i == (chunk_count as u64 - 1);
-        let mut decrypted = segment::decrypt_vault_chunk(
-            cipher_key,
-            nonce_key,
-            algorithm,
-            &chunk_buf,
-            i,
-            generation,
-            is_final,
-        )?;
-
-        if is_final {
-            let real_data = strip_last_chunk_padding(&decrypted)?;
-            decrypted.zeroize();
-            plaintext.extend_from_slice(&real_data);
-        } else {
-            plaintext.extend_from_slice(&decrypted);
-            decrypted.zeroize();
-        }
+    // INTEROP: If chunk_count is 0, this is a monolithic segment. Handle with a one-shot read.
+    if chunk_count == 0 {
+        let plaintext = vault_read(handle, name)?;
+        let _ = sink.add(plaintext);
+        let _ = on_progress.add(1.0);
+        return Ok(());
     }
 
-    // Verify checksum on full reassembled plaintext
-    if !segment::verify_checksum(&plaintext, &expected_checksum) {
+    let checksum = decrypt_streaming_chunks(
+        &mut handle.file,
+        handle.keys.cipher_key.as_bytes(),
+        handle.keys.nonce_key.as_bytes(),
+        handle.algorithm,
+        handle.index_pad_size,
+        seg_offset,
+        seg_gen,
+        seg_compression,
+        chunk_count,
+        |data, i| {
+            let _ = sink.add(data);
+            let _ = on_progress.add(((i + 1) as f64) / (chunk_count as f64));
+            Ok(())
+        },
+    )?;
+
+    if verify_checksum && checksum.ct_ne(&seg_checksum).into() {
         return Err(CryptoError::VaultCorrupted(format!(
-            "integrity check failed for streaming segment '{name}'"
+            "integrity check failed for segment '{name}'"
         )));
     }
 
-    Ok(plaintext)
+    Ok(())
 }
 
 /// Write (or overwrite) a named segment using streaming chunked encryption.
-///
-/// Data is processed in 64KB chunks — peak memory stays constant regardless
-/// of segment size. The caller provides `total_plaintext_size` upfront so
-/// that space can be pre-allocated in the vault.
-///
-/// `data_stream` must yield exactly `total_plaintext_size` bytes total.
-/// Chunks from the iterator can be any size; they are internally buffered
-/// into CHUNK_SIZE pieces for encryption.
-///
-/// Each encrypted chunk is fsynced individually for crash safety. On crash
-/// mid-stream, WAL rollback restores the previous index and the partial
-/// data is invisible (CSPRNG noise in pre-allocated space).
 #[cfg(feature = "compression")]
 pub fn vault_write_stream(
     handle: &mut VaultHandle,
@@ -448,7 +474,6 @@ pub fn vault_write_stream(
 
     let gen = handle.index.next_gen();
 
-    // WAL journal old index before any mutation
     let old_encrypted_index = read_encrypted_index(
         &mut handle.file,
         PRIMARY_INDEX_OFFSET,
@@ -458,7 +483,6 @@ pub fn vault_write_stream(
         .wal
         .begin(WalOp::WriteSegment, &old_encrypted_index)?;
 
-    // If overwrite: secure-erase old region, deallocate
     if let Some(old_entry) = handle.index.remove(&name) {
         segment::secure_erase_region(
             &mut handle.file,
@@ -468,11 +492,9 @@ pub fn vault_write_stream(
         handle.index.deallocate(old_entry.offset, old_entry.size);
     }
 
-    // Allocate space for the entire streaming segment
     let offset = handle.index.allocate(total_encrypted_size)?;
     let data_off = format::data_region_offset(handle.index_pad_size);
 
-    // Stream chunks: buffer input → CHUNK_SIZE pieces → encrypt → write
     let mut hasher = blake3::Hasher::new();
     let mut chunk_buf = vec![0u8; CHUNK_SIZE];
     let mut buf_len = 0usize;
@@ -502,8 +524,6 @@ pub fn vault_write_stream(
             buf_len += take;
             pos += take;
 
-            // Flush full buffers as non-final. The final padded chunk is
-            // always written after the loop (matching standalone encrypt).
             if buf_len == CHUNK_SIZE {
                 let abs_off = chunk_abs_offset(data_off, offset, chunk_index)?;
                 write_encrypted_chunk(
@@ -524,7 +544,6 @@ pub fn vault_write_stream(
         input.zeroize();
     }
 
-    // Validate total bytes received
     if total_received != total_plaintext_size {
         chunk_buf.zeroize();
         return Err(CryptoError::InvalidParameter(format!(
@@ -533,7 +552,6 @@ pub fn vault_write_stream(
         )));
     }
 
-    // Write final padded chunk (may be empty for CHUNK_SIZE-aligned data)
     let mut padded = pad_last_chunk(&chunk_buf[..buf_len])?;
     chunk_buf.zeroize();
     let final_off = chunk_abs_offset(data_off, offset, chunk_index)?;
@@ -551,7 +569,6 @@ pub fn vault_write_stream(
     padded.zeroize();
     final_result?;
 
-    // Verify chunk count matches expectation
     let actual_chunks = chunk_index + 1;
     if actual_chunks != expected_chunks as u64 {
         return Err(CryptoError::VaultCorrupted(format!(
@@ -559,10 +576,8 @@ pub fn vault_write_stream(
         )));
     }
 
-    // Finalize checksum
     let checksum: [u8; 32] = hasher.finalize().into();
 
-    // Update index
     let entry = SegmentEntry::new(
         &name,
         offset,
@@ -574,7 +589,6 @@ pub fn vault_write_stream(
     )?;
     handle.index.add(entry)?;
 
-    // Flush index (primary + shadow)
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -584,13 +598,11 @@ pub fn vault_write_stream(
         handle.index_pad_size,
     )?;
 
-    // WAL commit
     handle.wal.commit()?;
 
     Ok(())
 }
 
-/// Compute the absolute file offset for a chunk, using checked arithmetic.
 fn chunk_abs_offset(data_off: u64, seg_offset: u64, chunk_index: u64) -> Result<u64, CryptoError> {
     use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
     chunk_index
@@ -599,8 +611,6 @@ fn chunk_abs_offset(data_off: u64, seg_offset: u64, chunk_index: u64) -> Result<
         .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))
 }
 
-/// Encrypt a single plaintext chunk and write it to the vault file at the given
-/// absolute offset. Fsyncs after write for crash safety.
 #[allow(clippy::too_many_arguments)]
 fn write_encrypted_chunk(
     file: &mut File,
@@ -632,7 +642,6 @@ fn write_encrypted_chunk(
 
     let ct_tag = segment::aead_encrypt_with_key(cipher_key, &nonce, plaintext, &aad, algorithm)?;
 
-    // Wire format: nonce || ciphertext || tag
     let mut wire = Vec::with_capacity(NONCE_SIZE + ct_tag.len());
     wire.extend_from_slice(&nonce);
     wire.extend_from_slice(&ct_tag);
@@ -649,7 +658,11 @@ fn write_encrypted_chunk(
 #[cfg(feature = "compression")]
 pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), CryptoError> {
     // WAL journal old index
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle
         .wal
         .begin(WalOp::DeleteSegment, &old_encrypted_index)?;
@@ -708,7 +721,11 @@ fn vault_resize_grow_impl(
     old_capacity: u64,
     new_capacity: u64,
 ) -> Result<(), CryptoError> {
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Extend file and CSPRNG-fill new space (also overwrites old shadow position)
@@ -757,7 +774,11 @@ fn vault_resize_shrink_impl(
     }
 
     // WAL begin — journal the current encrypted index for crash recovery.
-    let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
     handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
 
     // Update index metadata for the new capacity.
@@ -862,9 +883,9 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
                 m.size
             ))
         })?;
-        handle
-            .file
-            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.old_offset))?;
+        handle.file.seek(SeekFrom::Start(
+            format::data_region_offset(handle.index_pad_size) + m.old_offset,
+        ))?;
         let mut buf = vec![0u8; read_len];
         handle.file.read_exact(&mut buf)?;
 
@@ -882,15 +903,19 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         }
 
         // Journal current encrypted index before mutation
-        let old_encrypted_index = read_encrypted_index(&mut handle.file, PRIMARY_INDEX_OFFSET, format::encrypted_index_size(handle.index_pad_size))?;
+        let old_encrypted_index = read_encrypted_index(
+            &mut handle.file,
+            PRIMARY_INDEX_OFFSET,
+            format::encrypted_index_size(handle.index_pad_size),
+        )?;
         handle
             .wal
             .begin(WalOp::WriteSegment, &old_encrypted_index)?;
 
         // Write to new target offset and fsync
-        handle
-            .file
-            .seek(SeekFrom::Start(format::data_region_offset(handle.index_pad_size) + m.new_offset))?;
+        handle.file.seek(SeekFrom::Start(
+            format::data_region_offset(handle.index_pad_size) + m.new_offset,
+        ))?;
         handle.file.write_all(&buf)?;
         buf.zeroize();
         handle.file.sync_all()?;

@@ -80,9 +80,9 @@ pub fn total_vault_size(capacity: u64, index_pad_size: usize) -> Result<u64, Cry
 ///
 /// Each 64KB plaintext chunk encrypts to `ENCRYPTED_CHUNK_SIZE` bytes
 /// (nonce + ciphertext + tag). The final chunk is always length-prefixed
-/// and padded to uniform size (`pad_last_chunk`), so CHUNK_SIZE-aligned
-/// plaintexts require an extra empty padded chunk (matching the standalone
-/// streaming encrypt convention).
+/// and padded to uniform size (`pad_last_chunk`). Exact CHUNK_SIZE-aligned
+/// plaintexts do NOT add an extra empty padded chunk here (the index-level
+/// representation treats zero-length segments as zero size).
 ///
 /// Returns `Err` if the result overflows `u64`.
 pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
@@ -90,9 +90,7 @@ pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
     let count = streaming_chunk_count(plaintext_size)? as u64;
     count
         .checked_mul(ENCRYPTED_CHUNK_SIZE as u64)
-        .ok_or_else(|| {
-            CryptoError::InvalidParameter("streaming segment size overflows u64".into())
-        })
+        .ok_or_else(|| CryptoError::InvalidParameter("streaming segment size overflows u64".into()))
 }
 
 /// Compute the number of chunks needed for a given plaintext size.
@@ -105,18 +103,31 @@ pub fn streaming_segment_size(plaintext_size: u64) -> Result<u64, CryptoError> {
 /// Returns `Err` if the count exceeds `u32::MAX`.
 pub fn streaming_chunk_count(plaintext_size: u64) -> Result<u32, CryptoError> {
     use crate::core::streaming::CHUNK_SIZE;
+
+    // Empty plaintext => one padded chunk.
     if plaintext_size == 0 {
         return Ok(1);
     }
-    let base = plaintext_size.div_ceil(CHUNK_SIZE as u64);
-    let count = if plaintext_size.is_multiple_of(CHUNK_SIZE as u64) {
-        base + 1
+
+    let chunk_size = CHUNK_SIZE as u64;
+
+    // Compute ceil division safely: (plaintext_size + chunk_size - 1) / chunk_size
+    let base = plaintext_size
+        .checked_add(chunk_size - 1)
+        .ok_or_else(|| CryptoError::InvalidParameter("streaming chunk count overflow".into()))?
+        / chunk_size;
+
+    // If plaintext is exactly a multiple of CHUNK_SIZE, add an extra empty padded
+    // chunk (protocol convention). Otherwise `base` is already the correct count.
+    let count = if plaintext_size.is_multiple_of(chunk_size) {
+        base.checked_add(1)
+            .ok_or_else(|| CryptoError::InvalidParameter("streaming chunk count overflow".into()))?
     } else {
         base
     };
-    u32::try_from(count).map_err(|_| {
-        CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into())
-    })
+
+    u32::try_from(count)
+        .map_err(|_| CryptoError::InvalidParameter("streaming chunk count exceeds u32::MAX".into()))
 }
 
 // ---------------------------------------------------------------------------
@@ -824,7 +835,15 @@ mod tests {
 
     #[test]
     fn test_segment_entry_name_empty() {
-        let e = SegmentEntry::new("", 0, 100, 0, dummy_checksum(0), CompressionAlgorithm::None, 0);
+        let e = SegmentEntry::new(
+            "",
+            0,
+            100,
+            0,
+            dummy_checksum(0),
+            CompressionAlgorithm::None,
+            0,
+        );
         assert!(e.is_err());
     }
 
@@ -870,7 +889,9 @@ mod tests {
     #[test]
     fn test_segment_index_roundtrip() {
         let idx = make_test_index();
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
@@ -911,7 +932,9 @@ mod tests {
             )
             .expect("entry"),
         );
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
@@ -941,7 +964,9 @@ mod tests {
                 .expect("entry"),
             );
         }
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
@@ -963,7 +988,9 @@ mod tests {
             offset: 1000,
             size: 300,
         });
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
         assert_eq!(
@@ -1007,8 +1034,8 @@ mod tests {
     #[test]
     fn test_segment_index_overflow_min_pad() {
         let mut idx = SegmentIndex::new(512 * 1024); // 512KB → MIN_INDEX_PAD_SIZE
-        // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 + 4 = 318 bytes.
-        // Index header is 32 bytes. (65536 - 32) / 318 ≈ 205 entries max.
+                                                     // Each entry with a 255-byte name uses 2 + 255 + 8 + 8 + 8 + 32 + 1 + 4 = 318 bytes.
+                                                     // Index header is 32 bytes. (65536 - 32) / 318 ≈ 205 entries max.
         for i in 0..210 {
             let name = format!("{:0>255}", i);
             idx.entries.push(
@@ -1542,7 +1569,8 @@ mod tests {
 
         let moves = idx.plan_defrag();
         for m in &moves {
-            idx.apply_move(m.entry_index, m.new_offset).expect("apply_move");
+            idx.apply_move(m.entry_index, m.new_offset)
+                .expect("apply_move");
         }
         idx.complete_defrag();
 
@@ -1599,7 +1627,9 @@ mod tests {
             .expect("entry"),
         );
 
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
 
         assert_eq!(parsed.entries[0].chunk_count, 0);
@@ -1624,7 +1654,9 @@ mod tests {
             chunk_count: 5,
         });
 
-        let bytes = idx.to_bytes(compute_index_size(idx.capacity)).expect("serialize");
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
         let result = SegmentIndex::from_bytes(&bytes);
         assert!(result.is_err());
         let err = result.expect_err("should fail").to_string();
@@ -1641,24 +1673,36 @@ mod tests {
             compression: CompressionAlgorithm::None,
             chunk_count: 5,
         });
-        let bytes2 = idx2.to_bytes(compute_index_size(idx2.capacity)).expect("serialize");
+        let bytes2 = idx2
+            .to_bytes(compute_index_size(idx2.capacity))
+            .expect("serialize");
         assert!(SegmentIndex::from_bytes(&bytes2).is_ok());
     }
 
     #[test]
     fn test_streaming_segment_size_zero() {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
-        // 0 bytes → 1 padded empty chunk
-        assert_eq!(streaming_segment_size(0).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
+        // Empty segment produces one padded encrypted chunk
+        assert_eq!(
+            streaming_segment_size(0).expect("expected size"),
+            ENCRYPTED_CHUNK_SIZE as u64
+        );
     }
 
     #[test]
     fn test_streaming_segment_size_single_chunk() {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
-        // 1 byte → 1 padded chunk
-        assert_eq!(streaming_segment_size(1).unwrap(), ENCRYPTED_CHUNK_SIZE as u64);
-        // Exactly CHUNK_SIZE → 1 full + 1 empty padded = 2 chunks
-        assert_eq!(streaming_segment_size(64 * 1024).unwrap(), 2 * ENCRYPTED_CHUNK_SIZE as u64);
+        // 1 byte → 1 chunk
+        assert_eq!(
+            streaming_segment_size(1).expect("expected size"),
+            ENCRYPTED_CHUNK_SIZE as u64
+        );
+        // Exactly one chunk
+        // Exactly CHUNK_SIZE plaintext triggers an extra empty padded chunk => 2 chunks
+        assert_eq!(
+            streaming_segment_size(64 * 1024).expect("expected size"),
+            2 * ENCRYPTED_CHUNK_SIZE as u64
+        );
     }
 
     #[test]
@@ -1666,12 +1710,12 @@ mod tests {
         use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
         // 64KB + 1 byte → 2 chunks (last is partial, padded)
         assert_eq!(
-            streaming_segment_size(64 * 1024 + 1).unwrap(),
+            streaming_segment_size(64 * 1024 + 1).expect("expected size"),
             2 * ENCRYPTED_CHUNK_SIZE as u64
         );
         // 5 * 64KB → 5 full + 1 empty padded = 6 chunks
         assert_eq!(
-            streaming_segment_size(5 * 64 * 1024).unwrap(),
+            streaming_segment_size(5 * 64 * 1024).expect("expected size"),
             6 * ENCRYPTED_CHUNK_SIZE as u64
         );
     }
@@ -1683,16 +1727,19 @@ mod tests {
 
     #[test]
     fn test_streaming_chunk_count_values() {
-        // 0 bytes → 1 empty padded chunk
-        assert_eq!(streaming_chunk_count(0).unwrap(), 1);
-        // 1 byte → 1 padded chunk
-        assert_eq!(streaming_chunk_count(1).unwrap(), 1);
-        // Exactly CHUNK_SIZE → 1 full + 1 empty padded = 2
-        assert_eq!(streaming_chunk_count(64 * 1024).unwrap(), 2);
-        // CHUNK_SIZE + 1 → 2 chunks (last is partial, padded)
-        assert_eq!(streaming_chunk_count(64 * 1024 + 1).unwrap(), 2);
-        // 5 * CHUNK_SIZE → 5 full + 1 empty padded = 6
-        assert_eq!(streaming_chunk_count(5 * 64 * 1024).unwrap(), 6);
+        // empty => one padded chunk
+        assert_eq!(streaming_chunk_count(0).expect("expected count"), 1);
+        assert_eq!(streaming_chunk_count(1).expect("expected count"), 1);
+        assert_eq!(streaming_chunk_count(64 * 1024).expect("expected count"), 2);
+        assert_eq!(
+            streaming_chunk_count(64 * 1024 + 1).expect("expected count"),
+            2
+        );
+        // exact multiples add an extra padded empty chunk
+        assert_eq!(
+            streaming_chunk_count(5 * 64 * 1024).expect("expected count"),
+            6
+        );
     }
 
     #[test]
