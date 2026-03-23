@@ -603,6 +603,47 @@ pub fn vault_write_stream(
     Ok(())
 }
 
+/// Write a file into the vault as a streaming segment.
+///
+/// Reads `file_path` in 64KB chunks and encrypts each independently.
+/// This is the FRB-callable wrapper around `vault_write_stream`.
+#[cfg(feature = "compression")]
+pub fn vault_write_file(
+    handle: &mut VaultHandle,
+    name: String,
+    file_path: String,
+    on_progress: StreamSink<f64>,
+) -> Result<(), CryptoError> {
+    use crate::core::streaming::CHUNK_SIZE;
+
+    let mut file = File::open(&file_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot open '{file_path}': {e}")))?;
+
+    let file_size = file.seek(SeekFrom::End(0))?;
+    file.seek(SeekFrom::Start(0))?;
+
+    let mut bytes_read: u64 = 0;
+    let data_stream = std::iter::from_fn(|| {
+        let mut buf = vec![0u8; CHUNK_SIZE];
+        match file.read(&mut buf) {
+            Ok(0) => None,
+            Ok(n) => {
+                buf.truncate(n);
+                bytes_read += n as u64;
+                if file_size > 0 {
+                    let _ = on_progress.add(bytes_read as f64 / file_size as f64);
+                }
+                Some(buf)
+            }
+            Err(_) => None,
+        }
+    });
+
+    vault_write_stream(handle, name, file_size, data_stream)?;
+    let _ = on_progress.add(1.0);
+    Ok(())
+}
+
 fn chunk_abs_offset(data_off: u64, seg_offset: u64, chunk_index: u64) -> Result<u64, CryptoError> {
     use crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
     chunk_index

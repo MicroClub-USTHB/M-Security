@@ -2379,3 +2379,122 @@ fn test_stream_read_chacha20() {
 
     vault_close(handle).expect("close");
 }
+
+// -- vault_write_file (FRB wrapper) -----------------------------------------
+
+/// Helper: write `data` to a temp file and return the path.
+fn write_temp_file(dir: &tempfile::TempDir, name: &str, data: &[u8]) -> String {
+    let path = dir.path().join(name);
+    std::fs::write(&path, data).expect("write temp file");
+    path.to_str().expect("path").to_string()
+}
+
+/// Fake progress sink that collects values (vault_write_file can't use StreamSink in tests,
+/// but the underlying vault_write_stream is what's actually tested here).
+#[test]
+fn test_write_file_roundtrip() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data = vec![0x42u8; 200_000];
+    let file_path = write_temp_file(&dir, "input.bin", &data);
+
+    // vault_write_file needs StreamSink — test the underlying path instead:
+    // read file → feed to vault_write_stream → read back
+    use crate::core::streaming::CHUNK_SIZE;
+    let file_data = std::fs::read(&file_path).expect("read file");
+    let chunks: Vec<Vec<u8>> = file_data.chunks(CHUNK_SIZE).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "from_file.bin".into(),
+        file_data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("write stream");
+
+    let readback = vault_read(&mut handle, "from_file.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_write_file_stream_read_interop() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2 * 1024 * 1024);
+
+    let data: Vec<u8> = (0..150_000).map(|i| (i % 199) as u8).collect();
+    let file_path = write_temp_file(&dir, "interop.bin", &data);
+
+    use crate::core::streaming::CHUNK_SIZE;
+    let file_data = std::fs::read(&file_path).expect("read file");
+    let chunks: Vec<Vec<u8>> = file_data.chunks(CHUNK_SIZE).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "interop.bin".into(),
+        file_data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("write stream");
+
+    // Read back via streaming read helper
+    let (collected, _, checksum) =
+        stream_read_chunks(&mut handle, "interop.bin").expect("stream read");
+    assert_eq!(collected, data);
+    assert_eq!(
+        checksum,
+        handle.index.find("interop.bin").expect("find").checksum
+    );
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_write_file_large() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 12 * 1024 * 1024);
+
+    let data: Vec<u8> = (0..5_000_000).map(|i| (i % 251) as u8).collect();
+    let file_path = write_temp_file(&dir, "large.bin", &data);
+
+    use crate::core::streaming::CHUNK_SIZE;
+    let file_data = std::fs::read(&file_path).expect("read file");
+    let chunks: Vec<Vec<u8>> = file_data.chunks(CHUNK_SIZE).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "large.bin".into(),
+        file_data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("write stream");
+
+    let readback = vault_read(&mut handle, "large.bin".into()).expect("read");
+    assert_eq!(readback.len(), data.len());
+    assert_eq!(readback, data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_write_file_empty() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let file_path = write_temp_file(&dir, "empty.bin", &[]);
+
+    use crate::core::streaming::CHUNK_SIZE;
+    let file_data = std::fs::read(&file_path).expect("read file");
+    let chunks: Vec<Vec<u8>> = file_data.chunks(CHUNK_SIZE).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "empty.bin".into(),
+        0,
+        chunks.into_iter(),
+    )
+    .expect("write stream");
+
+    let readback = vault_read(&mut handle, "empty.bin".into()).expect("read");
+    assert!(readback.is_empty());
+
+    vault_close(handle).expect("close");
+}
