@@ -173,12 +173,20 @@ impl ChunkAad {
         buf
     }
 
-    pub fn from_bytes(bytes: &[u8; AAD_SIZE]) -> Self {
+    pub fn from_bytes(bytes: &[u8; AAD_SIZE]) -> Result<Self, CryptoError> {
         let index = u64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
         ]);
-        let is_final = bytes[8] != 0;
-        Self { index, is_final }
+        let is_final = match bytes[8] {
+            0 => false,
+            1 => true,
+            v => {
+                return Err(CryptoError::InvalidParameter(format!(
+                    "non-canonical is_final byte: 0x{v:02X}"
+                )))
+            }
+        };
+        Ok(Self { index, is_final })
     }
 }
 
@@ -249,16 +257,18 @@ pub fn strip_last_chunk_padding(padded: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let max_payload = CHUNK_SIZE - PADDING_PREFIX_SIZE;
 
     if real_len > max_payload {
-        return Err(CryptoError::InvalidParameter(format!(
-            "Invalid padding length: {real_len}, max {max_payload}"
-        )));
+        // NOTE: both error paths use the same message to prevent padding oracles.
+        // Padding is only stripped after AEAD verification, but defense in depth.
+        return Err(CryptoError::InvalidParameter(
+            "malformed chunk padding".to_string(),
+        ));
     }
 
     // Reject non-zero bytes in padding region
     let padding_start = PADDING_PREFIX_SIZE + real_len;
     if !padded[padding_start..].iter().all(|&b| b == 0) {
         return Err(CryptoError::InvalidParameter(
-            "Non-zero bytes in padding region".to_string(),
+            "malformed chunk padding".to_string(),
         ));
     }
 
@@ -562,7 +572,7 @@ mod tests {
         // is_final = true
         assert_eq!(bytes[8], 1);
 
-        let roundtrip = ChunkAad::from_bytes(&bytes);
+        let roundtrip = ChunkAad::from_bytes(&bytes).expect("parse");
         assert_eq!(roundtrip, aad);
 
         // Also test is_final = false
@@ -572,7 +582,7 @@ mod tests {
         };
         let bytes2 = aad2.to_bytes();
         assert_eq!(bytes2[8], 0);
-        assert_eq!(ChunkAad::from_bytes(&bytes2), aad2);
+        assert_eq!(ChunkAad::from_bytes(&bytes2).expect("parse"), aad2);
     }
 
     #[test]
@@ -736,6 +746,13 @@ mod tests {
             err.contains("padding"),
             "Error should mention padding: {err}"
         );
+    }
+
+    #[test]
+    fn test_aad_non_canonical_is_final_rejected() {
+        let mut bytes = [0u8; AAD_SIZE];
+        bytes[8] = 0x02; // non-canonical
+        assert!(ChunkAad::from_bytes(&bytes).is_err());
     }
 
     #[test]

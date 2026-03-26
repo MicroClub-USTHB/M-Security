@@ -21,7 +21,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.1',
+      title: 'M-Security v0.3.2',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -41,7 +41,7 @@ class _DemoHomeState extends State<DemoHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('M-Security v0.3.1')),
+      appBar: AppBar(title: const Text('M-Security v0.3.2')),
       body: IndexedStack(
         index: _tab,
         children: const [
@@ -609,12 +609,14 @@ class _VaultTabState extends State<_VaultTab> {
   final _vaultSizeMb = TextEditingController(text: '5');
   final _segName = TextEditingController(text: 'secret.txt');
   final _segData = TextEditingController(text: 'Vault data here');
+  final _streamSizeKb = TextEditingController(text: '512');
   String _status = '';
   List<String> _segments = [];
   String _readResult = '';
   String _capacityInfo = '';
   String _healthInfo = '';
   String _defragInfo = '';
+  double _streamProgress = 0;
   bool _loading = false;
   bool _vaultOpen = false;
   String _compAlgo = 'Zstd';
@@ -732,6 +734,90 @@ class _VaultTabState extends State<_VaultTab> {
       _readResult = '';
       await _refreshList();
       await _refreshCapacity();
+    } catch (e) {
+      _status = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _streamWrite() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() {
+      _loading = true;
+      _streamProgress = 0;
+    });
+    try {
+      final sizeBytes = int.parse(_streamSizeKb.text) * 1024;
+      const chunkSize = 64 * 1024;
+
+      // Generate data as a stream of 64KB chunks
+      Stream<Uint8List> dataStream() async* {
+        var remaining = sizeBytes;
+        var offset = 0;
+        while (remaining > 0) {
+          final n = remaining < chunkSize ? remaining : chunkSize;
+          final chunk = Uint8List(n);
+          for (var i = 0; i < n; i++) {
+            chunk[i] = (offset + i) % 256;
+          }
+          yield chunk;
+          offset += n;
+          remaining -= n;
+        }
+      }
+
+      await VaultService.writeStream(
+        handle: _handle!,
+        name: 'stream-${_streamSizeKb.text}kb.bin',
+        totalSize: sizeBytes,
+        data: dataStream(),
+        onProgress: (p) => setState(() => _streamProgress = p),
+      );
+
+      _status = 'Stream-wrote ${_fmtBytes(BigInt.from(sizeBytes))} as '
+          '"stream-${_streamSizeKb.text}kb.bin"';
+      await _refreshList();
+      await _refreshCapacity();
+    } catch (e) {
+      _status = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _streamRead() async {
+    if (!_vaultOpen || _handle == null) return;
+    final name = 'stream-${_streamSizeKb.text}kb.bin';
+    if (!_segments.contains(name)) {
+      setState(() => _status = 'Write "$name" first');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _streamProgress = 0;
+    });
+    try {
+      final chunks = <Uint8List>[];
+      await for (final chunk in VaultService.readStream(
+        handle: _handle!,
+        name: name,
+        onProgress: (p) => setState(() => _streamProgress = p),
+      )) {
+        chunks.add(chunk);
+      }
+      final total = chunks.fold<int>(0, (sum, c) => sum + c.length);
+
+      // Verify pattern
+      var offset = 0;
+      var match = true;
+      for (final chunk in chunks) {
+        for (var i = 0; i < chunk.length && match; i++) {
+          if (chunk[i] != (offset + i) % 256) match = false;
+        }
+        offset += chunk.length;
+      }
+
+      _status = 'Stream-read "$name": ${_fmtBytes(BigInt.from(total))} '
+          'in ${chunks.length} chunks — ${match ? "PASS" : "FAIL"}';
     } catch (e) {
       _status = 'Error: $e';
     }
@@ -1007,6 +1093,48 @@ class _VaultTabState extends State<_VaultTab> {
           ),
           if (_healthInfo.isNotEmpty) _ResultCard('Health', _healthInfo),
           if (_defragInfo.isNotEmpty) _ResultCard('Defrag', _defragInfo),
+
+          const Divider(height: 24),
+
+          // Streaming segment I/O
+          Text('Streaming I/O',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _streamSizeKb,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Stream size (KB)',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _loading ? null : _streamWrite,
+                  icon: const Icon(Icons.upload, size: 18),
+                  label: const Text('Stream Write'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _loading ? null : _streamRead,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Stream Read'),
+                ),
+              ),
+            ],
+          ),
+          if (_streamProgress > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(
+                  value: _loading ? _streamProgress : 1),
+            ),
         ],
 
         if (_loading) const _Loader(),

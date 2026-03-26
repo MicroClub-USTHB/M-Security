@@ -415,12 +415,12 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024, // 5MB
       );
-      
+
       // Prepare test data (compressible - lots of repeats)
       final dataA = Uint8List.fromList(List.filled(5000, 42));
       final dataB = Uint8List.fromList(List.filled(5000, 99));
       final dataC = Uint8List.fromList(List.filled(5000, 123));
-      
+
       // Write segment A with Zstd
       await VaultService.write(
         handle: handle,
@@ -431,7 +431,7 @@ void main() {
           level: 3,
         ),
       );
-      
+
       // Write segment B with Brotli
       await VaultService.write(
         handle: handle,
@@ -442,7 +442,7 @@ void main() {
           level: 4,
         ),
       );
-      
+
       // Write segment C with None (no compression)
       await VaultService.write(
         handle: handle,
@@ -452,22 +452,50 @@ void main() {
           algorithm: CompressionAlgorithm.none,
         ),
       );
-      
+
       // Read all three back
-      final resultA = await VaultService.read(handle: handle, name: 'zstd_segment.txt');
-      final resultB = await VaultService.read(handle: handle, name: 'brotli_segment.txt');
-      final resultC = await VaultService.read(handle: handle, name: 'uncompressed_segment.txt');
-      
+      final resultA = await VaultService.read(
+        handle: handle,
+        name: 'zstd_segment.txt',
+      );
+      final resultB = await VaultService.read(
+        handle: handle,
+        name: 'brotli_segment.txt',
+      );
+      final resultC = await VaultService.read(
+        handle: handle,
+        name: 'uncompressed_segment.txt',
+      );
+
       // Verify all three match original data
-      expect(resultA, dataA, reason: 'Zstd segment should decompress correctly');
-      expect(resultB, dataB, reason: 'Brotli segment should decompress correctly');
-      expect(resultC, dataC, reason: 'Uncompressed segment should read correctly');
-      
+      expect(
+        resultA,
+        dataA,
+        reason: 'Zstd segment should decompress correctly',
+      );
+      expect(
+        resultB,
+        dataB,
+        reason: 'Brotli segment should decompress correctly',
+      );
+      expect(
+        resultC,
+        dataC,
+        reason: 'Uncompressed segment should read correctly',
+      );
+
       // Verify all three segments are in the list
       final names = await VaultService.list(handle: handle);
       expect(names.length, 3);
-      expect(names, containsAll(['zstd_segment.txt', 'brotli_segment.txt', 'uncompressed_segment.txt']));
-      
+      expect(
+        names,
+        containsAll([
+          'zstd_segment.txt',
+          'brotli_segment.txt',
+          'uncompressed_segment.txt',
+        ]),
+      );
+
       await VaultService.close(handle: handle);
     });
 
@@ -511,7 +539,7 @@ void main() {
     test('crash recovery via WAL', () async {
       final path = '${tempDir.path}/wal.vault';
       final key = await generateAes256GcmKey();
-      
+
       // Create vault
       final handle = await VaultService.create(
         path: path,
@@ -519,36 +547,53 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
       );
-      
+
       // Write some data
       final data1 = Uint8List.fromList([1, 2, 3, 4, 5]);
-      await VaultService.write(handle: handle, name: 'initial.bin', data: data1);
-      
+      await VaultService.write(
+        handle: handle,
+        name: 'initial.bin',
+        data: data1,
+      );
+
       // Close properly (commits WAL)
       await VaultService.close(handle: handle);
-      
+
       // Reopen (WAL recovery runs but finds everything committed)
       final reopened = await VaultService.open(path: path, key: key);
-      
+
       // Verify data survived
-      final result = await VaultService.read(handle: reopened, name: 'initial.bin');
+      final result = await VaultService.read(
+        handle: reopened,
+        name: 'initial.bin',
+      );
       expect(result, data1);
-      
+
       // Write more data after recovery
       final data2 = Uint8List.fromList([6, 7, 8, 9]);
-      await VaultService.write(handle: reopened, name: 'after_recovery.bin', data: data2);
-      
+      await VaultService.write(
+        handle: reopened,
+        name: 'after_recovery.bin',
+        data: data2,
+      );
+
       // Close and reopen again
       await VaultService.close(handle: reopened);
       final reopened2 = await VaultService.open(path: path, key: key);
-      
+
       // Both segments should exist
-      final result1 = await VaultService.read(handle: reopened2, name: 'initial.bin');
-      final result2 = await VaultService.read(handle: reopened2, name: 'after_recovery.bin');
-      
+      final result1 = await VaultService.read(
+        handle: reopened2,
+        name: 'initial.bin',
+      );
+      final result2 = await VaultService.read(
+        handle: reopened2,
+        name: 'after_recovery.bin',
+      );
+
       expect(result1, data1);
       expect(result2, data2);
-      
+
       await VaultService.close(handle: reopened2);
     });
     // -- Defragmentation ------------------------------------------------
@@ -566,7 +611,9 @@ void main() {
 
       // Write A, B, C
       final dataA = Uint8List.fromList(List.generate(1000, (i) => i % 256));
-      final dataC = Uint8List.fromList(List.generate(500, (i) => (i * 3) % 256));
+      final dataC = Uint8List.fromList(
+        List.generate(500, (i) => (i * 3) % 256),
+      );
       await VaultService.write(handle: handle, name: 'a.txt', data: dataA);
       await VaultService.write(
         handle: handle,
@@ -631,10 +678,7 @@ void main() {
       );
 
       // Grow to 1MB
-      await VaultService.resize(
-        handle: handle,
-        newCapacityBytes: 1024 * 1024,
-      );
+      await VaultService.resize(handle: handle, newCapacityBytes: 1024 * 1024);
 
       final health = await VaultService.health(handle: handle);
       expect(health.totalBytes, BigInt.from(1024 * 1024));
@@ -668,10 +712,7 @@ void main() {
       await VaultService.defragment(handle: handle);
 
       // Shrink to 512KB (data fits)
-      await VaultService.resize(
-        handle: handle,
-        newCapacityBytes: 512 * 1024,
-      );
+      await VaultService.resize(handle: handle, newCapacityBytes: 512 * 1024);
 
       final health = await VaultService.health(handle: handle);
       expect(health.totalBytes, BigInt.from(512 * 1024));
@@ -783,7 +824,7 @@ void main() {
     test('corrupted primary index falls back to shadow', () async {
       final path = '${tempDir.path}/shadow.vault';
       final key = await generateAes256GcmKey();
-      
+
       // Create vault and write data
       final handle = await VaultService.create(
         path: path,
@@ -791,52 +832,340 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
       );
-      
+
       final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
-      await VaultService.write(handle: handle, name: 'important.bin', data: originalData);
-      
+      await VaultService.write(
+        handle: handle,
+        name: 'important.bin',
+        data: originalData,
+      );
+
       await VaultService.close(handle: handle);
-      
+
       // At this point:
       // - Primary index has 1 segment
       // - Shadow index has 1 segment (backup)
-      
+
       // Manually corrupt the PRIMARY index
       final file = File(path);
       final bytes = await file.readAsBytes();
-      
+
       // Primary index starts at byte 32 (after header)
       // Shadow index starts at byte 32 + 64KB
       final primaryIndexStart = 32;
       //final primaryIndexEnd = primaryIndexStart + (64 * 1024);
-      
+
       // Corrupt some bytes in the primary index region
       // (but leave shadow index intact)
       for (int i = primaryIndexStart; i < primaryIndexStart + 100; i++) {
         bytes[i] = 0xFF; // Corrupt
       }
-      
+
       await file.writeAsBytes(bytes);
-      
+
       // Try to reopen
       // Rust should:
       // 1. Try to decrypt primary index → fail (corrupted)
       // 2. Fall back to shadow index → succeed
       // 3. Restore primary index from shadow
       final reopened = await VaultService.open(path: path, key: key);
-      
+
       // Read data - should work because shadow index has it
-      final result = await VaultService.read(handle: reopened, name: 'important.bin');
-      expect(result, originalData, reason: 'Shadow index should have preserved the segment');
-      
+      final result = await VaultService.read(
+        handle: reopened,
+        name: 'important.bin',
+      );
+      expect(
+        result,
+        originalData,
+        reason: 'Shadow index should have preserved the segment',
+      );
+
       await VaultService.close(handle: reopened);
-      
+
       // Reopen again - primary should be restored now
       final reopened2 = await VaultService.open(path: path, key: key);
-      final result2 = await VaultService.read(handle: reopened2, name: 'important.bin');
+      final result2 = await VaultService.read(
+        handle: reopened2,
+        name: 'important.bin',
+      );
       expect(result2, originalData);
-      
+
       await VaultService.close(handle: reopened2);
+    });
+
+    // -- Streaming (writeStream / readStream) ----------------------------------
+
+    group('Streaming', () {
+      test('stream-write 10 MB then stream-read back byte-identical', () async {
+        final path = '${tempDir.path}/stream_10mb.vault';
+        final key = await generateAes256GcmKey();
+        const dataSize = 10 * 1024 * 1024; // 10 MB
+        const chunkSize = 64 * 1024; // 64 KB
+
+        final handle = await VaultService.create(
+          path: path,
+          key: key,
+          algorithm: 'aes-256-gcm',
+          capacityBytes:
+              16 * 1024 * 1024, // 16 MB — enough for encrypted overhead
+        );
+
+        // Build source data in memory for the round-trip assertion.
+        final sourceData = Uint8List(dataSize);
+        for (int i = 0; i < dataSize; i++) {
+          sourceData[i] = i % 256;
+        }
+
+        // Emit source data in 64 KB chunks.
+        Stream<Uint8List> chunks() async* {
+          int offset = 0;
+          while (offset < dataSize) {
+            final end = (offset + chunkSize).clamp(0, dataSize);
+            yield sourceData.sublist(offset, end);
+            offset = end;
+          }
+        }
+
+        await VaultService.writeStream(
+          handle: handle,
+          name: 'large.bin',
+          totalSize: dataSize,
+          data: chunks(),
+        );
+
+        // Stream-read and reassemble.
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in VaultService.readStream(
+          handle: handle,
+          name: 'large.bin',
+        )) {
+          builder.add(chunk);
+        }
+
+        expect(builder.takeBytes(), sourceData);
+        await VaultService.close(handle: handle);
+      });
+
+      test('stream-write then one-shot read (interop)', () async {
+        final path = '${tempDir.path}/stream_to_oneshot.vault';
+        final key = await generateAes256GcmKey();
+        const dataSize = 256 * 1024; // 256 KB
+
+        final handle = await VaultService.create(
+          path: path,
+          key: key,
+          algorithm: 'aes-256-gcm',
+          capacityBytes: 2 * 1024 * 1024,
+        );
+
+        final sourceData = Uint8List.fromList(
+          List.generate(dataSize, (i) => (i * 3) % 256),
+        );
+
+        await VaultService.writeStream(
+          handle: handle,
+          name: 'interop.bin',
+          totalSize: dataSize,
+          data: Stream.fromIterable([sourceData]),
+        );
+
+        // VaultService.read() must be able to read a streaming segment.
+        final result = await VaultService.read(
+          handle: handle,
+          name: 'interop.bin',
+        );
+        expect(result, sourceData);
+
+        await VaultService.close(handle: handle);
+      });
+
+      test('one-shot write then stream-read (interop)', () async {
+        final path = '${tempDir.path}/oneshot_to_stream.vault';
+        final key = await generateAes256GcmKey();
+        const dataSize = 128 * 1024; // 128 KB
+
+        final handle = await VaultService.create(
+          path: path,
+          key: key,
+          algorithm: 'aes-256-gcm',
+          capacityBytes: 2 * 1024 * 1024,
+        );
+
+        final sourceData = Uint8List.fromList(
+          List.generate(dataSize, (i) => (i * 7) % 256),
+        );
+
+        // VaultService.write() writes a monolithic segment.
+        await VaultService.write(
+          handle: handle,
+          name: 'interop2.bin',
+          data: sourceData,
+        );
+
+        // VaultService.readStream() must handle monolithic segments
+        // (Rust falls back to a one-shot read and emits one chunk).
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in VaultService.readStream(
+          handle: handle,
+          name: 'interop2.bin',
+        )) {
+          builder.add(chunk);
+        }
+
+        expect(builder.takeBytes(), sourceData);
+        await VaultService.close(handle: handle);
+      });
+
+      test(
+        'progress reporting during stream-write and stream-read',
+        () async {
+          final path = '${tempDir.path}/progress.vault';
+          final key = await generateAes256GcmKey();
+          const dataSize = 512 * 1024; // 512 KB = 8 × 64 KB chunks
+          const chunkSize = 64 * 1024;
+
+          final handle = await VaultService.create(
+            path: path,
+            key: key,
+            algorithm: 'aes-256-gcm',
+            capacityBytes: 4 * 1024 * 1024,
+          );
+
+          // Track write progress.
+          final writeProgress = <double>[];
+          await VaultService.writeStream(
+            handle: handle,
+            name: 'progress.bin',
+            totalSize: dataSize,
+            data: Stream.fromIterable(
+              List.generate(dataSize ~/ chunkSize, (_) => Uint8List(chunkSize)),
+            ),
+            onProgress: writeProgress.add,
+          );
+
+          // Write progress: monotonically increasing, ending at 1.0.
+          expect(writeProgress, isNotEmpty);
+          expect(writeProgress.last, 1.0);
+          for (int i = 1; i < writeProgress.length; i++) {
+            expect(writeProgress[i], greaterThanOrEqualTo(writeProgress[i - 1]));
+          }
+
+          // Track read progress.
+          final readProgress = <double>[];
+          final chunkLengths = <int>[];
+          await for (final chunk in VaultService.readStream(
+            handle: handle,
+            name: 'progress.bin',
+            onProgress: readProgress.add,
+          )) {
+            chunkLengths.add(chunk.length);
+          }
+
+          // Read progress: monotonically increasing, ending at 1.0.
+          expect(readProgress, isNotEmpty);
+          expect(readProgress.last, 1.0);
+          for (int i = 1; i < readProgress.length; i++) {
+            expect(readProgress[i], greaterThanOrEqualTo(readProgress[i - 1]));
+          }
+
+          // Data arrives as multiple chunks with correct total.
+          expect(chunkLengths.length, greaterThan(1));
+          expect(chunkLengths.fold(0, (a, b) => a + b), dataSize);
+
+          await VaultService.close(handle: handle);
+        },
+      );
+
+      test('stream-write with wrong totalSize throws ArgumentError', () async {
+        final path = '${tempDir.path}/wrong_size.vault';
+        final key = await generateAes256GcmKey();
+
+        final handle = await VaultService.create(
+          path: path,
+          key: key,
+          algorithm: 'aes-256-gcm',
+          capacityBytes: 2 * 1024 * 1024,
+        );
+
+        // Underflow: stream emits fewer bytes than totalSize claims.
+        await expectLater(
+          VaultService.writeStream(
+            handle: handle,
+            name: 'underflow.bin',
+            totalSize: 100, // claims 100 bytes
+            data: Stream.fromIterable([
+              Uint8List.fromList([1, 2, 3]),
+            ]), // only 3 bytes
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+
+        // Overflow: stream emits more bytes than totalSize allows.
+        await expectLater(
+          VaultService.writeStream(
+            handle: handle,
+            name: 'overflow.bin',
+            totalSize: 2, // claims only 2 bytes
+            data: Stream.fromIterable([Uint8List(1024)]), // 1 KB
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+
+        await VaultService.close(handle: handle);
+      });
+
+      test('50 MB stream-write and stream-read stays memory-bounded', () async {
+        // If memory were not bounded this would OOM on constrained devices.
+        // Successful completion without process termination is the assertion.
+        final path = '${tempDir.path}/large_50mb.vault';
+        final key = await generateAes256GcmKey();
+        const dataSize = 50 * 1024 * 1024; // 50 MB
+        const chunkSize = 64 * 1024; // 64 KB
+
+        final handle = await VaultService.create(
+          path: path,
+          key: key,
+          algorithm: 'aes-256-gcm',
+          capacityBytes: 55 * 1024 * 1024,
+        );
+
+        // Generate stream lazily — never holds more than one 64 KB chunk in
+        // Dart memory.
+        int writeCounter = 0;
+        Stream<Uint8List> lazyStream() async* {
+          int remaining = dataSize;
+          while (remaining > 0) {
+            final size = remaining < chunkSize ? remaining : chunkSize;
+            final chunk = Uint8List(size);
+            for (int i = 0; i < size; i++) {
+              chunk[i] = (writeCounter + i) % 256;
+            }
+            writeCounter += size;
+            remaining -= size;
+            yield chunk;
+          }
+        }
+
+        await VaultService.writeStream(
+          handle: handle,
+          name: 'huge.bin',
+          totalSize: dataSize,
+          data: lazyStream(),
+        );
+
+        // Stream-read and count bytes without accumulating all data in memory.
+        int totalRead = 0;
+        await for (final chunk in VaultService.readStream(
+          handle: handle,
+          name: 'huge.bin',
+        )) {
+          totalRead += chunk.length;
+        }
+
+        expect(totalRead, dataSize);
+        await VaultService.close(handle: handle);
+      });
     });
   });
 }

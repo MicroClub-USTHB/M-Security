@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'm_security'
-  s.version          = '0.3.1'
+  s.version          = '0.3.2'
   s.summary          = 'A high-performance cryptographic SDK for Flutter powered by native Rust via FFI.'
   s.description      = <<-DESC
 A high-performance cryptographic SDK for Flutter powered by native Rust via FFI.
