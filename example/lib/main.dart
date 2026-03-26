@@ -113,27 +113,31 @@ class _HashingTabState extends State<_HashingTab> {
               onPressed: _loading
                   ? null
                   : () => _run('BLAKE3', () async {
-                        final h = await hashing.blake3Hash(
-                            data: utf8.encode(_input.text));
-                        return _hex(h);
-                      }),
+                      final h = await hashing.blake3Hash(
+                        data: utf8.encode(_input.text),
+                      );
+                      return _hex(h);
+                    }),
               child: const Text('BLAKE3'),
             ),
             FilledButton(
               onPressed: _loading
                   ? null
                   : () => _run('SHA-3', () async {
-                        final h = await hashing.sha3Hash(
-                            data: utf8.encode(_input.text));
-                        return _hex(h);
-                      }),
+                      final h = await hashing.sha3Hash(
+                        data: utf8.encode(_input.text),
+                      );
+                      return _hex(h);
+                    }),
               child: const Text('SHA-3'),
             ),
             FilledButton(
               onPressed: _loading
                   ? null
-                  : () => _run('Argon2id',
-                      () => argon2IdHash(password: _input.text)),
+                  : () => _run(
+                      'Argon2id',
+                      () => argon2IdHash(password: _input.text),
+                    ),
               child: const Text('Argon2id'),
             ),
             FilledButton.tonal(
@@ -141,15 +145,16 @@ class _HashingTabState extends State<_HashingTab> {
                   ? null
                   : () async {
                       final argonHash = _results['Argon2id'];
-                      if (argonHash == null ||
-                          argonHash.startsWith('Error')) {
+                      if (argonHash == null || argonHash.startsWith('Error')) {
                         _run('Verify', () async => 'Hash first with Argon2id');
                         return;
                       }
                       _run('Verify', () async {
                         try {
                           await argon2IdVerify(
-                              phcHash: argonHash, password: _input.text);
+                            phcHash: argonHash,
+                            password: _input.text,
+                          );
                           return 'PASS - password matches';
                         } catch (_) {
                           return 'FAIL - password does not match';
@@ -161,8 +166,7 @@ class _HashingTabState extends State<_HashingTab> {
           ],
         ),
         if (_loading) const _Loader(),
-        ..._results.entries
-            .map((e) => _ResultCard(e.key, e.value)),
+        ..._results.entries.map((e) => _ResultCard(e.key, e.value)),
       ],
     );
   }
@@ -828,7 +832,8 @@ class _VaultTabState extends State<_VaultTab> {
   Future<void> _refreshCapacity() async {
     if (!_vaultOpen || _handle == null) return;
     final cap = await VaultService.capacity(handle: _handle!);
-    _capacityInfo = 'Total: ${_fmtBytes(cap.totalBytes)}  |  '
+    _capacityInfo =
+        'Total: ${_fmtBytes(cap.totalBytes)}  |  '
         'Used: ${_fmtBytes(cap.usedBytes)}  |  '
         'Free-list: ${_fmtBytes(cap.freeListBytes)}  |  '
         'Unallocated: ${_fmtBytes(cap.unallocatedBytes)}';
@@ -840,7 +845,8 @@ class _VaultTabState extends State<_VaultTab> {
     try {
       final h = await VaultService.health(handle: _handle!);
       final frag = (h.fragmentationRatio * 100).toStringAsFixed(1);
-      _healthInfo = 'Consistent: ${h.isConsistent}\n'
+      _healthInfo =
+          'Consistent: ${h.isConsistent}\n'
           'Segments: ${h.segmentCount}  |  Free regions: ${h.freeRegionCount}\n'
           'Used: ${_fmtBytes(h.usedBytes)}  |  Free-list: ${_fmtBytes(h.freeListBytes)}  |  Unalloc: ${_fmtBytes(h.unallocatedBytes)}\n'
           'Largest free block: ${_fmtBytes(h.largestFreeBlock)}  |  Fragmentation: $frag%';
@@ -856,7 +862,8 @@ class _VaultTabState extends State<_VaultTab> {
     setState(() => _loading = true);
     try {
       final r = await VaultService.defragment(handle: _handle!);
-      _defragInfo = 'Moved: ${r.segmentsMoved} segments  |  '
+      _defragInfo =
+          'Moved: ${r.segmentsMoved} segments  |  '
           'Reclaimed: ${_fmtBytes(r.bytesReclaimed)}  |  '
           'Free regions before: ${r.freeRegionsBefore}';
       _status = 'Defragmentation complete';
@@ -916,9 +923,7 @@ class _VaultTabState extends State<_VaultTab> {
             const SizedBox(width: 6),
             Expanded(
               child: FilledButton.tonal(
-                onPressed: !_vaultOpen || _loading
-                    ? null
-                    : _closeVault,
+                onPressed: !_vaultOpen || _loading ? null : _closeVault,
                 child: const Text('Close'),
               ),
             ),
@@ -940,11 +945,13 @@ class _VaultTabState extends State<_VaultTab> {
             color: Theme.of(context).colorScheme.primaryContainer,
             child: Padding(
               padding: const EdgeInsets.all(10),
-              child: Text(_status,
-                  style: TextStyle(
-                      fontSize: 13,
-                      color:
-                          Theme.of(context).colorScheme.onPrimaryContainer)),
+              child: Text(
+                _status,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
             ),
           ),
 
@@ -953,13 +960,14 @@ class _VaultTabState extends State<_VaultTab> {
             color: Theme.of(context).colorScheme.tertiaryContainer,
             child: Padding(
               padding: const EdgeInsets.all(10),
-              child: Text(_capacityInfo,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onTertiaryContainer)),
+              child: Text(
+                _capacityInfo,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: Theme.of(context).colorScheme.onTertiaryContainer,
+                ),
+              ),
             ),
           ),
 
@@ -986,8 +994,7 @@ class _VaultTabState extends State<_VaultTab> {
             ),
           ),
           const SizedBox(height: 8),
-          Text('Compression',
-              style: Theme.of(context).textTheme.labelMedium),
+          Text('Compression', style: Theme.of(context).textTheme.labelMedium),
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(value: 'None', label: Text('None')),
@@ -1006,35 +1013,40 @@ class _VaultTabState extends State<_VaultTab> {
           const Divider(height: 24),
 
           // Segment list
-          Text('Segments (${_segments.length})',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Segments (${_segments.length})',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           if (_segments.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('No segments yet',
-                  style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'No segments yet',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
-          ..._segments.map((name) => ListTile(
-                dense: true,
-                leading: const Icon(Icons.insert_drive_file, size: 20),
-                title: Text(name),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.visibility, size: 20),
-                      tooltip: 'Read',
-                      onPressed: () => _readSegment(name),
-                    ),
-                    IconButton(
-                      icon:
-                          const Icon(Icons.delete, size: 20, color: Colors.red),
-                      tooltip: 'Delete',
-                      onPressed: () => _deleteSegment(name),
-                    ),
-                  ],
-                ),
-              )),
+          ..._segments.map(
+            (name) => ListTile(
+              dense: true,
+              leading: const Icon(Icons.insert_drive_file, size: 20),
+              title: Text(name),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility, size: 20),
+                    tooltip: 'Read',
+                    onPressed: () => _readSegment(name),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteSegment(name),
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (_readResult.isNotEmpty) _ResultCard('Read', _readResult),
 
           // Maintenance
@@ -1149,17 +1161,19 @@ class _ResultCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
-            SelectableText(value,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(fontFamily: 'monospace')),
+            SelectableText(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+            ),
           ],
         ),
       ),
@@ -1171,9 +1185,9 @@ class _Loader extends StatelessWidget {
   const _Loader();
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
+    padding: EdgeInsets.all(16),
+    child: Center(child: CircularProgressIndicator()),
+  );
 }
 
 String _hex(Uint8List bytes) =>

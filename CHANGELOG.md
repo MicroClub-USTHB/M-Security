@@ -45,6 +45,13 @@ All notable changes to this project will be documented in this file.
 - Segment index size now scales with vault capacity — fixes OOM on large vaults with fixed 64 KB index.
 - pub.dev score improvements.
 
+### Security
+
+- No new information leaks, `index_size` remains deterministic from file size.
+- Enforced index size bounds (64KB-16MB).
+- Added safeguards against excessive memory usage.
+- Header tampering results in authentication failure (no data exposure).
+
 ## 0.3.0 - 2026-03-07
 
 ### Added
