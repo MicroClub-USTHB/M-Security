@@ -123,6 +123,73 @@ class VaultService {
     return rust_evfs.vaultRead(handle: handle, name: name);
   }
 
+  /// Read a named segment. Decompression bytes are sent chunk-by-chunk as they are processed by
+  /// the vault.
+  static Stream<Uint8List> readStream({
+    required rust_types.VaultHandle handle,
+    required String name,
+  }) {
+    final controller = StreamController<Uint8List>();
+    final dataSink = RustStreamSink<Uint8List>();
+    final progressSink = RustStreamSink<double>();
+
+    runZonedGuarded(
+      () {
+        // Forward each plaintext chunk from Rust to the public stream.
+        dataSink.stream.listen(
+          controller.add,
+          onError: (Object e, StackTrace s) {
+            if (!controller.isClosed) {
+              controller.addError(e, s);
+              controller.close();
+            }
+          },
+          onDone: () {
+            // Schedule the close one event-loop turn later so that any
+            // pending error arriving from the vaultReadStream Future
+            // (see catchError below) can still be forwarded before the
+            // controller is closed.
+            Future<void>(() {
+              if (!controller.isClosed) controller.close();
+            });
+          },
+          cancelOnError: true,
+        );
+
+        // Drain the progress sink silently — we expose data chunks, not
+        // progress, through the public Stream<Uint8List> API.
+        progressSink.stream.listen(null);
+
+        // Kick off the Rust streaming read.  Errors from Rust arrive via
+        // the returned Future (executeNormal, not unawaited), so we
+        // forward them with catchError.
+        rust_evfs
+            .vaultReadStream(
+              handle: handle,
+              name: name,
+              verifyChecksum: true,
+              sink: dataSink,
+              onProgress: progressSink,
+            )
+            .catchError((Object e, StackTrace s) {
+              if (!controller.isClosed) {
+                controller.addError(e, s);
+                controller.close();
+              }
+            });
+      },
+      // Safety net for any unexpected zone errors (e.g. internal FRB bugs).
+      (Object e, StackTrace s) {
+        if (!controller.isClosed) {
+          controller.addError(e, s);
+          controller.close();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
   /// Delete a named segment (securely erased from disk).
   static Future<void> delete({
     required rust_types.VaultHandle handle,
