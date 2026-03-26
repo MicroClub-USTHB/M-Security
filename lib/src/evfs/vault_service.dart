@@ -84,11 +84,14 @@ class VaultService {
 
       try {
         await for (final chunk in data) {
+          final prevBytes = bytesReceived;
           bytesReceived += chunk.length;
           if (bytesReceived > totalSize) {
             throw ArgumentError(
               'writeStream: stream overflow — '
-              'received >$bytesReceived bytes but totalSize is $totalSize',
+              'received $bytesReceived bytes '
+              '(chunk of ${chunk.length} at offset $prevBytes) '
+              'but totalSize is $totalSize',
             );
           }
           await raf.writeFrom(chunk);
@@ -142,14 +145,22 @@ class VaultService {
     required String name,
     void Function(double progress)? onProgress,
   }) {
-    final controller = StreamController<Uint8List>();
     final dataSink = RustStreamSink<Uint8List>();
     final progressSink = RustStreamSink<double>();
+    StreamSubscription<Uint8List>? dataSub;
+    StreamSubscription<double>? progressSub;
+
+    final controller = StreamController<Uint8List>(
+      onCancel: () {
+        dataSub?.cancel();
+        progressSub?.cancel();
+      },
+    );
 
     runZonedGuarded(
       () {
         // Forward each plaintext chunk from Rust to the public stream.
-        dataSink.stream.listen(
+        dataSub = dataSink.stream.listen(
           controller.add,
           onError: (Object e, StackTrace s) {
             if (!controller.isClosed) {
@@ -170,7 +181,9 @@ class VaultService {
         );
 
         // Forward progress to caller if provided, otherwise drain silently.
-        progressSink.stream.listen(onProgress);
+        if (onProgress != null) {
+          progressSub = progressSink.stream.listen(onProgress);
+        }
 
         // Kick off the Rust streaming read.  Errors from Rust arrive via
         // the returned Future (executeNormal, not unawaited), so we

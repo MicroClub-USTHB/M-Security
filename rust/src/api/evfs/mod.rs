@@ -506,7 +506,9 @@ pub fn vault_write_stream(
 
     for mut input in data_stream {
         hasher.update(&input);
-        total_received += input.len() as u64;
+        total_received = total_received
+            .checked_add(input.len() as u64)
+            .ok_or_else(|| CryptoError::InvalidParameter("stream size overflow".into()))?;
 
         if total_received > total_plaintext_size {
             input.zeroize();
@@ -569,6 +571,9 @@ pub fn vault_write_stream(
     padded.zeroize();
     final_result?;
 
+    // Single durability barrier after all chunks — WAL provides atomicity
+    handle.file.sync_all()?;
+
     let actual_chunks = chunk_index + 1;
     if actual_chunks != expected_chunks as u64 {
         return Err(CryptoError::VaultCorrupted(format!(
@@ -599,6 +604,7 @@ pub fn vault_write_stream(
     )?;
 
     handle.wal.commit()?;
+    handle.wal.checkpoint()?;
 
     Ok(())
 }
@@ -623,7 +629,11 @@ pub fn vault_write_file(
     file.seek(SeekFrom::Start(0))?;
 
     let mut bytes_read: u64 = 0;
+    let mut read_error: Option<std::io::Error> = None;
     let data_stream = std::iter::from_fn(|| {
+        if read_error.is_some() {
+            return None;
+        }
         let mut buf = vec![0u8; CHUNK_SIZE];
         match file.read(&mut buf) {
             Ok(0) => None,
@@ -635,11 +645,23 @@ pub fn vault_write_file(
                 }
                 Some(buf)
             }
-            Err(_) => None,
+            Err(e) => {
+                read_error = Some(e);
+                None
+            }
         }
     });
 
-    vault_write_stream(handle, name, file_size, data_stream)?;
+    let result = vault_write_stream(handle, name, file_size, data_stream);
+
+    // Surface the real I/O error instead of a misleading "stream underflow"
+    if let Some(io_err) = read_error {
+        return Err(CryptoError::IoError(format!(
+            "read error on '{file_path}': {io_err}"
+        )));
+    }
+    result?;
+
     let _ = on_progress.add(1.0);
     Ok(())
 }
@@ -689,7 +711,6 @@ fn write_encrypted_chunk(
 
     file.seek(SeekFrom::Start(abs_offset))?;
     file.write_all(&wire)?;
-    file.sync_all()?;
 
     Ok(())
 }

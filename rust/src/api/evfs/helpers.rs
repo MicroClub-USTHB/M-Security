@@ -123,9 +123,10 @@ pub(crate) fn decrypt_streaming_chunks(
     let mut decomp_buf = Vec::with_capacity(crate::core::streaming::CHUNK_SIZE * 2);
 
     for i in 0..chunk_count {
-        let chunk_offset = data_region
-            + seg_offset
-            + (i as u64 * crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64);
+        let chunk_offset = (i as u64)
+            .checked_mul(crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64)
+            .and_then(|co| data_region.checked_add(seg_offset)?.checked_add(co))
+            .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))?;
         file.seek(SeekFrom::Start(chunk_offset))?;
 
         let mut encrypted = vec![0u8; crate::core::streaming::ENCRYPTED_CHUNK_SIZE];
