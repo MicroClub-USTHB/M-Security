@@ -1018,9 +1018,8 @@ void main() {
       });
 
       test(
-        'readStream emits multiple chunks for large streaming segment',
+        'progress reporting during stream-write and stream-read',
         () async {
-          // Verifies that data actually arrives incrementally, not as one blob.
           final path = '${tempDir.path}/progress.vault';
           final key = await generateAes256GcmKey();
           const dataSize = 512 * 1024; // 512 KB = 8 × 64 KB chunks
@@ -1033,26 +1032,45 @@ void main() {
             capacityBytes: 4 * 1024 * 1024,
           );
 
+          // Track write progress.
+          final writeProgress = <double>[];
           await VaultService.writeStream(
             handle: handle,
-            name: 'chunked.bin',
+            name: 'progress.bin',
             totalSize: dataSize,
             data: Stream.fromIterable(
               List.generate(dataSize ~/ chunkSize, (_) => Uint8List(chunkSize)),
             ),
+            onProgress: writeProgress.add,
           );
 
+          // Write progress: monotonically increasing, ending at 1.0.
+          expect(writeProgress, isNotEmpty);
+          expect(writeProgress.last, 1.0);
+          for (int i = 1; i < writeProgress.length; i++) {
+            expect(writeProgress[i], greaterThanOrEqualTo(writeProgress[i - 1]));
+          }
+
+          // Track read progress.
+          final readProgress = <double>[];
           final chunkLengths = <int>[];
           await for (final chunk in VaultService.readStream(
             handle: handle,
-            name: 'chunked.bin',
+            name: 'progress.bin',
+            onProgress: readProgress.add,
           )) {
             chunkLengths.add(chunk.length);
           }
 
-          // Must have received more than one chunk.
+          // Read progress: monotonically increasing, ending at 1.0.
+          expect(readProgress, isNotEmpty);
+          expect(readProgress.last, 1.0);
+          for (int i = 1; i < readProgress.length; i++) {
+            expect(readProgress[i], greaterThanOrEqualTo(readProgress[i - 1]));
+          }
+
+          // Data arrives as multiple chunks with correct total.
           expect(chunkLengths.length, greaterThan(1));
-          // Total byte count must be exact.
           expect(chunkLengths.fold(0, (a, b) => a + b), dataSize);
 
           await VaultService.close(handle: handle);

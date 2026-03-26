@@ -64,11 +64,14 @@ class VaultService {
   /// Pipes [data] through a temporary file on disk so that Dart RAM usage
   /// is bounded to a single chunk. [totalSize] must equal the exact number
   /// of bytes that [data] will emit.
+  ///
+  /// [onProgress] is called with values in (0.0, 1.0] as chunks are encrypted.
   static Future<void> writeStream({
     required rust_types.VaultHandle handle,
     required String name,
     required int totalSize,
     required Stream<Uint8List> data,
+    void Function(double progress)? onProgress,
   }) async {
     final tempDir = await Directory.systemTemp.createTemp('vault_write_stream');
     final tempFile = File('${tempDir.path}/payload.bin');
@@ -103,13 +106,21 @@ class VaultService {
 
       // Delegate to vaultWriteFile which reads the temp file in 64 KB chunks
       // inside Rust — keeping the end-to-end memory footprint bounded.
-      await _guardedStream(
+      final progressStream = _guardedStream(
         () => rust_evfs.vaultWriteFile(
           handle: handle,
           name: name,
           filePath: tempFile.path,
         ),
-      ).drain<void>();
+      );
+
+      if (onProgress != null) {
+        await for (final p in progressStream) {
+          onProgress(p);
+        }
+      } else {
+        await progressStream.drain<void>();
+      }
     } finally {
       await tempDir.delete(recursive: true);
     }
@@ -123,11 +134,13 @@ class VaultService {
     return rust_evfs.vaultRead(handle: handle, name: name);
   }
 
-  /// Read a named segment. Decompression bytes are sent chunk-by-chunk as they are processed by
-  /// the vault.
+  /// Read a named segment as a stream of decrypted chunks.
+  ///
+  /// [onProgress] is called with values in (0.0, 1.0] as chunks are decrypted.
   static Stream<Uint8List> readStream({
     required rust_types.VaultHandle handle,
     required String name,
+    void Function(double progress)? onProgress,
   }) {
     final controller = StreamController<Uint8List>();
     final dataSink = RustStreamSink<Uint8List>();
@@ -156,9 +169,8 @@ class VaultService {
           cancelOnError: true,
         );
 
-        // Drain the progress sink silently — we expose data chunks, not
-        // progress, through the public Stream<Uint8List> API.
-        progressSink.stream.listen(null);
+        // Forward progress to caller if provided, otherwise drain silently.
+        progressSink.stream.listen(onProgress);
 
         // Kick off the Rust streaming read.  Errors from Rust arrive via
         // the returned Future (executeNormal, not unawaited), so we
