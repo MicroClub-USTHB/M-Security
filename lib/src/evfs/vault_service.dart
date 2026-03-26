@@ -145,8 +145,6 @@ class VaultService {
     required String name,
     void Function(double progress)? onProgress,
   }) {
-    final dataSink = RustStreamSink<Uint8List>();
-    final progressSink = RustStreamSink<double>();
     StreamSubscription<Uint8List>? dataSub;
     StreamSubscription<double>? progressSub;
 
@@ -159,7 +157,20 @@ class VaultService {
 
     runZonedGuarded(
       () {
-        // Forward each plaintext chunk from Rust to the public stream.
+        final dataSink = RustStreamSink<Uint8List>();
+        final progressSink = RustStreamSink<double>();
+
+        // Kick off the Rust call first — this triggers setupAndSerialize
+        // on both sinks, initializing their internal streams.
+        final rustFuture = rust_evfs.vaultReadStream(
+          handle: handle,
+          name: name,
+          verifyChecksum: true,
+          sink: dataSink,
+          onProgress: progressSink,
+        );
+
+        // Now that FRB has serialized the sinks, .stream is available.
         dataSub = dataSink.stream.listen(
           controller.add,
           onError: (Object e, StackTrace s) {
@@ -171,8 +182,7 @@ class VaultService {
           onDone: () {
             // Schedule the close one event-loop turn later so that any
             // pending error arriving from the vaultReadStream Future
-            // (see catchError below) can still be forwarded before the
-            // controller is closed.
+            // can still be forwarded before the controller is closed.
             Future<void>(() {
               if (!controller.isClosed) controller.close();
             });
@@ -180,28 +190,16 @@ class VaultService {
           cancelOnError: true,
         );
 
-        // Forward progress to caller if provided, otherwise drain silently.
         if (onProgress != null) {
           progressSub = progressSink.stream.listen(onProgress);
         }
 
-        // Kick off the Rust streaming read.  Errors from Rust arrive via
-        // the returned Future (executeNormal, not unawaited), so we
-        // forward them with catchError.
-        rust_evfs
-            .vaultReadStream(
-              handle: handle,
-              name: name,
-              verifyChecksum: true,
-              sink: dataSink,
-              onProgress: progressSink,
-            )
-            .catchError((Object e, StackTrace s) {
-              if (!controller.isClosed) {
-                controller.addError(e, s);
-                controller.close();
-              }
-            });
+        rustFuture.catchError((Object e, StackTrace s) {
+          if (!controller.isClosed) {
+            controller.addError(e, s);
+            controller.close();
+          }
+        });
       },
       // Safety net for any unexpected zone errors (e.g. internal FRB bugs).
       (Object e, StackTrace s) {
