@@ -1,7 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_rust_bridge/flutter_rust_bridge.dart'
+    show RustStreamSink;
 import 'package:m_security/src/rust/api/evfs.dart' as rust_evfs;
 import 'package:m_security/src/rust/api/evfs/types.dart' as rust_types;
 import 'package:m_security/src/rust/api/compression.dart';
-import 'dart:typed_data';
 
 /// Encrypted Virtual File System — named segment storage in a .vault container.
 ///
@@ -52,6 +57,62 @@ class VaultService {
       data: data,
       compression: compression,
     );
+  }
+
+  /// Write a named segment from a Dart [Stream<Uint8List>].
+  ///
+  /// Pipes [data] through a temporary file on disk so that Dart RAM usage
+  /// is bounded to a single chunk. [totalSize] must equal the exact number
+  /// of bytes that [data] will emit.
+  static Future<void> writeStream({
+    required rust_types.VaultHandle handle,
+    required String name,
+    required int totalSize,
+    required Stream<Uint8List> data,
+  }) async {
+    final tempDir = await Directory.systemTemp.createTemp('vault_write_stream');
+    final tempFile = File('${tempDir.path}/payload.bin');
+
+    try {
+      // Write each incoming chunk straight to disk — only one chunk lives in
+      // Dart memory at a time.
+      final raf = await tempFile.open(mode: FileMode.writeOnly);
+      int bytesReceived = 0;
+
+      try {
+        await for (final chunk in data) {
+          bytesReceived += chunk.length;
+          if (bytesReceived > totalSize) {
+            throw ArgumentError(
+              'writeStream: stream overflow — '
+              'received >$bytesReceived bytes but totalSize is $totalSize',
+            );
+          }
+          await raf.writeFrom(chunk);
+        }
+      } finally {
+        await raf.close();
+      }
+
+      if (bytesReceived != totalSize) {
+        throw ArgumentError(
+          'writeStream: stream underflow — '
+          'received $bytesReceived bytes but totalSize is $totalSize',
+        );
+      }
+
+      // Delegate to vaultWriteFile which reads the temp file in 64 KB chunks
+      // inside Rust — keeping the end-to-end memory footprint bounded.
+      await _guardedStream(
+        () => rust_evfs.vaultWriteFile(
+          handle: handle,
+          name: name,
+          filePath: tempFile.path,
+        ),
+      ).drain<void>();
+    } finally {
+      await tempDir.delete(recursive: true);
+    }
   }
 
   /// Read a named segment. Decompression is automatic.
@@ -117,5 +178,32 @@ class VaultService {
   /// Close the vault (release lock, zeroize keys).
   static Future<void> close({required rust_types.VaultHandle handle}) {
     return rust_evfs.vaultClose(handle: handle);
+  }
+
+  // Same one from compression_service.dart
+  static Stream<double> _guardedStream(Stream<double> Function() factory) {
+    final controller = StreamController<double>();
+    runZonedGuarded(
+      () {
+        factory().listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: () {
+            // FRB delivers zone errors after the stream closes; delay the
+            // controller close by one event-loop turn so they arrive first.
+            Future<void>(() {
+              if (!controller.isClosed) controller.close();
+            });
+          },
+        );
+      },
+      (Object error, StackTrace stack) {
+        if (!controller.isClosed) {
+          controller.addError(error, stack);
+          controller.close();
+        }
+      },
+    );
+    return controller.stream;
   }
 }
