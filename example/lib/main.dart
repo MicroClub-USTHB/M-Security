@@ -610,10 +610,13 @@ class _VaultTabState extends State<_VaultTab> {
   List<String> _segments = [];
   String _readResult = '';
   String _capacityInfo = '';
+  String _healthInfo = '';
+  String _defragInfo = '';
   double _streamProgress = 0;
   bool _loading = false;
   bool _vaultOpen = false;
   String _compAlgo = 'Zstd';
+  final _resizeMb = TextEditingController(text: '10');
 
   rust_evfs_types.VaultHandle? _handle;
   Uint8List? _key;
@@ -651,6 +654,8 @@ class _VaultTabState extends State<_VaultTab> {
       _segments = [];
       _readResult = '';
       _capacityInfo = '';
+      _healthInfo = '';
+      _defragInfo = '';
       _status = 'Vault closed';
     } catch (e) {
       _status = 'Error: $e';
@@ -829,6 +834,56 @@ class _VaultTabState extends State<_VaultTab> {
         'Unallocated: ${_fmtBytes(cap.unallocatedBytes)}';
   }
 
+  Future<void> _healthCheck() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      final h = await VaultService.health(handle: _handle!);
+      final frag = (h.fragmentationRatio * 100).toStringAsFixed(1);
+      _healthInfo = 'Consistent: ${h.isConsistent}\n'
+          'Segments: ${h.segmentCount}  |  Free regions: ${h.freeRegionCount}\n'
+          'Used: ${_fmtBytes(h.usedBytes)}  |  Free-list: ${_fmtBytes(h.freeListBytes)}  |  Unalloc: ${_fmtBytes(h.unallocatedBytes)}\n'
+          'Largest free block: ${_fmtBytes(h.largestFreeBlock)}  |  Fragmentation: $frag%';
+      _status = 'Health check complete';
+    } catch (e) {
+      _healthInfo = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _defragVault() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      final r = await VaultService.defragment(handle: _handle!);
+      _defragInfo = 'Moved: ${r.segmentsMoved} segments  |  '
+          'Reclaimed: ${_fmtBytes(r.bytesReclaimed)}  |  '
+          'Free regions before: ${r.freeRegionsBefore}';
+      _status = 'Defragmentation complete';
+      await _refreshCapacity();
+    } catch (e) {
+      _defragInfo = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _resizeVault() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      final newMb = int.tryParse(_resizeMb.text) ?? 10;
+      await VaultService.resize(
+        handle: _handle!,
+        newCapacityBytes: newMb * 1024 * 1024,
+      );
+      _status = 'Vault resized to ${newMb}MB';
+      await _refreshCapacity();
+    } catch (e) {
+      _status = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -981,6 +1036,51 @@ class _VaultTabState extends State<_VaultTab> {
                 ),
               )),
           if (_readResult.isNotEmpty) _ResultCard('Read', _readResult),
+
+          // Maintenance
+          const Divider(height: 24),
+          Text('Maintenance', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: _loading ? null : _healthCheck,
+                  child: const Text('Health'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: _loading ? null : _defragVault,
+                  child: const Text('Defrag'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _resizeMb,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'New size (MB)',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              FilledButton.tonal(
+                onPressed: _loading ? null : _resizeVault,
+                child: const Text('Resize'),
+              ),
+            ],
+          ),
+          if (_healthInfo.isNotEmpty) _ResultCard('Health', _healthInfo),
+          if (_defragInfo.isNotEmpty) _ResultCard('Defrag', _defragInfo),
 
           const Divider(height: 24),
 
