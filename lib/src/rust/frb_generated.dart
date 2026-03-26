@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 187783673;
+  int get rustContentHash => 2084471439;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -270,6 +270,14 @@ abstract class RustLibApi extends BaseApi {
     required String name,
   });
 
+  Future<void> crateApiEvfsVaultReadStream({
+    required VaultHandle handle,
+    required String name,
+    required bool verifyChecksum,
+    required RustStreamSink<Uint8List> sink,
+    required RustStreamSink<double> onProgress,
+  });
+
   Future<void> crateApiEvfsVaultResize({
     required VaultHandle handle,
     required BigInt newCapacity,
@@ -280,6 +288,12 @@ abstract class RustLibApi extends BaseApi {
     required String name,
     required List<int> data,
     CompressionConfig? compression,
+  });
+
+  Stream<double> crateApiEvfsVaultWriteFile({
+    required VaultHandle handle,
+    required String name,
+    required String filePath,
   });
 
   RustArcIncrementStrongCountFnType
@@ -1824,6 +1838,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiEvfsVaultReadStream({
+    required VaultHandle handle,
+    required String name,
+    required bool verifyChecksum,
+    required RustStreamSink<Uint8List> sink,
+    required RustStreamSink<double> onProgress,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(name, serializer);
+          sse_encode_bool(verifyChecksum, serializer);
+          sse_encode_StreamSink_list_prim_u_8_strict_Sse(sink, serializer);
+          sse_encode_StreamSink_f_64_Sse(onProgress, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 45,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultReadStreamConstMeta,
+        argValues: [handle, name, verifyChecksum, sink, onProgress],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultReadStreamConstMeta =>
+      const TaskConstMeta(
+        debugName: "vault_read_stream",
+        argNames: ["handle", "name", "verifyChecksum", "sink", "onProgress"],
+      );
+
+  @override
   Future<void> crateApiEvfsVaultResize({
     required VaultHandle handle,
     required BigInt newCapacity,
@@ -1840,7 +1898,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 45,
+            funcId: 46,
             port: port_,
           );
         },
@@ -1884,7 +1942,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 46,
+            funcId: 47,
             port: port_,
           );
         },
@@ -1902,6 +1960,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiEvfsVaultWriteConstMeta => const TaskConstMeta(
     debugName: "vault_write",
     argNames: ["handle", "name", "data", "compression"],
+  );
+
+  @override
+  Stream<double> crateApiEvfsVaultWriteFile({
+    required VaultHandle handle,
+    required String name,
+    required String filePath,
+  }) {
+    final onProgress = RustStreamSink<double>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+              handle,
+              serializer,
+            );
+            sse_encode_String(name, serializer);
+            sse_encode_String(filePath, serializer);
+            sse_encode_StreamSink_f_64_Sse(onProgress, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 48,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_crypto_error,
+          ),
+          constMeta: kCrateApiEvfsVaultWriteFileConstMeta,
+          argValues: [handle, name, filePath, onProgress],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return onProgress.stream;
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultWriteFileConstMeta => const TaskConstMeta(
+    debugName: "vault_write_file",
+    argNames: ["handle", "name", "filePath", "onProgress"],
   );
 
   RustArcIncrementStrongCountFnType
@@ -2026,6 +2128,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Sse(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -2377,6 +2487,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
+  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2801,6 +2919,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.setupAndSerialize(
         codec: SseCodec(
           decodeSuccessData: sse_decode_f_64,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_list_prim_u_8_strict_Sse(
+    RustStreamSink<Uint8List> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),

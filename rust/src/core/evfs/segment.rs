@@ -100,6 +100,61 @@ pub fn derive_segment_nonce(
 }
 
 // ---------------------------------------------------------------------------
+// Streaming segment support (per-chunk nonce + AAD)
+// ---------------------------------------------------------------------------
+
+/// Per-chunk AAD for vault streaming segments.
+///
+/// Extends standalone `ChunkAad` with `generation` to bind each chunk to its
+/// specific segment write, preventing cross-segment splice attacks.
+///
+/// Wire format: `[generation: u64 LE] [chunk_index: u64 LE] [is_final: u8]` = 17 bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VaultChunkAad {
+    pub generation: u64,
+    pub chunk_index: u64,
+    pub is_final: bool,
+}
+
+/// Wire size of `VaultChunkAad`.
+pub const VAULT_CHUNK_AAD_SIZE: usize = 17;
+
+impl VaultChunkAad {
+    pub fn to_bytes(self) -> [u8; VAULT_CHUNK_AAD_SIZE] {
+        let mut buf = [0u8; VAULT_CHUNK_AAD_SIZE];
+        buf[0..8].copy_from_slice(&self.generation.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.chunk_index.to_le_bytes());
+        buf[16] = u8::from(self.is_final);
+        buf
+    }
+}
+
+/// Derive a unique nonce for a specific chunk within a streaming segment.
+///
+/// Uses a domain-separated HKDF info (`0x01 || chunk_index || generation`)
+/// to ensure chunk nonces never collide with monolithic segment nonces
+/// (which use `segment_index || generation` without a domain prefix).
+pub fn derive_chunk_nonce(
+    nonce_key: &[u8],
+    chunk_index: u64,
+    generation: u64,
+) -> Result<Vec<u8>, CryptoError> {
+    let hk = Hkdf::<Sha256>::from_prk(nonce_key)
+        .map_err(|_| CryptoError::KdfFailed("nonce_key too short for HKDF-PRK".into()))?;
+
+    // 17-byte info: domain(1) || chunk_index(LE8) || generation(LE8)
+    let mut info = [0u8; 17];
+    info[0] = 0x01;
+    info[1..9].copy_from_slice(&chunk_index.to_le_bytes());
+    info[9..17].copy_from_slice(&generation.to_le_bytes());
+
+    let mut nonce = vec![0u8; NONCE_LEN];
+    hk.expand(&info, &mut nonce)
+        .map_err(|_| CryptoError::KdfFailed("HKDF expand failed for chunk nonce".into()))?;
+    Ok(nonce)
+}
+
+// ---------------------------------------------------------------------------
 // AEAD helpers (algorithm dispatch)
 // ---------------------------------------------------------------------------
 
@@ -222,6 +277,20 @@ fn aead_decrypt_chacha(
 // AEAD helpers for vault API (random nonce, stored nonce)
 // ---------------------------------------------------------------------------
 
+/// Encrypt with a caller-supplied nonce. Returns `ciphertext || tag`.
+///
+/// Used by vault streaming writes where the nonce is derived deterministically
+/// and prepended by the caller.
+pub fn aead_encrypt_with_key(
+    key: &[u8],
+    nonce: &[u8],
+    plaintext: &[u8],
+    aad: &[u8],
+    algorithm: Algorithm,
+) -> Result<Vec<u8>, CryptoError> {
+    aead_encrypt(key, nonce, plaintext, aad, algorithm)
+}
+
 /// Encrypt with a random nonce. Returns `nonce || ciphertext || tag`.
 pub fn aead_encrypt_random_nonce(
     key: &[u8],
@@ -237,6 +306,41 @@ pub fn aead_encrypt_random_nonce(
     output.extend_from_slice(&nonce);
     output.extend_from_slice(&ct_tag);
     Ok(output)
+}
+
+/// Decrypt a single vault streaming chunk.
+///
+/// Input is `nonce || ciphertext || tag`. The stored nonce is verified
+/// against the derived chunk nonce using constant-time comparison.
+pub fn decrypt_vault_chunk(
+    cipher_key: &[u8],
+    nonce_key: &[u8],
+    algorithm: Algorithm,
+    chunk_data: &[u8],
+    chunk_index: u64,
+    generation: u64,
+    is_final: bool,
+) -> Result<Vec<u8>, CryptoError> {
+    if chunk_data.len() < NONCE_LEN + TAG_LEN {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+
+    let (stored_nonce, ct_tag) = chunk_data.split_at(NONCE_LEN);
+
+    // Verify nonce matches derived value
+    let expected_nonce = derive_chunk_nonce(nonce_key, chunk_index, generation)?;
+    if stored_nonce.ct_ne(&expected_nonce).into() {
+        return Err(CryptoError::AuthenticationFailed);
+    }
+
+    let aad = VaultChunkAad {
+        generation,
+        chunk_index,
+        is_final,
+    }
+    .to_bytes();
+
+    aead_decrypt(cipher_key, stored_nonce, ct_tag, &aad, algorithm)
 }
 
 /// Decrypt data where the nonce is stored as a prefix.
@@ -907,5 +1011,82 @@ mod tests {
         let mut after = vec![0u8; 256];
         file.read_exact(&mut after).expect("read");
         assert_eq!(after, vec![0xAA; 256]);
+    }
+
+    // -- Chunk nonce derivation (streaming segments) ------------------------
+
+    #[test]
+    fn test_chunk_nonce_deterministic() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n2 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        assert_eq!(n1, n2);
+        assert_eq!(n1.len(), NONCE_LEN);
+    }
+
+    #[test]
+    fn test_chunk_nonce_unique_per_chunk() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n0 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 1, 0).expect("nonce");
+        let n2 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 2, 0).expect("nonce");
+        assert_ne!(n0, n1);
+        assert_ne!(n1, n2);
+        assert_ne!(n0, n2);
+    }
+
+    #[test]
+    fn test_chunk_nonce_unique_per_generation() {
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let n_gen0 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 0).expect("nonce");
+        let n_gen1 = derive_chunk_nonce(keys.nonce_key.as_bytes(), 0, 1).expect("nonce");
+        assert_ne!(n_gen0, n_gen1);
+    }
+
+    #[test]
+    fn test_chunk_nonce_domain_separation() {
+        // derive_chunk_nonce uses a domain-separated HKDF info, so it must
+        // NOT produce the same nonce as derive_segment_nonce with identical
+        // (index, generation) params. This prevents nonce collisions between
+        // monolithic segments and streaming chunk nonces.
+        let keys = derive_vault_keys(&test_master_key()).expect("derive");
+        let chunk = derive_chunk_nonce(keys.nonce_key.as_bytes(), 42, 7).expect("chunk");
+        let segment =
+            derive_segment_nonce(keys.nonce_key.as_bytes(), 42, 7, NONCE_LEN).expect("segment");
+        assert_ne!(chunk, segment);
+    }
+
+    #[test]
+    fn test_vault_chunk_aad_wire_format() {
+        let aad = VaultChunkAad {
+            generation: 3,
+            chunk_index: 99,
+            is_final: true,
+        };
+        let bytes = aad.to_bytes();
+        assert_eq!(bytes.len(), VAULT_CHUNK_AAD_SIZE);
+        // generation = 3 LE
+        assert_eq!(
+            u64::from_le_bytes(bytes[0..8].try_into().expect("valid slice")),
+            3
+        );
+        // chunk_index = 99 LE
+        assert_eq!(
+            u64::from_le_bytes(bytes[8..16].try_into().expect("valid slice")),
+            99
+        );
+        // is_final = true
+        assert_eq!(bytes[16], 1);
+    }
+
+    #[test]
+    fn test_vault_chunk_aad_not_final() {
+        let aad = VaultChunkAad {
+            generation: 0,
+            chunk_index: 0,
+            is_final: false,
+        };
+        let bytes = aad.to_bytes();
+        assert_eq!(bytes[16], 0);
     }
 }

@@ -2,37 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## Unreleased
+## [0.3.2] - 2026-03-26
 
 ### Added
 
-### Changed
+- `vault_write_stream()` for constant-memory chunked segment writes — encrypts data in 64 KB chunks without loading the full segment into RAM.
+- `vault_read_stream()` for chunked segment reads via `StreamSink` — delivers decrypted data as a stream of byte chunks.
+- Per-chunk AEAD encryption with domain-separated nonce derivation (`0x01` prefix, chunk index, generation) — provably disjoint from monolithic nonce space.
+- `VaultChunkAad` struct binding generation and chunk position to each chunk's authentication tag (cross-segment splice defense).
+- `vault_write_file()` FRB-callable wrapper that reads a file in 64 KB chunks and pipes into `vault_write_stream`.
+- Dart `VaultService.writeStream()` — accepts a `Stream<Uint8List>`, buffers to a temp file, and delegates to Rust for bounded-memory encryption.
+- Dart `VaultService.readStream()` — returns a `Stream<Uint8List>` of decrypted chunks with optional `onProgress` callback.
+- Streaming interop: segments written via streaming can be read one-shot (and vice versa).
+- Integration tests for streaming: 10 MB roundtrip, write/read interop, progress reporting, error handling, and 50 MB memory-bounded validation.
+- Example app streaming I/O section in the Vault tab — stream-write and stream-read with configurable size and live progress bar.
 
 ### Fixed
 
-## 0.3.1 - 2026-03-18
+- Checked arithmetic in `decrypt_streaming_chunks` read path — prevents wrong-region reads from crafted chunk counts.
+- I/O errors in `vault_write_file` now surface as `CryptoError::IoError` instead of a misleading "stream underflow" message.
+- `total_received` accumulation uses `checked_add` to prevent silent overflow on pathological input.
+- Per-chunk `fsync` replaced with a single post-loop durability barrier — reduces streaming write I/O from O(N) fsyncs to O(1).
+- WAL checkpoint after streaming write commit — prevents unbounded WAL growth.
+- `readStream` cancellation leak — `onCancel` handler now cleans up data and progress subscriptions.
+- Overflow error message now reports exact byte count, chunk size, and offset for easier debugging.
+
+## [0.3.1] - 2026-03-16
 
 ### Added
 
-- Vault defragmentation with crash-safe WAL operations and secure erase.
-- Vault resize (grow/shrink) with safe data relocation.
-- Vault health check with consistency invariant (`used + free_list + unallocated == total`).
-- Dynamic index sizing that scales with capacity (64KB per MB, min 64KB, max 16MB).
-- Dart `VaultService` wrappers for `defragment()`, `resize()`, and `health()`.
+- Vault defragmentation: `vault_defragment()` compacts segments toward data region start, coalescing all free space with per-move WAL protection and post-commit secure erase.
+- Vault resize: `vault_resize()` grows or shrinks vault capacity, relocating shadow index and WAL region.
+- Vault health check: `vault_health()` returns `VaultHealthInfo` with fragmentation %, free region count, largest contiguous block, and consistency invariant.
+- Dynamic index sizing: `compute_index_size(capacity)` scales segment index proportionally (64 KB per MB, min 64 KB, max 16 MB cap) — replaces fixed 64 KB `INDEX_PAD_SIZE`.
+- Dart `VaultService.defragment()`, `VaultService.resize()`, and `VaultService.health()` wrappers with integration tests.
+- Example app vault maintenance UI (defrag, resize, health).
 
-### Changed
+### Fixed
 
-- Improved crash safety during persistence operations.
-- Strengthened bounds checks and memory allocation limits.
-- Internal bindings regenerated and validated.
+- Nonce reuse prevention after WAL recovery by hardening defrag backup path.
+- Resize and defrag crash recovery hardening (fsync ordering, OOM guard, bounds check, health invariant overflow-safe check).
+- Segment index size now scales with vault capacity — fixes OOM on large vaults with fixed 64 KB index.
+- pub.dev score improvements.
 
 ### Security
 
 - No new information leaks, `index_size` remains deterministic from file size.
-- Enforced index size bounds (64KB–16MB).
+- Enforced index size bounds (64KB-16MB).
 - Added safeguards against excessive memory usage.
 - Header tampering results in authentication failure (no data exposure).
 
