@@ -2121,6 +2121,7 @@ fn test_stream_write_coexists_with_monolithic() {
 // -- Streaming Read (via decrypt_streaming_chunks) --------------------------
 
 /// Helper: stream-read all chunks into a Vec, returning (data, chunk_indices, checksum).
+#[allow(clippy::type_complexity)]
 fn stream_read_chunks(
     handle: &mut VaultHandle,
     name: &str,

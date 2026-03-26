@@ -70,6 +70,20 @@ Future<void> vaultReadStream({
   onProgress: onProgress,
 );
 
+/// Write a file into the vault as a streaming segment.
+///
+/// Reads `file_path` in 64KB chunks and encrypts each independently.
+/// This is the FRB-callable wrapper around `vault_write_stream`.
+Stream<double> vaultWriteFile({
+  required VaultHandle handle,
+  required String name,
+  required String filePath,
+}) => RustLib.instance.api.crateApiEvfsVaultWriteFile(
+  handle: handle,
+  name: name,
+  filePath: filePath,
+);
+
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
 Future<void> vaultDelete({required VaultHandle handle, required String name}) =>

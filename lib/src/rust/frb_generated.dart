@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -397954733;
+  int get rustContentHash => 2084471439;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -288,6 +288,12 @@ abstract class RustLibApi extends BaseApi {
     required String name,
     required List<int> data,
     CompressionConfig? compression,
+  });
+
+  Stream<double> crateApiEvfsVaultWriteFile({
+    required VaultHandle handle,
+    required String name,
+    required String filePath,
   });
 
   RustArcIncrementStrongCountFnType
@@ -1954,6 +1960,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiEvfsVaultWriteConstMeta => const TaskConstMeta(
     debugName: "vault_write",
     argNames: ["handle", "name", "data", "compression"],
+  );
+
+  @override
+  Stream<double> crateApiEvfsVaultWriteFile({
+    required VaultHandle handle,
+    required String name,
+    required String filePath,
+  }) {
+    final onProgress = RustStreamSink<double>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+              handle,
+              serializer,
+            );
+            sse_encode_String(name, serializer);
+            sse_encode_String(filePath, serializer);
+            sse_encode_StreamSink_f_64_Sse(onProgress, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 48,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_crypto_error,
+          ),
+          constMeta: kCrateApiEvfsVaultWriteFileConstMeta,
+          argValues: [handle, name, filePath, onProgress],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return onProgress.stream;
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultWriteFileConstMeta => const TaskConstMeta(
+    debugName: "vault_write_file",
+    argNames: ["handle", "name", "filePath", "onProgress"],
   );
 
   RustArcIncrementStrongCountFnType
