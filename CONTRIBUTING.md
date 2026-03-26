@@ -16,13 +16,14 @@ Thank you for your interest in contributing to M-Security! This project is built
 
 ## Project Vision
 
-M-Security aims to be a complete security toolkit for Flutter. The current release (v0.3.1) includes the cryptographic foundation, streaming encryption, compression, EVFS v2 (defragmentation, resize, health check), and an encrypted virtual file system. Future releases will continue building on top of it:
+M-Security aims to be a complete security toolkit for Flutter. The current release (v0.3.2) includes the cryptographic foundation, streaming encryption, compression, EVFS v2 (defragmentation, resize, health check), EVFS v3 (streaming I/O), and an encrypted virtual file system. Future releases will continue building on top of it:
 
 1. **Cryptographic primitives** (v0.1.0): AEAD encryption, hashing, password hashing, key derivation
 2. **Streaming, compression, and EVFS** (v0.3.0): Chunk-based streaming encryption with progress callbacks, Zstd/Brotli compression pipeline, `.vault` container with named segments, WAL crash recovery, shadow index, and secure deletion
-3. **EVFS v2: Defrag, resize, health** (v0.3.1, current): Vault defragmentation with per-move WAL crash safety, vault resize (grow/shrink) with shadow index + WAL relocation, vault health check with consistency invariant, dynamic index sizing
-3. **Stealth storage** (planned): Ephemeral secrets in Rust-managed memory with derived-path obfuscation
-4. **Hardware integration** (planned): Key wrap with Secure Enclave (iOS) / KeyStore (Android), biometric unlock flow (FaceID/Fingerprint), native Swift/Kotlin bridge layer
+3. **EVFS v2: Defrag, resize, health** (v0.3.1): Vault defragmentation with per-move WAL crash safety, vault resize (grow/shrink) with shadow index + WAL relocation, vault health check with consistency invariant, dynamic index sizing
+4. **EVFS v3: Streaming I/O** (v0.3.2, current): Constant-memory streaming writes/reads with per-chunk AEAD, domain-separated nonces, VaultChunkAad for splice defense, progress callbacks, interop between streaming and monolithic segments
+5. **Stealth storage** (planned): Ephemeral secrets in Rust-managed memory with derived-path obfuscation
+6. **Hardware integration** (planned): Key wrap with Secure Enclave (iOS) / KeyStore (Android), biometric unlock flow (FaceID/Fingerprint), native Swift/Kotlin bridge layer
 
 Contributions to any of these areas are welcome. If you want to work on an upcoming feature, open an issue first to discuss the approach.
 
@@ -47,11 +48,11 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ### Prerequisites
 
-| Tool | Required For |
-|------|-------------|
-| [Rust](https://rustup.rs/) (stable) | Crypto core compilation |
-| [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable) | Dart SDK ^3.10.8 |
-| [flutter_rust_bridge_codegen](https://cjycode.com/flutter_rust_bridge/) | FFI binding generation |
+| Tool                                                                    | Required For            |
+| ----------------------------------------------------------------------- | ----------------------- |
+| [Rust](https://rustup.rs/) (stable)                                     | Crypto core compilation |
+| [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable)    | Dart SDK ^3.10.8        |
+| [flutter_rust_bridge_codegen](https://cjycode.com/flutter_rust_bridge/) | FFI binding generation  |
 
 Install Rust and FRB codegen:
 
@@ -62,12 +63,12 @@ cargo install flutter_rust_bridge_codegen
 
 **Platform-specific tools:**
 
-| Platform | Requirements |
-|----------|-------------|
-| macOS / iOS | Xcode with command line tools (`xcode-select --install`) |
-| Android | Android NDK (r27c recommended, installed via Android Studio) |
-| Linux | `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev` |
-| Windows | Visual Studio Build Tools + LLVM |
+| Platform    | Requirements                                                       |
+| ----------- | ------------------------------------------------------------------ |
+| macOS / iOS | Xcode with command line tools (`xcode-select --install`)           |
+| Android     | Android NDK (r27c recommended, installed via Android Studio)       |
+| Linux       | `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev` |
+| Windows     | Visual Studio Build Tools + LLVM                                   |
 
 ### Building the Project
 
@@ -179,14 +180,14 @@ git checkout -b <type>/<short-description>
 
 Branch types:
 
-| Prefix | Use |
-|--------|-----|
-| `feat/` | New feature or algorithm |
-| `fix/` | Bug fix |
-| `refactor/` | Code restructuring |
-| `docs/` | Documentation changes |
-| `ci/` | CI/CD pipeline changes |
-| `test/` | Test additions or fixes |
+| Prefix      | Use                      |
+| ----------- | ------------------------ |
+| `feat/`     | New feature or algorithm |
+| `fix/`      | Bug fix                  |
+| `refactor/` | Code restructuring       |
+| `docs/`     | Documentation changes    |
+| `ci/`       | CI/CD pipeline changes   |
+| `test/`     | Test additions or fixes  |
 
 ### Adding a New Cryptographic Primitive
 
@@ -295,13 +296,13 @@ There are 44 integration tests across 5 files covering all features.
 
 All pull requests must pass the CI pipeline (`.github/workflows/ci.yml`), which runs:
 
-| Job | Runner | What it does |
-|-----|--------|-------------|
-| **Rust** | `ubuntu-latest` | `cargo clippy -- -D warnings` + `cargo test` |
-| **Dart** | `ubuntu-latest` | FRB codegen + `build_runner` + `dart analyze` |
-| **Android** | `ubuntu-latest` | Full APK build (ARM64 + ARMv7, NDK r27c) |
-| **iOS** | `macos-latest` | Simulator debug build (ARM64 + ARM64-sim) |
-| **Linux** | `ubuntu-latest` | Release build with GTK-3 |
+| Job         | Runner          | What it does                                  |
+| ----------- | --------------- | --------------------------------------------- |
+| **Rust**    | `ubuntu-latest` | `cargo clippy -- -D warnings` + `cargo test`  |
+| **Dart**    | `ubuntu-latest` | FRB codegen + `build_runner` + `dart analyze` |
+| **Android** | `ubuntu-latest` | Full APK build (ARM64 + ARMv7, NDK r27c)      |
+| **iOS**     | `macos-latest`  | Simulator debug build (ARM64 + ARM64-sim)     |
+| **Linux**   | `ubuntu-latest` | Release build with GTK-3                      |
 
 The CI is triggered on pushes and PRs to `main` and `dev` branches.
 
