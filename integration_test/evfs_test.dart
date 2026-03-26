@@ -415,12 +415,12 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024, // 5MB
       );
-      
+
       // Prepare test data (compressible - lots of repeats)
       final dataA = Uint8List.fromList(List.filled(5000, 42));
       final dataB = Uint8List.fromList(List.filled(5000, 99));
       final dataC = Uint8List.fromList(List.filled(5000, 123));
-      
+
       // Write segment A with Zstd
       await VaultService.write(
         handle: handle,
@@ -431,7 +431,7 @@ void main() {
           level: 3,
         ),
       );
-      
+
       // Write segment B with Brotli
       await VaultService.write(
         handle: handle,
@@ -442,7 +442,7 @@ void main() {
           level: 4,
         ),
       );
-      
+
       // Write segment C with None (no compression)
       await VaultService.write(
         handle: handle,
@@ -452,22 +452,50 @@ void main() {
           algorithm: CompressionAlgorithm.none,
         ),
       );
-      
+
       // Read all three back
-      final resultA = await VaultService.read(handle: handle, name: 'zstd_segment.txt');
-      final resultB = await VaultService.read(handle: handle, name: 'brotli_segment.txt');
-      final resultC = await VaultService.read(handle: handle, name: 'uncompressed_segment.txt');
-      
+      final resultA = await VaultService.read(
+        handle: handle,
+        name: 'zstd_segment.txt',
+      );
+      final resultB = await VaultService.read(
+        handle: handle,
+        name: 'brotli_segment.txt',
+      );
+      final resultC = await VaultService.read(
+        handle: handle,
+        name: 'uncompressed_segment.txt',
+      );
+
       // Verify all three match original data
-      expect(resultA, dataA, reason: 'Zstd segment should decompress correctly');
-      expect(resultB, dataB, reason: 'Brotli segment should decompress correctly');
-      expect(resultC, dataC, reason: 'Uncompressed segment should read correctly');
-      
+      expect(
+        resultA,
+        dataA,
+        reason: 'Zstd segment should decompress correctly',
+      );
+      expect(
+        resultB,
+        dataB,
+        reason: 'Brotli segment should decompress correctly',
+      );
+      expect(
+        resultC,
+        dataC,
+        reason: 'Uncompressed segment should read correctly',
+      );
+
       // Verify all three segments are in the list
       final names = await VaultService.list(handle: handle);
       expect(names.length, 3);
-      expect(names, containsAll(['zstd_segment.txt', 'brotli_segment.txt', 'uncompressed_segment.txt']));
-      
+      expect(
+        names,
+        containsAll([
+          'zstd_segment.txt',
+          'brotli_segment.txt',
+          'uncompressed_segment.txt',
+        ]),
+      );
+
       await VaultService.close(handle: handle);
     });
 
@@ -511,7 +539,7 @@ void main() {
     test('crash recovery via WAL', () async {
       final path = '${tempDir.path}/wal.vault';
       final key = await generateAes256GcmKey();
-      
+
       // Create vault
       final handle = await VaultService.create(
         path: path,
@@ -519,42 +547,59 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
       );
-      
+
       // Write some data
       final data1 = Uint8List.fromList([1, 2, 3, 4, 5]);
-      await VaultService.write(handle: handle, name: 'initial.bin', data: data1);
-      
+      await VaultService.write(
+        handle: handle,
+        name: 'initial.bin',
+        data: data1,
+      );
+
       // Close properly (commits WAL)
       await VaultService.close(handle: handle);
-      
+
       // Reopen (WAL recovery runs but finds everything committed)
       final reopened = await VaultService.open(path: path, key: key);
-      
+
       // Verify data survived
-      final result = await VaultService.read(handle: reopened, name: 'initial.bin');
+      final result = await VaultService.read(
+        handle: reopened,
+        name: 'initial.bin',
+      );
       expect(result, data1);
-      
+
       // Write more data after recovery
       final data2 = Uint8List.fromList([6, 7, 8, 9]);
-      await VaultService.write(handle: reopened, name: 'after_recovery.bin', data: data2);
-      
+      await VaultService.write(
+        handle: reopened,
+        name: 'after_recovery.bin',
+        data: data2,
+      );
+
       // Close and reopen again
       await VaultService.close(handle: reopened);
       final reopened2 = await VaultService.open(path: path, key: key);
-      
+
       // Both segments should exist
-      final result1 = await VaultService.read(handle: reopened2, name: 'initial.bin');
-      final result2 = await VaultService.read(handle: reopened2, name: 'after_recovery.bin');
-      
+      final result1 = await VaultService.read(
+        handle: reopened2,
+        name: 'initial.bin',
+      );
+      final result2 = await VaultService.read(
+        handle: reopened2,
+        name: 'after_recovery.bin',
+      );
+
       expect(result1, data1);
       expect(result2, data2);
-      
+
       await VaultService.close(handle: reopened2);
     });
     test('corrupted primary index falls back to shadow', () async {
       final path = '${tempDir.path}/shadow.vault';
       final key = await generateAes256GcmKey();
-      
+
       // Create vault and write data
       final handle = await VaultService.create(
         path: path,
@@ -562,47 +607,60 @@ void main() {
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
       );
-      
+
       final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
-      await VaultService.write(handle: handle, name: 'important.bin', data: originalData);
-      
+      await VaultService.write(
+        handle: handle,
+        name: 'important.bin',
+        data: originalData,
+      );
+
       await VaultService.close(handle: handle);
-      
 
       // primary index has 1 segment
       // shadow index has 1 segment (backup)
-      
+
       // Manually corrupt the PRIMARY index
       final file = File(path);
       final bytes = await file.readAsBytes();
-      
+
       // Primary index starts at byte 32 (after header)
       // Shadow index starts at byte 32 + 64KB
       final primaryIndexStart = 32;
       //final primaryIndexEnd = primaryIndexStart + (64 * 1024);
-      
+
       // Corrupt some bytes in the primary index region
       // (but leave shadow index intact)
       for (int i = primaryIndexStart; i < primaryIndexStart + 100; i++) {
         bytes[i] = 0xFF; // Corrupt
       }
-      
+
       await file.writeAsBytes(bytes);
-      
+
       // Try to reopen
       final reopened = await VaultService.open(path: path, key: key);
-      
+
       // Read data - should work because shadow index has it
-      final result = await VaultService.read(handle: reopened, name: 'important.bin');
-      expect(result, originalData, reason: 'Shadow index should have preserved the segment');
-      
+      final result = await VaultService.read(
+        handle: reopened,
+        name: 'important.bin',
+      );
+      expect(
+        result,
+        originalData,
+        reason: 'Shadow index should have preserved the segment',
+      );
+
       await VaultService.close(handle: reopened);
-      
+
       // Reopen again - primary should be restored now
       final reopened2 = await VaultService.open(path: path, key: key);
-      final result2 = await VaultService.read(handle: reopened2, name: 'important.bin');
+      final result2 = await VaultService.read(
+        handle: reopened2,
+        name: 'important.bin',
+      );
       expect(result2, originalData);
-      
+
       await VaultService.close(handle: reopened2);
     });
   });
