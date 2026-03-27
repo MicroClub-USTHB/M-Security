@@ -55,6 +55,10 @@ testing = [] # exposes noop cipher — never enable in production builds
 
 [profile.release]
 panic = "abort"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+opt-level = 3
 
 [dev-dependencies]
 hex = "0.4"
