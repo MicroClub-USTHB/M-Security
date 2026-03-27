@@ -106,10 +106,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw);
+  RustStreamSink<double> dco_decode_StreamSink_f_64_Dco(dynamic raw);
 
   @protected
-  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Dco(
     dynamic raw,
   );
 
@@ -249,12 +249,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
+  RustStreamSink<double> sse_decode_StreamSink_f_64_Dco(
     SseDeserializer deserializer,
   );
 
   @protected
-  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Dco(
     SseDeserializer deserializer,
   );
 
@@ -339,6 +339,294 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer);
 
   @protected
+  String cst_encode_AnyhowException(AnyhowException raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  String cst_encode_StreamSink_f_64_Dco(RustStreamSink<double> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_String(
+      raw.setupAndSerialize(
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_f_64,
+          decodeErrorData: dco_decode_AnyhowException,
+        ),
+      ),
+    );
+  }
+
+  @protected
+  String cst_encode_StreamSink_list_prim_u_8_strict_Dco(
+    RustStreamSink<Uint8List> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_String(
+      raw.setupAndSerialize(
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_AnyhowException,
+        ),
+      ),
+    );
+  }
+
+  @protected
+  String cst_encode_String(String raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  JSAny cst_encode_box_autoadd_compression_config(CompressionConfig raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_compression_config(raw);
+  }
+
+  @protected
+  int cst_encode_box_autoadd_i_32(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_i_32(raw);
+  }
+
+  @protected
+  JSAny cst_encode_compression_config(CompressionConfig raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_compression_algorithm(raw.algorithm),
+      cst_encode_opt_box_autoadd_i_32(raw.level),
+    ].jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_crypto_error(CryptoError raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    if (raw is CryptoError_InvalidKeyLength) {
+      return [
+        0,
+        cst_encode_usize(raw.expected),
+        cst_encode_usize(raw.actual),
+      ].jsify()!;
+    }
+    if (raw is CryptoError_InvalidNonce) {
+      return [1].jsify()!;
+    }
+    if (raw is CryptoError_EncryptionFailed) {
+      return [2, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_DecryptionFailed) {
+      return [3].jsify()!;
+    }
+    if (raw is CryptoError_HashingFailed) {
+      return [4, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_KdfFailed) {
+      return [5, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_IoError) {
+      return [6, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_InvalidParameter) {
+      return [7, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_CompressionFailed) {
+      return [8, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_AuthenticationFailed) {
+      return [9].jsify()!;
+    }
+    if (raw is CryptoError_VaultFull) {
+      return [
+        10,
+        cst_encode_u_64(raw.needed),
+        cst_encode_u_64(raw.available),
+      ].jsify()!;
+    }
+    if (raw is CryptoError_VaultLocked) {
+      return [11].jsify()!;
+    }
+    if (raw is CryptoError_SegmentNotFound) {
+      return [12, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_VaultCorrupted) {
+      return [13, cst_encode_String(raw.field0)].jsify()!;
+    }
+
+    throw Exception('unreachable');
+  }
+
+  @protected
+  JSAny cst_encode_defrag_result(DefragResult raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_u_32(raw.segmentsMoved),
+      cst_encode_u_64(raw.bytesReclaimed),
+      cst_encode_u_32(raw.freeRegionsBefore),
+    ].jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_list_String(List<String> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.map(cst_encode_String).toList().jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_list_prim_u_8_loose(List<int> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_list_prim_u_8_strict(Uint8List raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.jsify()!;
+  }
+
+  @protected
+  JSAny? cst_encode_opt_box_autoadd_compression_config(CompressionConfig? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? null : cst_encode_box_autoadd_compression_config(raw);
+  }
+
+  @protected
+  int? cst_encode_opt_box_autoadd_i_32(int? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? null : cst_encode_box_autoadd_i_32(raw);
+  }
+
+  @protected
+  JSAny? cst_encode_opt_list_prim_u_8_strict(Uint8List? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? null : cst_encode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  JSAny cst_encode_u_64(BigInt raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return castNativeBigInt(raw);
+  }
+
+  @protected
+  JSAny cst_encode_usize(BigInt raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return castNativeBigInt(raw);
+  }
+
+  @protected
+  JSAny cst_encode_vault_capacity_info(VaultCapacityInfo raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_u_64(raw.totalBytes),
+      cst_encode_u_64(raw.usedBytes),
+      cst_encode_u_64(raw.freeListBytes),
+      cst_encode_u_64(raw.unallocatedBytes),
+      cst_encode_usize(raw.segmentCount),
+    ].jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_vault_health_info(VaultHealthInfo raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_u_64(raw.totalBytes),
+      cst_encode_u_64(raw.usedBytes),
+      cst_encode_u_64(raw.freeListBytes),
+      cst_encode_u_64(raw.unallocatedBytes),
+      cst_encode_u_32(raw.segmentCount),
+      cst_encode_u_32(raw.freeRegionCount),
+      cst_encode_u_64(raw.largestFreeBlock),
+      cst_encode_f_64(raw.fragmentationRatio),
+      cst_encode_bool(raw.isConsistent),
+    ].jsify()!;
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int cst_encode_argon_2_preset(Argon2Preset raw);
+
+  @protected
+  bool cst_encode_bool(bool raw);
+
+  @protected
+  int cst_encode_compression_algorithm(CompressionAlgorithm raw);
+
+  @protected
+  double cst_encode_f_64(double raw);
+
+  @protected
+  int cst_encode_i_32(int raw);
+
+  @protected
+  int cst_encode_u_32(int raw);
+
+  @protected
+  int cst_encode_u_8(int raw);
+
+  @protected
+  void cst_encode_unit(void raw);
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -415,13 +703,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_f_64_Sse(
+  void sse_encode_StreamSink_f_64_Dco(
     RustStreamSink<double> self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_StreamSink_list_prim_u_8_strict_Sse(
+  void sse_encode_StreamSink_list_prim_u_8_strict_Dco(
     RustStreamSink<Uint8List> self,
     SseSerializer serializer,
   );
@@ -528,6 +816,393 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
 
+  void wire__crate__api__evfs__types__VaultHandle_health(
+    NativePortType port_,
+    int that,
+  ) =>
+      wasmModule.wire__crate__api__evfs__types__VaultHandle_health(port_, that);
+
+  void wire__crate__api__hashing__argon2__argon2id_hash(
+    NativePortType port_,
+    String password,
+    int preset,
+  ) => wasmModule.wire__crate__api__hashing__argon2__argon2id_hash(
+    port_,
+    password,
+    preset,
+  );
+
+  void wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+    NativePortType port_,
+    String password,
+    String salt,
+    int preset,
+  ) => wasmModule.wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+    port_,
+    password,
+    salt,
+    preset,
+  );
+
+  void wire__crate__api__hashing__argon2__argon2id_verify(
+    NativePortType port_,
+    String phc_hash,
+    String password,
+  ) => wasmModule.wire__crate__api__hashing__argon2__argon2id_verify(
+    port_,
+    phc_hash,
+    password,
+  );
+
+  void wire__crate__api__hashing__blake3_hash(
+    NativePortType port_,
+    JSAny data,
+  ) => wasmModule.wire__crate__api__hashing__blake3_hash(port_, data);
+
+  void wire__crate__api__compression__compress(
+    NativePortType port_,
+    JSAny data,
+    JSAny config,
+  ) => wasmModule.wire__crate__api__compression__compress(port_, data, config);
+
+  void wire__crate__api__compression__compression_algorithm_from_u8(
+    NativePortType port_,
+    int byte,
+  ) => wasmModule.wire__crate__api__compression__compression_algorithm_from_u8(
+    port_,
+    byte,
+  );
+
+  void wire__crate__api__compression__compression_algorithm_to_u8(
+    NativePortType port_,
+    int that,
+  ) => wasmModule.wire__crate__api__compression__compression_algorithm_to_u8(
+    port_,
+    that,
+  );
+
+  void wire__crate__api__encryption__create_aes256_gcm(
+    NativePortType port_,
+    JSAny key,
+  ) => wasmModule.wire__crate__api__encryption__create_aes256_gcm(port_, key);
+
+  void wire__crate__api__hashing__create_blake3(NativePortType port_) =>
+      wasmModule.wire__crate__api__hashing__create_blake3(port_);
+
+  void wire__crate__api__encryption__create_chacha20_poly1305(
+    NativePortType port_,
+    JSAny key,
+  ) => wasmModule.wire__crate__api__encryption__create_chacha20_poly1305(
+    port_,
+    key,
+  );
+
+  void wire__crate__api__encryption__create_noop_encryption(
+    NativePortType port_,
+  ) => wasmModule.wire__crate__api__encryption__create_noop_encryption(port_);
+
+  void wire__crate__api__hashing__create_sha3(NativePortType port_) =>
+      wasmModule.wire__crate__api__hashing__create_sha3(port_);
+
+  void wire__crate__api__compression__decompress(
+    NativePortType port_,
+    JSAny data,
+    int algorithm,
+  ) => wasmModule.wire__crate__api__compression__decompress(
+    port_,
+    data,
+    algorithm,
+  );
+
+  void wire__crate__api__encryption__decrypt(
+    NativePortType port_,
+    int cipher,
+    JSAny ciphertext,
+    JSAny aad,
+  ) => wasmModule.wire__crate__api__encryption__decrypt(
+    port_,
+    cipher,
+    ciphertext,
+    aad,
+  );
+
+  void wire__crate__api__encryption__encrypt(
+    NativePortType port_,
+    int cipher,
+    JSAny plaintext,
+    JSAny aad,
+  ) => wasmModule.wire__crate__api__encryption__encrypt(
+    port_,
+    cipher,
+    plaintext,
+    aad,
+  );
+
+  void wire__crate__api__encryption__encryption_algorithm_id(
+    NativePortType port_,
+    int cipher,
+  ) => wasmModule.wire__crate__api__encryption__encryption_algorithm_id(
+    port_,
+    cipher,
+  );
+
+  void wire__crate__api__encryption__generate_aes256_gcm_key(
+    NativePortType port_,
+  ) => wasmModule.wire__crate__api__encryption__generate_aes256_gcm_key(port_);
+
+  void wire__crate__api__encryption__aes_gcm__generate_aes_key(
+    NativePortType port_,
+  ) =>
+      wasmModule.wire__crate__api__encryption__aes_gcm__generate_aes_key(port_);
+
+  void wire__crate__api__encryption__generate_chacha20_poly1305_key(
+    NativePortType port_,
+  ) => wasmModule.wire__crate__api__encryption__generate_chacha20_poly1305_key(
+    port_,
+  );
+
+  void wire__crate__api__encryption__chacha20__generate_chacha_key(
+    NativePortType port_,
+  ) => wasmModule.wire__crate__api__encryption__chacha20__generate_chacha_key(
+    port_,
+  );
+
+  void wire__crate__api__hashing__hasher_algorithm_id(
+    NativePortType port_,
+    int handle,
+  ) => wasmModule.wire__crate__api__hashing__hasher_algorithm_id(port_, handle);
+
+  void wire__crate__api__hashing__hasher_finalize(
+    NativePortType port_,
+    int handle,
+  ) => wasmModule.wire__crate__api__hashing__hasher_finalize(port_, handle);
+
+  void wire__crate__api__hashing__hasher_reset(
+    NativePortType port_,
+    int handle,
+  ) => wasmModule.wire__crate__api__hashing__hasher_reset(port_, handle);
+
+  void wire__crate__api__hashing__hasher_update(
+    NativePortType port_,
+    int handle,
+    JSAny data,
+  ) => wasmModule.wire__crate__api__hashing__hasher_update(port_, handle, data);
+
+  JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__kdf__hkdf__hkdf_derive(
+    JSAny ikm,
+    JSAny? salt,
+    JSAny info,
+    JSAny output_len,
+  ) => wasmModule.wire__crate__api__kdf__hkdf__hkdf_derive(
+    ikm,
+    salt,
+    info,
+    output_len,
+  );
+
+  void wire__crate__api__kdf__hkdf__hkdf_expand(
+    NativePortType port_,
+    JSAny prk,
+    JSAny info,
+    JSAny output_len,
+  ) => wasmModule.wire__crate__api__kdf__hkdf__hkdf_expand(
+    port_,
+    prk,
+    info,
+    output_len,
+  );
+
+  JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__kdf__hkdf__hkdf_extract(JSAny ikm, JSAny? salt) =>
+      wasmModule.wire__crate__api__kdf__hkdf__hkdf_extract(ikm, salt);
+
+  void wire__crate__api__hashing__sha3_hash(NativePortType port_, JSAny data) =>
+      wasmModule.wire__crate__api__hashing__sha3_hash(port_, data);
+
+  void wire__crate__api__compression__should_skip_compression(
+    NativePortType port_,
+    String file_path,
+  ) => wasmModule.wire__crate__api__compression__should_skip_compression(
+    port_,
+    file_path,
+  );
+
+  void wire__crate__api__streaming__stream_compress_encrypt_file(
+    NativePortType port_,
+    int cipher,
+    JSAny compression,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  ) => wasmModule.wire__crate__api__streaming__stream_compress_encrypt_file(
+    port_,
+    cipher,
+    compression,
+    input_path,
+    output_path,
+    progress_sink,
+  );
+
+  void wire__crate__api__streaming__stream_decrypt_decompress_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  ) => wasmModule.wire__crate__api__streaming__stream_decrypt_decompress_file(
+    port_,
+    cipher,
+    input_path,
+    output_path,
+    progress_sink,
+  );
+
+  void wire__crate__api__streaming__stream_decrypt_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  ) => wasmModule.wire__crate__api__streaming__stream_decrypt_file(
+    port_,
+    cipher,
+    input_path,
+    output_path,
+    progress_sink,
+  );
+
+  void wire__crate__api__streaming__stream_encrypt_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  ) => wasmModule.wire__crate__api__streaming__stream_encrypt_file(
+    port_,
+    cipher,
+    input_path,
+    output_path,
+    progress_sink,
+  );
+
+  void wire__crate__api__streaming__stream_hash_file(
+    NativePortType port_,
+    int hasher,
+    String file_path,
+    String progress_sink,
+  ) => wasmModule.wire__crate__api__streaming__stream_hash_file(
+    port_,
+    hasher,
+    file_path,
+    progress_sink,
+  );
+
+  void wire__crate__api__evfs__vault_capacity(
+    NativePortType port_,
+    int handle,
+  ) => wasmModule.wire__crate__api__evfs__vault_capacity(port_, handle);
+
+  void wire__crate__api__evfs__vault_close(NativePortType port_, int handle) =>
+      wasmModule.wire__crate__api__evfs__vault_close(port_, handle);
+
+  void wire__crate__api__evfs__vault_create(
+    NativePortType port_,
+    String path,
+    JSAny key,
+    String algorithm,
+    JSAny capacity_bytes,
+  ) => wasmModule.wire__crate__api__evfs__vault_create(
+    port_,
+    path,
+    key,
+    algorithm,
+    capacity_bytes,
+  );
+
+  void wire__crate__api__evfs__vault_defragment(
+    NativePortType port_,
+    int handle,
+  ) => wasmModule.wire__crate__api__evfs__vault_defragment(port_, handle);
+
+  void wire__crate__api__evfs__vault_delete(
+    NativePortType port_,
+    int handle,
+    String name,
+  ) => wasmModule.wire__crate__api__evfs__vault_delete(port_, handle, name);
+
+  void wire__crate__api__evfs__vault_health(NativePortType port_, int handle) =>
+      wasmModule.wire__crate__api__evfs__vault_health(port_, handle);
+
+  void wire__crate__api__evfs__vault_list(NativePortType port_, int handle) =>
+      wasmModule.wire__crate__api__evfs__vault_list(port_, handle);
+
+  void wire__crate__api__evfs__vault_open(
+    NativePortType port_,
+    String path,
+    JSAny key,
+  ) => wasmModule.wire__crate__api__evfs__vault_open(port_, path, key);
+
+  void wire__crate__api__evfs__vault_read(
+    NativePortType port_,
+    int handle,
+    String name,
+  ) => wasmModule.wire__crate__api__evfs__vault_read(port_, handle, name);
+
+  void wire__crate__api__evfs__vault_read_stream(
+    NativePortType port_,
+    int handle,
+    String name,
+    bool verify_checksum,
+    String sink,
+    String on_progress,
+  ) => wasmModule.wire__crate__api__evfs__vault_read_stream(
+    port_,
+    handle,
+    name,
+    verify_checksum,
+    sink,
+    on_progress,
+  );
+
+  void wire__crate__api__evfs__vault_resize(
+    NativePortType port_,
+    int handle,
+    JSAny new_capacity,
+  ) => wasmModule.wire__crate__api__evfs__vault_resize(
+    port_,
+    handle,
+    new_capacity,
+  );
+
+  void wire__crate__api__evfs__vault_write(
+    NativePortType port_,
+    int handle,
+    String name,
+    JSAny data,
+    JSAny? compression,
+  ) => wasmModule.wire__crate__api__evfs__vault_write(
+    port_,
+    handle,
+    name,
+    data,
+    compression,
+  );
+
+  void wire__crate__api__evfs__vault_write_file(
+    NativePortType port_,
+    int handle,
+    String name,
+    String file_path,
+    String on_progress,
+  ) => wasmModule.wire__crate__api__evfs__vault_write_file(
+    port_,
+    handle,
+    name,
+    file_path,
+    on_progress,
+  );
+
   void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     int ptr,
@@ -583,6 +1258,281 @@ external RustLibWasmModule get wasmModule;
 @JS()
 @anonymous
 extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void wire__crate__api__evfs__types__VaultHandle_health(
+    NativePortType port_,
+    int that,
+  );
+
+  external void wire__crate__api__hashing__argon2__argon2id_hash(
+    NativePortType port_,
+    String password,
+    int preset,
+  );
+
+  external void wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+    NativePortType port_,
+    String password,
+    String salt,
+    int preset,
+  );
+
+  external void wire__crate__api__hashing__argon2__argon2id_verify(
+    NativePortType port_,
+    String phc_hash,
+    String password,
+  );
+
+  external void wire__crate__api__hashing__blake3_hash(
+    NativePortType port_,
+    JSAny data,
+  );
+
+  external void wire__crate__api__compression__compress(
+    NativePortType port_,
+    JSAny data,
+    JSAny config,
+  );
+
+  external void wire__crate__api__compression__compression_algorithm_from_u8(
+    NativePortType port_,
+    int byte,
+  );
+
+  external void wire__crate__api__compression__compression_algorithm_to_u8(
+    NativePortType port_,
+    int that,
+  );
+
+  external void wire__crate__api__encryption__create_aes256_gcm(
+    NativePortType port_,
+    JSAny key,
+  );
+
+  external void wire__crate__api__hashing__create_blake3(NativePortType port_);
+
+  external void wire__crate__api__encryption__create_chacha20_poly1305(
+    NativePortType port_,
+    JSAny key,
+  );
+
+  external void wire__crate__api__encryption__create_noop_encryption(
+    NativePortType port_,
+  );
+
+  external void wire__crate__api__hashing__create_sha3(NativePortType port_);
+
+  external void wire__crate__api__compression__decompress(
+    NativePortType port_,
+    JSAny data,
+    int algorithm,
+  );
+
+  external void wire__crate__api__encryption__decrypt(
+    NativePortType port_,
+    int cipher,
+    JSAny ciphertext,
+    JSAny aad,
+  );
+
+  external void wire__crate__api__encryption__encrypt(
+    NativePortType port_,
+    int cipher,
+    JSAny plaintext,
+    JSAny aad,
+  );
+
+  external void wire__crate__api__encryption__encryption_algorithm_id(
+    NativePortType port_,
+    int cipher,
+  );
+
+  external void wire__crate__api__encryption__generate_aes256_gcm_key(
+    NativePortType port_,
+  );
+
+  external void wire__crate__api__encryption__aes_gcm__generate_aes_key(
+    NativePortType port_,
+  );
+
+  external void wire__crate__api__encryption__generate_chacha20_poly1305_key(
+    NativePortType port_,
+  );
+
+  external void wire__crate__api__encryption__chacha20__generate_chacha_key(
+    NativePortType port_,
+  );
+
+  external void wire__crate__api__hashing__hasher_algorithm_id(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__hashing__hasher_finalize(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__hashing__hasher_reset(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__hashing__hasher_update(
+    NativePortType port_,
+    int handle,
+    JSAny data,
+  );
+
+  external JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__kdf__hkdf__hkdf_derive(
+    JSAny ikm,
+    JSAny? salt,
+    JSAny info,
+    JSAny output_len,
+  );
+
+  external void wire__crate__api__kdf__hkdf__hkdf_expand(
+    NativePortType port_,
+    JSAny prk,
+    JSAny info,
+    JSAny output_len,
+  );
+
+  external JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__kdf__hkdf__hkdf_extract(JSAny ikm, JSAny? salt);
+
+  external void wire__crate__api__hashing__sha3_hash(
+    NativePortType port_,
+    JSAny data,
+  );
+
+  external void wire__crate__api__compression__should_skip_compression(
+    NativePortType port_,
+    String file_path,
+  );
+
+  external void wire__crate__api__streaming__stream_compress_encrypt_file(
+    NativePortType port_,
+    int cipher,
+    JSAny compression,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  );
+
+  external void wire__crate__api__streaming__stream_decrypt_decompress_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  );
+
+  external void wire__crate__api__streaming__stream_decrypt_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  );
+
+  external void wire__crate__api__streaming__stream_encrypt_file(
+    NativePortType port_,
+    int cipher,
+    String input_path,
+    String output_path,
+    String progress_sink,
+  );
+
+  external void wire__crate__api__streaming__stream_hash_file(
+    NativePortType port_,
+    int hasher,
+    String file_path,
+    String progress_sink,
+  );
+
+  external void wire__crate__api__evfs__vault_capacity(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_close(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_create(
+    NativePortType port_,
+    String path,
+    JSAny key,
+    String algorithm,
+    JSAny capacity_bytes,
+  );
+
+  external void wire__crate__api__evfs__vault_defragment(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_delete(
+    NativePortType port_,
+    int handle,
+    String name,
+  );
+
+  external void wire__crate__api__evfs__vault_health(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_list(
+    NativePortType port_,
+    int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_open(
+    NativePortType port_,
+    String path,
+    JSAny key,
+  );
+
+  external void wire__crate__api__evfs__vault_read(
+    NativePortType port_,
+    int handle,
+    String name,
+  );
+
+  external void wire__crate__api__evfs__vault_read_stream(
+    NativePortType port_,
+    int handle,
+    String name,
+    bool verify_checksum,
+    String sink,
+    String on_progress,
+  );
+
+  external void wire__crate__api__evfs__vault_resize(
+    NativePortType port_,
+    int handle,
+    JSAny new_capacity,
+  );
+
+  external void wire__crate__api__evfs__vault_write(
+    NativePortType port_,
+    int handle,
+    String name,
+    JSAny data,
+    JSAny? compression,
+  );
+
+  external void wire__crate__api__evfs__vault_write_file(
+    NativePortType port_,
+    int handle,
+    String name,
+    String file_path,
+    String on_progress,
+  );
+
   external void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     int ptr,

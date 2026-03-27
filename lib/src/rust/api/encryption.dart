@@ -64,5 +64,5 @@ Future<String> encryptionAlgorithmId({required CipherHandle cipher}) => RustLib
     .api
     .crateApiEncryptionEncryptionAlgorithmId(cipher: cipher);
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>
+// Rust type: RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>
 abstract class CipherHandle implements RustOpaqueInterface {}
