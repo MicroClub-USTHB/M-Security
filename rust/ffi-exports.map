@@ -1,0 +1,11 @@
+/* Linker version script — only export FRB FFI symbols from the cdylib.
+   Everything else (including #[no_mangle] symbols from deps) becomes local. */
+{
+    global:
+        frb_*;
+        frbgen_m_security_*;
+        free_zero_copy_buffer_*;
+        store_dart_post_cobject;
+    local:
+        *;
+};
