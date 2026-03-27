@@ -82,8 +82,8 @@ pub fn vault_create(
         keys,
         index,
         index_pad_size,
-        file,
         mmap,
+        file,
         wal,
         lock,
     })
@@ -237,8 +237,8 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         keys,
         index,
         index_pad_size,
-        file,
         mmap,
+        file,
         wal,
         lock,
     })

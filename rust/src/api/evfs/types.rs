@@ -26,7 +26,9 @@ impl VaultMmap {
     /// The caller must hold an exclusive flock on the file (VaultLock) so no
     /// concurrent writer can modify the file while the mapping is live.
     pub(crate) fn new(file: &File) -> Result<Self, CryptoError> {
-        // SAFETY: file is flock-locked — no concurrent writers
+        // SAFETY: the caller holds an exclusive advisory flock via VaultLock,
+        // ensuring no cooperating process modifies the file while mapped.
+        // Non-cooperating processes are outside this library's threat model.
         let mmap = unsafe { Mmap::map(file) }
             .map_err(|e| CryptoError::IoError(format!("mmap failed: {e}")))?;
 
@@ -93,9 +95,10 @@ pub struct VaultHandle {
     pub(crate) index: SegmentIndex,
     /// Padded plaintext index size, set at creation and read from header on open.
     pub(crate) index_pad_size: usize,
-    pub(crate) file: File,
     /// Read-only mmap for zero-copy reads. None if mmap failed (32-bit fallback).
+    /// Dropped before `file` so munlock/munmap runs while the fd is still open.
     pub(crate) mmap: Option<VaultMmap>,
+    pub(crate) file: File,
     pub(crate) wal: WriteAheadLog,
     pub(crate) lock: VaultLock,
 }
