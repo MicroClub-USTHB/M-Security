@@ -336,20 +336,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            that,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 1,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                that,
+              );
+          return wire.wire__crate__api__evfs__types__VaultHandle_health(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_vault_health_info,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_vault_health_info,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEvfsTypesVaultHandleHealthConstMeta,
@@ -370,19 +367,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(password, serializer);
-          sse_encode_argon_2_preset(preset, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
+          var arg0 = cst_encode_String(password);
+          var arg1 = cst_encode_argon_2_preset(preset);
+          return wire.wire__crate__api__hashing__argon2__argon2id_hash(
+            port_,
+            arg0,
+            arg1,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_String,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingArgon2Argon2IdHashConstMeta,
         argValues: [password, preset],
@@ -406,20 +401,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(password, serializer);
-          sse_encode_String(salt, serializer);
-          sse_encode_argon_2_preset(preset, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
+          var arg0 = cst_encode_String(password);
+          var arg1 = cst_encode_String(salt);
+          var arg2 = cst_encode_argon_2_preset(preset);
+          return wire
+              .wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+                port_,
+                arg0,
+                arg1,
+                arg2,
+              );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_String,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingArgon2Argon2IdHashWithSaltConstMeta,
         argValues: [password, salt, preset],
@@ -442,19 +437,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(phcHash, serializer);
-          sse_encode_String(password, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 4,
-            port: port_,
+          var arg0 = cst_encode_String(phcHash);
+          var arg1 = cst_encode_String(password);
+          return wire.wire__crate__api__hashing__argon2__argon2id_verify(
+            port_,
+            arg0,
+            arg1,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingArgon2Argon2IdVerifyConstMeta,
         argValues: [phcHash, password],
@@ -474,17 +467,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 5,
-            port: port_,
-          );
+          var arg0 = cst_encode_list_prim_u_8_loose(data);
+          return wire.wire__crate__api__hashing__blake3_hash(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiHashingBlake3HashConstMeta,
@@ -505,19 +492,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_box_autoadd_compression_config(config, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 6,
-            port: port_,
+          var arg0 = cst_encode_list_prim_u_8_loose(data);
+          var arg1 = cst_encode_box_autoadd_compression_config(config);
+          return wire.wire__crate__api__compression__compress(
+            port_,
+            arg0,
+            arg1,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiCompressionCompressConstMeta,
         argValues: [data, config],
@@ -536,18 +521,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_u_8(byte, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 7,
-            port: port_,
-          );
+          var arg0 = cst_encode_u_8(byte);
+          return wire
+              .wire__crate__api__compression__compression_algorithm_from_u8(
+                port_,
+                arg0,
+              );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_compression_algorithm,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_compression_algorithm,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiCompressionCompressionAlgorithmFromU8ConstMeta,
         argValues: [byte],
@@ -569,17 +552,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_compression_algorithm(that, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 8,
-            port: port_,
-          );
+          var arg0 = cst_encode_compression_algorithm(that);
+          return wire
+              .wire__crate__api__compression__compression_algorithm_to_u8(
+                port_,
+                arg0,
+              );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_u_8,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_u_8,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiCompressionCompressionAlgorithmToU8ConstMeta,
@@ -602,19 +583,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 9,
-            port: port_,
+          var arg0 = cst_encode_list_prim_u_8_loose(key);
+          return wire.wire__crate__api__encryption__create_aes256_gcm(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
-          decodeErrorData: sse_decode_crypto_error,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionCreateAes256GcmConstMeta,
         argValues: [key],
@@ -631,17 +609,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 10,
-            port: port_,
-          );
+          return wire.wire__crate__api__hashing__create_blake3(port_);
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiHashingCreateBlake3ConstMeta,
@@ -661,19 +633,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 11,
-            port: port_,
+          var arg0 = cst_encode_list_prim_u_8_loose(key);
+          return wire.wire__crate__api__encryption__create_chacha20_poly1305(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
-          decodeErrorData: sse_decode_crypto_error,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionCreateChacha20Poly1305ConstMeta,
         argValues: [key],
@@ -693,17 +662,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 12,
-            port: port_,
+          return wire.wire__crate__api__encryption__create_noop_encryption(
+            port_,
           );
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEncryptionCreateNoopEncryptionConstMeta,
@@ -721,17 +686,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 13,
-            port: port_,
-          );
+          return wire.wire__crate__api__hashing__create_sha3(port_);
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiHashingCreateSha3ConstMeta,
@@ -752,19 +711,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_compression_algorithm(algorithm, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 14,
-            port: port_,
+          var arg0 = cst_encode_list_prim_u_8_loose(data);
+          var arg1 = cst_encode_compression_algorithm(algorithm);
+          return wire.wire__crate__api__compression__decompress(
+            port_,
+            arg0,
+            arg1,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiCompressionDecompressConstMeta,
         argValues: [data, algorithm],
@@ -788,23 +745,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 15,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                cipher,
+              );
+          var arg1 = cst_encode_list_prim_u_8_loose(ciphertext);
+          var arg2 = cst_encode_list_prim_u_8_loose(aad);
+          return wire.wire__crate__api__encryption__decrypt(
+            port_,
+            arg0,
+            arg1,
+            arg2,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionDecryptConstMeta,
         argValues: [cipher, ciphertext, aad],
@@ -827,23 +783,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(plaintext, serializer);
-          sse_encode_list_prim_u_8_loose(aad, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 16,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                cipher,
+              );
+          var arg1 = cst_encode_list_prim_u_8_loose(plaintext);
+          var arg2 = cst_encode_list_prim_u_8_loose(aad);
+          return wire.wire__crate__api__encryption__encrypt(
+            port_,
+            arg0,
+            arg1,
+            arg2,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionEncryptConstMeta,
         argValues: [cipher, plaintext, aad],
@@ -864,20 +819,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-            cipher,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 17,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                cipher,
+              );
+          return wire.wire__crate__api__encryption__encryption_algorithm_id(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_String,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEncryptionEncryptionAlgorithmIdConstMeta,
@@ -898,17 +850,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 18,
-            port: port_,
+          return wire.wire__crate__api__encryption__generate_aes256_gcm_key(
+            port_,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionGenerateAes256GcmKeyConstMeta,
         argValues: [],
@@ -925,17 +873,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 19,
-            port: port_,
+          return wire.wire__crate__api__encryption__aes_gcm__generate_aes_key(
+            port_,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta,
         argValues: [],
@@ -952,17 +896,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 20,
-            port: port_,
-          );
+          return wire
+              .wire__crate__api__encryption__generate_chacha20_poly1305_key(
+                port_,
+              );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionGenerateChacha20Poly1305KeyConstMeta,
         argValues: [],
@@ -982,17 +923,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 21,
-            port: port_,
-          );
+          return wire
+              .wire__crate__api__encryption__chacha20__generate_chacha_key(
+                port_,
+              );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta,
         argValues: [],
@@ -1011,21 +949,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 22,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+                handle,
+              );
+          return wire.wire__crate__api__hashing__hasher_algorithm_id(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_String,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingHasherAlgorithmIdConstMeta,
         argValues: [handle],
@@ -1047,21 +982,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 23,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+                handle,
+              );
+          return wire.wire__crate__api__hashing__hasher_finalize(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingHasherFinalizeConstMeta,
         argValues: [handle],
@@ -1078,21 +1007,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 24,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+                handle,
+              );
+          return wire.wire__crate__api__hashing__hasher_reset(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingHasherResetConstMeta,
         argValues: [handle],
@@ -1112,22 +1035,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 25,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+                handle,
+              );
+          var arg1 = cst_encode_list_prim_u_8_loose(data);
+          return wire.wire__crate__api__hashing__hasher_update(
+            port_,
+            arg0,
+            arg1,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiHashingHasherUpdateConstMeta,
         argValues: [handle, data],
@@ -1152,16 +1073,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(ikm, serializer);
-          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
-          sse_encode_list_prim_u_8_loose(info, serializer);
-          sse_encode_usize(outputLen, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          var arg0 = cst_encode_list_prim_u_8_loose(ikm);
+          var arg1 = cst_encode_opt_list_prim_u_8_strict(salt);
+          var arg2 = cst_encode_list_prim_u_8_loose(info);
+          var arg3 = cst_encode_usize(outputLen);
+          return wire.wire__crate__api__kdf__hkdf__hkdf_derive(
+            arg0,
+            arg1,
+            arg2,
+            arg3,
+          );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiKdfHkdfHkdfDeriveConstMeta,
         argValues: [ikm, salt, info, outputLen],
@@ -1184,20 +1109,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(prk, serializer);
-          sse_encode_list_prim_u_8_loose(info, serializer);
-          sse_encode_usize(outputLen, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 27,
-            port: port_,
+          var arg0 = cst_encode_list_prim_u_8_loose(prk);
+          var arg1 = cst_encode_list_prim_u_8_loose(info);
+          var arg2 = cst_encode_usize(outputLen);
+          return wire.wire__crate__api__kdf__hkdf__hkdf_expand(
+            port_,
+            arg0,
+            arg1,
+            arg2,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiKdfHkdfHkdfExpandConstMeta,
         argValues: [prk, info, outputLen],
@@ -1219,14 +1143,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(ikm, serializer);
-          sse_encode_opt_list_prim_u_8_strict(salt, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+          var arg0 = cst_encode_list_prim_u_8_loose(ikm);
+          var arg1 = cst_encode_opt_list_prim_u_8_strict(salt);
+          return wire.wire__crate__api__kdf__hkdf__hkdf_extract(arg0, arg1);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiKdfHkdfHkdfExtractConstMeta,
         argValues: [ikm, salt],
@@ -1243,17 +1166,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 29,
-            port: port_,
-          );
+          var arg0 = cst_encode_list_prim_u_8_loose(data);
+          return wire.wire__crate__api__hashing__sha3_hash(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiHashingSha3HashConstMeta,
@@ -1273,17 +1190,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(filePath, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 30,
-            port: port_,
+          var arg0 = cst_encode_String(filePath);
+          return wire.wire__crate__api__compression__should_skip_compression(
+            port_,
+            arg0,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_bool,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_bool,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiCompressionShouldSkipCompressionConstMeta,
@@ -1311,25 +1225,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_box_autoadd_compression_config(compression, serializer);
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 31,
-              port: port_,
-            );
+            var arg0 =
+                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                  cipher,
+                );
+            var arg1 = cst_encode_box_autoadd_compression_config(compression);
+            var arg2 = cst_encode_String(inputPath);
+            var arg3 = cst_encode_String(outputPath);
+            var arg4 = cst_encode_StreamSink_f_64_Dco(progressSink);
+            return wire
+                .wire__crate__api__streaming__stream_compress_encrypt_file(
+                  port_,
+                  arg0,
+                  arg1,
+                  arg2,
+                  arg3,
+                  arg4,
+                );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiStreamingStreamCompressEncryptFileConstMeta,
           argValues: [cipher, compression, inputPath, outputPath, progressSink],
@@ -1363,24 +1279,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 32,
-              port: port_,
-            );
+            var arg0 =
+                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                  cipher,
+                );
+            var arg1 = cst_encode_String(inputPath);
+            var arg2 = cst_encode_String(outputPath);
+            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
+            return wire
+                .wire__crate__api__streaming__stream_decrypt_decompress_file(
+                  port_,
+                  arg0,
+                  arg1,
+                  arg2,
+                  arg3,
+                );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiStreamingStreamDecryptDecompressFileConstMeta,
           argValues: [cipher, inputPath, outputPath, progressSink],
@@ -1408,24 +1325,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 33,
-              port: port_,
+            var arg0 =
+                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                  cipher,
+                );
+            var arg1 = cst_encode_String(inputPath);
+            var arg2 = cst_encode_String(outputPath);
+            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
+            return wire.wire__crate__api__streaming__stream_decrypt_file(
+              port_,
+              arg0,
+              arg1,
+              arg2,
+              arg3,
             );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiStreamingStreamDecryptFileConstMeta,
           argValues: [cipher, inputPath, outputPath, progressSink],
@@ -1453,24 +1370,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-              cipher,
-              serializer,
-            );
-            sse_encode_String(inputPath, serializer);
-            sse_encode_String(outputPath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 34,
-              port: port_,
+            var arg0 =
+                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+                  cipher,
+                );
+            var arg1 = cst_encode_String(inputPath);
+            var arg2 = cst_encode_String(outputPath);
+            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
+            return wire.wire__crate__api__streaming__stream_encrypt_file(
+              port_,
+              arg0,
+              arg1,
+              arg2,
+              arg3,
             );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiStreamingStreamEncryptFileConstMeta,
           argValues: [cipher, inputPath, outputPath, progressSink],
@@ -1497,23 +1414,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
-              hasher,
-              serializer,
-            );
-            sse_encode_String(filePath, serializer);
-            sse_encode_StreamSink_f_64_Sse(progressSink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 35,
-              port: port_,
+            var arg0 =
+                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+                  hasher,
+                );
+            var arg1 = cst_encode_String(filePath);
+            var arg2 = cst_encode_StreamSink_f_64_Dco(progressSink);
+            return wire.wire__crate__api__streaming__stream_hash_file(
+              port_,
+              arg0,
+              arg1,
+              arg2,
             );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiStreamingStreamHashFileConstMeta,
           argValues: [hasher, filePath, progressSink],
@@ -1537,20 +1453,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 36,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_capacity(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_vault_capacity_info,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_vault_capacity_info,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEvfsVaultCapacityConstMeta,
@@ -1568,21 +1478,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 37,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_close(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultCloseConstMeta,
         argValues: [handle],
@@ -1604,22 +1508,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(path, serializer);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          sse_encode_String(algorithm, serializer);
-          sse_encode_u_64(capacityBytes, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 38,
-            port: port_,
+          var arg0 = cst_encode_String(path);
+          var arg1 = cst_encode_list_prim_u_8_loose(key);
+          var arg2 = cst_encode_String(algorithm);
+          var arg3 = cst_encode_u_64(capacityBytes);
+          return wire.wire__crate__api__evfs__vault_create(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+            arg3,
           );
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
-          decodeErrorData: sse_decode_crypto_error,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultCreateConstMeta,
         argValues: [path, key, algorithm, capacityBytes],
@@ -1640,21 +1544,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 39,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_defragment(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_defrag_result,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_defrag_result,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultDefragmentConstMeta,
         argValues: [handle],
@@ -1674,22 +1572,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 40,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__api__evfs__vault_delete(port_, arg0, arg1);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultDeleteConstMeta,
         argValues: [handle, name],
@@ -1710,20 +1602,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 41,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_health(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_vault_health_info,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_vault_health_info,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEvfsVaultHealthConstMeta,
@@ -1741,20 +1627,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 42,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_list(port_, arg0);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_String,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_String,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiEvfsVaultListConstMeta,
@@ -1775,20 +1655,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(path, serializer);
-          sse_encode_list_prim_u_8_loose(key, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 43,
-            port: port_,
-          );
+          var arg0 = cst_encode_String(path);
+          var arg1 = cst_encode_list_prim_u_8_loose(key);
+          return wire.wire__crate__api__evfs__vault_open(port_, arg0, arg1);
         },
-        codec: SseCodec(
+        codec: DcoCodec(
           decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
-          decodeErrorData: sse_decode_crypto_error,
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultOpenConstMeta,
         argValues: [path, key],
@@ -1808,22 +1682,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 44,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_String(name);
+          return wire.wire__crate__api__evfs__vault_read(port_, arg0, arg1);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultReadConstMeta,
         argValues: [handle, name],
@@ -1848,25 +1716,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          sse_encode_bool(verifyChecksum, serializer);
-          sse_encode_StreamSink_list_prim_u_8_strict_Sse(sink, serializer);
-          sse_encode_StreamSink_f_64_Sse(onProgress, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 45,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_String(name);
+          var arg2 = cst_encode_bool(verifyChecksum);
+          var arg3 = cst_encode_StreamSink_list_prim_u_8_strict_Dco(sink);
+          var arg4 = cst_encode_StreamSink_f_64_Dco(onProgress);
+          return wire.wire__crate__api__evfs__vault_read_stream(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+            arg3,
+            arg4,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultReadStreamConstMeta,
         argValues: [handle, name, verifyChecksum, sink, onProgress],
@@ -1889,22 +1758,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_u_64(newCapacity, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 46,
-            port: port_,
-          );
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_u_64(newCapacity);
+          return wire.wire__crate__api__evfs__vault_resize(port_, arg0, arg1);
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultResizeConstMeta,
         argValues: [handle, newCapacity],
@@ -1928,27 +1791,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-            handle,
-            serializer,
-          );
-          sse_encode_String(name, serializer);
-          sse_encode_list_prim_u_8_loose(data, serializer);
-          sse_encode_opt_box_autoadd_compression_config(
-            compression,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 47,
-            port: port_,
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_String(name);
+          var arg2 = cst_encode_list_prim_u_8_loose(data);
+          var arg3 = cst_encode_opt_box_autoadd_compression_config(compression);
+          return wire.wire__crate__api__evfs__vault_write(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+            arg3,
           );
         },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_crypto_error,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultWriteConstMeta,
         argValues: [handle, name, data, compression],
@@ -1973,24 +1833,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       handler.executeNormal(
         NormalTask(
           callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-              handle,
-              serializer,
-            );
-            sse_encode_String(name, serializer);
-            sse_encode_String(filePath, serializer);
-            sse_encode_StreamSink_f_64_Sse(onProgress, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 48,
-              port: port_,
+            var arg0 =
+                cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                  handle,
+                );
+            var arg1 = cst_encode_String(name);
+            var arg2 = cst_encode_String(filePath);
+            var arg3 = cst_encode_StreamSink_f_64_Dco(onProgress);
+            return wire.wire__crate__api__evfs__vault_write_file(
+              port_,
+              arg0,
+              arg1,
+              arg2,
+              arg3,
             );
           },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_crypto_error,
+          codec: DcoCodec(
+            decodeSuccessData: dco_decode_unit,
+            decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiEvfsVaultWriteFileConstMeta,
           argValues: [handle, name, filePath, onProgress],
@@ -2127,13 +1987,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw) {
+  RustStreamSink<double> dco_decode_StreamSink_f_64_Dco(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
 
   @protected
-  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Dco(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -2486,7 +2346,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
+  RustStreamSink<double> sse_decode_StreamSink_f_64_Dco(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2494,7 +2354,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Dco(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2771,6 +2631,154 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as CipherHandleImpl).frbInternalCstEncode(move: true);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as HasherHandleImpl).frbInternalCstEncode(move: true);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as VaultHandleImpl).frbInternalCstEncode(move: true);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as VaultHandleImpl).frbInternalCstEncode(move: false);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as CipherHandleImpl).frbInternalCstEncode(move: false);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as HasherHandleImpl).frbInternalCstEncode(move: false);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as VaultHandleImpl).frbInternalCstEncode(move: false);
+  }
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as CipherHandleImpl).frbInternalCstEncode();
+  }
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as HasherHandleImpl).frbInternalCstEncode();
+  }
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    // ignore: invalid_use_of_internal_member
+    return (raw as VaultHandleImpl).frbInternalCstEncode();
+  }
+
+  @protected
+  int cst_encode_argon_2_preset(Argon2Preset raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_i_32(raw.index);
+  }
+
+  @protected
+  bool cst_encode_bool(bool raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  int cst_encode_compression_algorithm(CompressionAlgorithm raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_i_32(raw.index);
+  }
+
+  @protected
+  double cst_encode_f_64(double raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  int cst_encode_i_32(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  int cst_encode_u_32(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  int cst_encode_u_8(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
+  void cst_encode_unit(void raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw;
+  }
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -2910,16 +2918,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_f_64_Sse(
+  void sse_encode_StreamSink_f_64_Dco(
     RustStreamSink<double> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(
       self.setupAndSerialize(
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_f_64,
-          decodeErrorData: sse_decode_AnyhowException,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_f_64,
+          decodeErrorData: dco_decode_AnyhowException,
         ),
       ),
       serializer,
@@ -2927,16 +2935,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_list_prim_u_8_strict_Sse(
+  void sse_encode_StreamSink_list_prim_u_8_strict_Dco(
     RustStreamSink<Uint8List> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(
       self.setupAndSerialize(
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_AnyhowException,
         ),
       ),
       serializer,

@@ -2,5 +2,6 @@ rust_input: crate::api
 rust_root: rust/
 dart_output: lib/src/rust
 enable_lifetime: true
+full_dep: true
 rust_features:
   - compression

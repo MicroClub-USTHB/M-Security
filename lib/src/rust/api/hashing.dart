@@ -50,5 +50,5 @@ Future<Uint8List> blake3Hash({required List<int> data}) =>
 Future<Uint8List> sha3Hash({required List<int> data}) =>
     RustLib.instance.api.crateApiHashingSha3Hash(data: data);
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
+// Rust type: RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<HasherHandle>>
 abstract class HasherHandle implements RustOpaqueInterface {}
