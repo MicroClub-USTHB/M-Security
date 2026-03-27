@@ -1,9 +1,80 @@
+use crate::core::error::CryptoError;
 use crate::core::evfs::format::SegmentIndex;
 use crate::core::evfs::segment::VaultKeys;
 use crate::core::evfs::wal::{VaultLock, WriteAheadLog};
 use crate::core::format::Algorithm;
 use flutter_rust_bridge::frb;
+use memmap2::Mmap;
 use std::fs::File;
+
+// ---------------------------------------------------------------------------
+// VaultMmap — read-only memory-mapped view of the vault file
+// ---------------------------------------------------------------------------
+
+/// Read-only memory-mapped view of the vault file for zero-copy segment reads.
+///
+/// Created on vault open and recreated after any mutation (write, delete,
+/// defrag, resize) that changes the file contents.
+pub(crate) struct VaultMmap {
+    mmap: Mmap,
+}
+
+impl VaultMmap {
+    /// Create a new read-only mapping of the vault file.
+    ///
+    /// # Safety contract
+    /// The caller must hold an exclusive flock on the file (VaultLock) so no
+    /// concurrent writer can modify the file while the mapping is live.
+    pub(crate) fn new(file: &File) -> Result<Self, CryptoError> {
+        // SAFETY: file is flock-locked — no concurrent writers
+        let mmap = unsafe { Mmap::map(file) }
+            .map_err(|e| CryptoError::IoError(format!("mmap failed: {e}")))?;
+
+        // Lock pages to prevent kernel from swapping ciphertext to disk.
+        // Failure is non-fatal (mlock limits may be low on some systems).
+        #[cfg(unix)]
+        {
+            unsafe {
+                libc::mlock(mmap.as_ptr().cast::<libc::c_void>(), mmap.len());
+            }
+        }
+
+        Ok(Self { mmap })
+    }
+
+    /// Return a byte slice into the mapped region at `[offset..offset+len]`.
+    ///
+    /// Returns `Err` if the range is out of bounds (e.g. 32-bit overflow or
+    /// the file was truncated between mapping and read).
+    pub(crate) fn slice(&self, offset: u64, len: u64) -> Result<&[u8], CryptoError> {
+        let start = usize::try_from(offset).map_err(|_| {
+            CryptoError::VaultCorrupted(format!("mmap offset {offset} exceeds address space"))
+        })?;
+        let size = usize::try_from(len).map_err(|_| {
+            CryptoError::VaultCorrupted(format!("mmap length {len} exceeds address space"))
+        })?;
+        let end = start.checked_add(size).ok_or_else(|| {
+            CryptoError::VaultCorrupted("mmap range overflow".into())
+        })?;
+        if end > self.mmap.len() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "mmap read {start}..{end} exceeds file size {}",
+                self.mmap.len()
+            )));
+        }
+        Ok(&self.mmap[start..end])
+    }
+}
+
+#[cfg(unix)]
+impl Drop for VaultMmap {
+    fn drop(&mut self) {
+        // Unlock pages before the mmap is unmapped
+        unsafe {
+            libc::munlock(self.mmap.as_ptr().cast::<libc::c_void>(), self.mmap.len());
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // VaultHandle
@@ -23,8 +94,17 @@ pub struct VaultHandle {
     /// Padded plaintext index size, set at creation and read from header on open.
     pub(crate) index_pad_size: usize,
     pub(crate) file: File,
+    /// Read-only mmap for zero-copy reads. None if mmap failed (32-bit fallback).
+    pub(crate) mmap: Option<VaultMmap>,
     pub(crate) wal: WriteAheadLog,
     pub(crate) lock: VaultLock,
+}
+
+impl VaultHandle {
+    /// (Re)create the mmap after a mutation. Silently falls back to None on failure.
+    pub(crate) fn refresh_mmap(&mut self) {
+        self.mmap = VaultMmap::new(&self.file).ok();
+    }
 }
 
 /// Capacity info returned to callers.

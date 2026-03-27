@@ -2141,6 +2141,7 @@ fn stream_read_chunks(
 
     let checksum = decrypt_streaming_chunks(
         &mut handle.file,
+        handle.mmap.as_ref(),
         handle.keys.cipher_key.as_bytes(),
         handle.keys.nonce_key.as_bytes(),
         handle.algorithm,

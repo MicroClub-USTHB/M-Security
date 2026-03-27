@@ -97,10 +97,14 @@ pub(crate) fn capacity_from_file_size(
 
 /// Decrypt all chunks of a streaming segment, calling `on_chunk(plaintext, chunk_index)`
 /// for each decrypted chunk. Returns the BLAKE3 checksum of the full decrypted data.
+///
+/// When `mmap` is `Some`, chunks are read via zero-copy slices into the mapped
+/// file. Falls back to heap-allocated `read_exact` when mmap is unavailable.
 #[allow(clippy::too_many_arguments)]
 #[cfg(feature = "compression")]
 pub(crate) fn decrypt_streaming_chunks(
     file: &mut File,
+    mmap: Option<&super::types::VaultMmap>,
     cipher_key: &[u8],
     nonce_key: &[u8],
     algorithm: Algorithm,
@@ -112,6 +116,7 @@ pub(crate) fn decrypt_streaming_chunks(
     mut on_chunk: impl FnMut(Vec<u8>, u32) -> Result<(), CryptoError>,
 ) -> Result<[u8; 32], CryptoError> {
     let data_region = format::data_region_offset(index_pad_size);
+    let enc_chunk_size = crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
     let mut hasher = blake3::Hasher::new();
     let mut decompressor = if compression != CompressionAlgorithm::None {
         Some(crate::core::compression::streaming::new_decompressor(
@@ -124,16 +129,26 @@ pub(crate) fn decrypt_streaming_chunks(
 
     for i in 0..chunk_count {
         let chunk_offset = (i as u64)
-            .checked_mul(crate::core::streaming::ENCRYPTED_CHUNK_SIZE as u64)
+            .checked_mul(enc_chunk_size as u64)
             .and_then(|co| data_region.checked_add(seg_offset)?.checked_add(co))
             .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))?;
-        file.seek(SeekFrom::Start(chunk_offset))?;
 
-        let mut encrypted = vec![0u8; crate::core::streaming::ENCRYPTED_CHUNK_SIZE];
-        file.read_exact(&mut encrypted)?;
+        // Zero-copy path: slice directly into mmap; fallback: heap read
+        let heap_buf;
+        let encrypted_ref: &[u8] = if let Some(m) = mmap {
+            m.slice(chunk_offset, enc_chunk_size as u64)?
+        } else {
+            file.seek(SeekFrom::Start(chunk_offset))?;
+            heap_buf = {
+                let mut buf = vec![0u8; enc_chunk_size];
+                file.read_exact(&mut buf)?;
+                buf
+            };
+            &heap_buf
+        };
 
         let expected_nonce = segment::derive_chunk_nonce(nonce_key, i as u64, generation)?;
-        let (stored_nonce, _) = encrypted.split_at(crate::core::streaming::NONCE_SIZE);
+        let (stored_nonce, _) = encrypted_ref.split_at(crate::core::streaming::NONCE_SIZE);
         if stored_nonce.ct_ne(&expected_nonce).into() {
             return Err(CryptoError::AuthenticationFailed);
         }
@@ -148,7 +163,7 @@ pub(crate) fn decrypt_streaming_chunks(
 
         let decrypted = segment::aead_decrypt_with_stored_nonce(
             cipher_key,
-            &encrypted,
+            encrypted_ref,
             &aad,
             algorithm,
         )?;

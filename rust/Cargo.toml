@@ -44,6 +44,10 @@ crc32fast = "1.4"
 # Advisory file locking
 fs4 = "0.12"
 
+# Memory-mapped I/O for zero-copy vault reads
+memmap2 = "0.9"
+libc = "0.2"
+
 # Compression
 zstd = { version = "0.13", optional = true }
 brotli = { version = "7.0", optional = true }
