@@ -5,13 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.3.3 - 2026-03-27
 
 ### Added
 
+- Zero-copy vault reads via `memmap2` memory-mapped I/O — `vault_read` and `vault_read_stream` now slice directly into mapped file pages instead of allocating heap buffers with `read_exact`.
+- `VaultMmap` wrapper with `mlock()` on unix to pin ciphertext pages in RAM and prevent swap-to-disk. Graceful fallback to heap reads when mmap fails (32-bit targets, low `mlock` limits).
+- mmap invalidation/recreation after every vault mutation (write, delete, defrag, resize).
+- ELF linker version script (`ffi-exports.map`) restricting Android/Linux `.so` dynamic symbol table to FRB FFI symbols only — hides `#[no_mangle]` symbols leaked by dependencies.
+- `build.rs` for conditional version script application on Android/Linux cdylib builds.
+
 ### Changed
 
-### Fixed
+- Switched all 50 FRB functions from SSE to CST+DCO codec via `full_dep: true` — `Vec<u8>` returns now use `allo-isolate` `ExternalTypedData` (pointer transfer, no memcpy) instead of SSE serialization.
+- Release profile hardened: `lto = "fat"`, `codegen-units = 1`, `strip = "symbols"`, `opt-level = 3`.
+- `VaultHandle` field order: `mmap` before `file` so `munlock`/`munmap` runs while the fd is still open.
+
+### Security
+
+- Symbol stripping removes internal Rust function names from release binaries — `nm -D` shows only FRB entry points and libc on ELF targets.
+- `mlock()` prevents OS from swapping mmap'd ciphertext pages to disk swap.
+- Fewer intermediate `Vec<u8>` copies means shorter plaintext residency in memory.
+- ZeroizeOnDrop behavior preserved — no regression from zero-copy refactoring.
 
 ## [v0.3.2](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.2) - 2026-03-26
 

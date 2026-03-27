@@ -104,10 +104,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<double> dco_decode_StreamSink_f_64_Sse(dynamic raw);
+  RustStreamSink<double> dco_decode_StreamSink_f_64_Dco(dynamic raw);
 
   @protected
-  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> dco_decode_StreamSink_list_prim_u_8_strict_Dco(
     dynamic raw,
   );
 
@@ -247,12 +247,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<double> sse_decode_StreamSink_f_64_Sse(
+  RustStreamSink<double> sse_decode_StreamSink_f_64_Dco(
     SseDeserializer deserializer,
   );
 
   @protected
-  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Sse(
+  RustStreamSink<Uint8List> sse_decode_StreamSink_list_prim_u_8_strict_Dco(
     SseDeserializer deserializer,
   );
 
@@ -337,6 +337,356 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   VaultHealthInfo sse_decode_vault_health_info(SseDeserializer deserializer);
 
   @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_AnyhowException(
+    AnyhowException raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_StreamSink_f_64_Dco(
+    RustStreamSink<double> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_String(
+      raw.setupAndSerialize(
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_f_64,
+          decodeErrorData: dco_decode_AnyhowException,
+        ),
+      ),
+    );
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict>
+  cst_encode_StreamSink_list_prim_u_8_strict_Dco(
+    RustStreamSink<Uint8List> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_String(
+      raw.setupAndSerialize(
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_AnyhowException,
+        ),
+      ),
+    );
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_String(String raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_list_prim_u_8_strict(utf8.encoder.convert(raw));
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_compression_config>
+  cst_encode_box_autoadd_compression_config(CompressionConfig raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ptr = wire.cst_new_box_autoadd_compression_config();
+    cst_api_fill_to_wire_compression_config(raw, ptr.ref);
+    return ptr;
+  }
+
+  @protected
+  ffi.Pointer<ffi.Int32> cst_encode_box_autoadd_i_32(int raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return wire.cst_new_box_autoadd_i_32(cst_encode_i_32(raw));
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_String> cst_encode_list_String(List<String> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_String(raw.length);
+    for (var i = 0; i < raw.length; ++i) {
+      ans.ref.ptr[i] = cst_encode_String(raw[i]);
+    }
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_loose> cst_encode_list_prim_u_8_loose(
+    List<int> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_prim_u_8_loose(raw.length);
+    ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_list_prim_u_8_strict(
+    Uint8List raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_prim_u_8_strict(raw.length);
+    ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_compression_config>
+  cst_encode_opt_box_autoadd_compression_config(CompressionConfig? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null
+        ? ffi.nullptr
+        : cst_encode_box_autoadd_compression_config(raw);
+  }
+
+  @protected
+  ffi.Pointer<ffi.Int32> cst_encode_opt_box_autoadd_i_32(int? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? ffi.nullptr : cst_encode_box_autoadd_i_32(raw);
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict>
+  cst_encode_opt_list_prim_u_8_strict(Uint8List? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? ffi.nullptr : cst_encode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  int cst_encode_u_64(BigInt raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.toSigned(64).toInt();
+  }
+
+  @protected
+  int cst_encode_usize(BigInt raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.toSigned(64).toInt();
+  }
+
+  @protected
+  void cst_api_fill_to_wire_box_autoadd_compression_config(
+    CompressionConfig apiObj,
+    ffi.Pointer<wire_cst_compression_config> wireObj,
+  ) {
+    cst_api_fill_to_wire_compression_config(apiObj, wireObj.ref);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_compression_config(
+    CompressionConfig apiObj,
+    wire_cst_compression_config wireObj,
+  ) {
+    wireObj.algorithm = cst_encode_compression_algorithm(apiObj.algorithm);
+    wireObj.level = cst_encode_opt_box_autoadd_i_32(apiObj.level);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_crypto_error(
+    CryptoError apiObj,
+    wire_cst_crypto_error wireObj,
+  ) {
+    if (apiObj is CryptoError_InvalidKeyLength) {
+      var pre_expected = cst_encode_usize(apiObj.expected);
+      var pre_actual = cst_encode_usize(apiObj.actual);
+      wireObj.tag = 0;
+      wireObj.kind.InvalidKeyLength.expected = pre_expected;
+      wireObj.kind.InvalidKeyLength.actual = pre_actual;
+      return;
+    }
+    if (apiObj is CryptoError_InvalidNonce) {
+      wireObj.tag = 1;
+      return;
+    }
+    if (apiObj is CryptoError_EncryptionFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 2;
+      wireObj.kind.EncryptionFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_DecryptionFailed) {
+      wireObj.tag = 3;
+      return;
+    }
+    if (apiObj is CryptoError_HashingFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 4;
+      wireObj.kind.HashingFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_KdfFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 5;
+      wireObj.kind.KdfFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_IoError) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 6;
+      wireObj.kind.IoError.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_InvalidParameter) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 7;
+      wireObj.kind.InvalidParameter.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_CompressionFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 8;
+      wireObj.kind.CompressionFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_AuthenticationFailed) {
+      wireObj.tag = 9;
+      return;
+    }
+    if (apiObj is CryptoError_VaultFull) {
+      var pre_needed = cst_encode_u_64(apiObj.needed);
+      var pre_available = cst_encode_u_64(apiObj.available);
+      wireObj.tag = 10;
+      wireObj.kind.VaultFull.needed = pre_needed;
+      wireObj.kind.VaultFull.available = pre_available;
+      return;
+    }
+    if (apiObj is CryptoError_VaultLocked) {
+      wireObj.tag = 11;
+      return;
+    }
+    if (apiObj is CryptoError_SegmentNotFound) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 12;
+      wireObj.kind.SegmentNotFound.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_VaultCorrupted) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 13;
+      wireObj.kind.VaultCorrupted.field0 = pre_field0;
+      return;
+    }
+  }
+
+  @protected
+  void cst_api_fill_to_wire_defrag_result(
+    DefragResult apiObj,
+    wire_cst_defrag_result wireObj,
+  ) {
+    wireObj.segments_moved = cst_encode_u_32(apiObj.segmentsMoved);
+    wireObj.bytes_reclaimed = cst_encode_u_64(apiObj.bytesReclaimed);
+    wireObj.free_regions_before = cst_encode_u_32(apiObj.freeRegionsBefore);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_vault_capacity_info(
+    VaultCapacityInfo apiObj,
+    wire_cst_vault_capacity_info wireObj,
+  ) {
+    wireObj.total_bytes = cst_encode_u_64(apiObj.totalBytes);
+    wireObj.used_bytes = cst_encode_u_64(apiObj.usedBytes);
+    wireObj.free_list_bytes = cst_encode_u_64(apiObj.freeListBytes);
+    wireObj.unallocated_bytes = cst_encode_u_64(apiObj.unallocatedBytes);
+    wireObj.segment_count = cst_encode_usize(apiObj.segmentCount);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_vault_health_info(
+    VaultHealthInfo apiObj,
+    wire_cst_vault_health_info wireObj,
+  ) {
+    wireObj.total_bytes = cst_encode_u_64(apiObj.totalBytes);
+    wireObj.used_bytes = cst_encode_u_64(apiObj.usedBytes);
+    wireObj.free_list_bytes = cst_encode_u_64(apiObj.freeListBytes);
+    wireObj.unallocated_bytes = cst_encode_u_64(apiObj.unallocatedBytes);
+    wireObj.segment_count = cst_encode_u_32(apiObj.segmentCount);
+    wireObj.free_region_count = cst_encode_u_32(apiObj.freeRegionCount);
+    wireObj.largest_free_block = cst_encode_u_64(apiObj.largestFreeBlock);
+    wireObj.fragmentation_ratio = cst_encode_f_64(apiObj.fragmentationRatio);
+    wireObj.is_consistent = cst_encode_bool(apiObj.isConsistent);
+  }
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
+    CipherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerHasherHandle(
+    HasherHandle raw,
+  );
+
+  @protected
+  int
+  cst_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    VaultHandle raw,
+  );
+
+  @protected
+  int cst_encode_argon_2_preset(Argon2Preset raw);
+
+  @protected
+  bool cst_encode_bool(bool raw);
+
+  @protected
+  int cst_encode_compression_algorithm(CompressionAlgorithm raw);
+
+  @protected
+  double cst_encode_f_64(double raw);
+
+  @protected
+  int cst_encode_i_32(int raw);
+
+  @protected
+  int cst_encode_u_32(int raw);
+
+  @protected
+  int cst_encode_u_8(int raw);
+
+  @protected
+  void cst_encode_unit(void raw);
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -413,13 +763,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_f_64_Sse(
+  void sse_encode_StreamSink_f_64_Dco(
     RustStreamSink<double> self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_StreamSink_list_prim_u_8_strict_Sse(
+  void sse_encode_StreamSink_list_prim_u_8_strict_Dco(
     RustStreamSink<Uint8List> self,
     SseSerializer serializer,
   );
@@ -523,6 +873,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
 // Section: wire_class
 
+// ignore_for_file: camel_case_types, non_constant_identifier_names, avoid_positional_boolean_parameters, annotate_overrides, constant_identifier_names
+// AUTO GENERATED FILE, DO NOT EDIT.
+//
+// Generated by `package:ffigen`.
+// ignore_for_file: type=lint, unused_import
+
+/// generated by flutter_rust_bridge
 class RustLibWire implements BaseWire {
   factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
       RustLibWire(lib.ffiDynamicLibrary);
@@ -534,6 +891,1190 @@ class RustLibWire implements BaseWire {
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary)
     : _lookup = dynamicLibrary.lookup;
+
+  /// The symbols are looked up with [lookup].
+  RustLibWire.fromLookup(
+    ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) lookup,
+  ) : _lookup = lookup;
+
+  void store_dart_post_cobject(DartPostCObjectFnType ptr) {
+    return _store_dart_post_cobject(ptr);
+  }
+
+  late final _store_dart_post_cobjectPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(DartPostCObjectFnType)>>(
+        'store_dart_post_cobject',
+      );
+  late final _store_dart_post_cobject = _store_dart_post_cobjectPtr
+      .asFunction<void Function(DartPostCObjectFnType)>();
+
+  void wire__crate__api__evfs__types__VaultHandle_health(int port_, int that) {
+    return _wire__crate__api__evfs__types__VaultHandle_health(port_, that);
+  }
+
+  late final _wire__crate__api__evfs__types__VaultHandle_healthPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__types__VaultHandle_health',
+      );
+  late final _wire__crate__api__evfs__types__VaultHandle_health =
+      _wire__crate__api__evfs__types__VaultHandle_healthPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__hashing__argon2__argon2id_hash(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> password,
+    int preset,
+  ) {
+    return _wire__crate__api__hashing__argon2__argon2id_hash(
+      port_,
+      password,
+      preset,
+    );
+  }
+
+  late final _wire__crate__api__hashing__argon2__argon2id_hashPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Int32,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__hashing__argon2__argon2id_hash');
+  late final _wire__crate__api__hashing__argon2__argon2id_hash =
+      _wire__crate__api__hashing__argon2__argon2id_hashPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_strict>, int)
+          >();
+
+  void wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> password,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> salt,
+    int preset,
+  ) {
+    return _wire__crate__api__hashing__argon2__argon2id_hash_with_salt(
+      port_,
+      password,
+      salt,
+      preset,
+    );
+  }
+
+  late final _wire__crate__api__hashing__argon2__argon2id_hash_with_saltPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Int32,
+          )
+        >
+      >(
+        'frbgen_m_security_wire__crate__api__hashing__argon2__argon2id_hash_with_salt',
+      );
+  late final _wire__crate__api__hashing__argon2__argon2id_hash_with_salt =
+      _wire__crate__api__hashing__argon2__argon2id_hash_with_saltPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              int,
+            )
+          >();
+
+  void wire__crate__api__hashing__argon2__argon2id_verify(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> phc_hash,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> password,
+  ) {
+    return _wire__crate__api__hashing__argon2__argon2id_verify(
+      port_,
+      phc_hash,
+      password,
+    );
+  }
+
+  late final _wire__crate__api__hashing__argon2__argon2id_verifyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__hashing__argon2__argon2id_verify');
+  late final _wire__crate__api__hashing__argon2__argon2id_verify =
+      _wire__crate__api__hashing__argon2__argon2id_verifyPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__hashing__blake3_hash(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+  ) {
+    return _wire__crate__api__hashing__blake3_hash(port_, data);
+  }
+
+  late final _wire__crate__api__hashing__blake3_hashPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__hashing__blake3_hash');
+  late final _wire__crate__api__hashing__blake3_hash =
+      _wire__crate__api__hashing__blake3_hashPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
+
+  void wire__crate__api__compression__compress(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+    ffi.Pointer<wire_cst_compression_config> config,
+  ) {
+    return _wire__crate__api__compression__compress(port_, data, config);
+  }
+
+  late final _wire__crate__api__compression__compressPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_compression_config>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__compression__compress');
+  late final _wire__crate__api__compression__compress =
+      _wire__crate__api__compression__compressPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_compression_config>,
+            )
+          >();
+
+  void wire__crate__api__compression__compression_algorithm_from_u8(
+    int port_,
+    int byte,
+  ) {
+    return _wire__crate__api__compression__compression_algorithm_from_u8(
+      port_,
+      byte,
+    );
+  }
+
+  late final _wire__crate__api__compression__compression_algorithm_from_u8Ptr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.Uint8)>>(
+        'frbgen_m_security_wire__crate__api__compression__compression_algorithm_from_u8',
+      );
+  late final _wire__crate__api__compression__compression_algorithm_from_u8 =
+      _wire__crate__api__compression__compression_algorithm_from_u8Ptr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__compression__compression_algorithm_to_u8(
+    int port_,
+    int that,
+  ) {
+    return _wire__crate__api__compression__compression_algorithm_to_u8(
+      port_,
+      that,
+    );
+  }
+
+  late final _wire__crate__api__compression__compression_algorithm_to_u8Ptr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.Int32)>>(
+        'frbgen_m_security_wire__crate__api__compression__compression_algorithm_to_u8',
+      );
+  late final _wire__crate__api__compression__compression_algorithm_to_u8 =
+      _wire__crate__api__compression__compression_algorithm_to_u8Ptr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__encryption__create_aes256_gcm(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
+  ) {
+    return _wire__crate__api__encryption__create_aes256_gcm(port_, key);
+  }
+
+  late final _wire__crate__api__encryption__create_aes256_gcmPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__encryption__create_aes256_gcm');
+  late final _wire__crate__api__encryption__create_aes256_gcm =
+      _wire__crate__api__encryption__create_aes256_gcmPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
+
+  void wire__crate__api__hashing__create_blake3(int port_) {
+    return _wire__crate__api__hashing__create_blake3(port_);
+  }
+
+  late final _wire__crate__api__hashing__create_blake3Ptr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__hashing__create_blake3',
+      );
+  late final _wire__crate__api__hashing__create_blake3 =
+      _wire__crate__api__hashing__create_blake3Ptr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__encryption__create_chacha20_poly1305(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
+  ) {
+    return _wire__crate__api__encryption__create_chacha20_poly1305(port_, key);
+  }
+
+  late final _wire__crate__api__encryption__create_chacha20_poly1305Ptr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >(
+        'frbgen_m_security_wire__crate__api__encryption__create_chacha20_poly1305',
+      );
+  late final _wire__crate__api__encryption__create_chacha20_poly1305 =
+      _wire__crate__api__encryption__create_chacha20_poly1305Ptr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
+
+  void wire__crate__api__encryption__create_noop_encryption(int port_) {
+    return _wire__crate__api__encryption__create_noop_encryption(port_);
+  }
+
+  late final _wire__crate__api__encryption__create_noop_encryptionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__encryption__create_noop_encryption',
+      );
+  late final _wire__crate__api__encryption__create_noop_encryption =
+      _wire__crate__api__encryption__create_noop_encryptionPtr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__hashing__create_sha3(int port_) {
+    return _wire__crate__api__hashing__create_sha3(port_);
+  }
+
+  late final _wire__crate__api__hashing__create_sha3Ptr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__hashing__create_sha3',
+      );
+  late final _wire__crate__api__hashing__create_sha3 =
+      _wire__crate__api__hashing__create_sha3Ptr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__compression__decompress(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+    int algorithm,
+  ) {
+    return _wire__crate__api__compression__decompress(port_, data, algorithm);
+  }
+
+  late final _wire__crate__api__compression__decompressPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Int32,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__compression__decompress');
+  late final _wire__crate__api__compression__decompress =
+      _wire__crate__api__compression__decompressPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>, int)
+          >();
+
+  void wire__crate__api__encryption__decrypt(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> ciphertext,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> aad,
+  ) {
+    return _wire__crate__api__encryption__decrypt(
+      port_,
+      cipher,
+      ciphertext,
+      aad,
+    );
+  }
+
+  late final _wire__crate__api__encryption__decryptPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__encryption__decrypt');
+  late final _wire__crate__api__encryption__decrypt =
+      _wire__crate__api__encryption__decryptPtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
+  void wire__crate__api__encryption__encrypt(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> plaintext,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> aad,
+  ) {
+    return _wire__crate__api__encryption__encrypt(
+      port_,
+      cipher,
+      plaintext,
+      aad,
+    );
+  }
+
+  late final _wire__crate__api__encryption__encryptPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__encryption__encrypt');
+  late final _wire__crate__api__encryption__encrypt =
+      _wire__crate__api__encryption__encryptPtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
+  void wire__crate__api__encryption__encryption_algorithm_id(
+    int port_,
+    int cipher,
+  ) {
+    return _wire__crate__api__encryption__encryption_algorithm_id(
+      port_,
+      cipher,
+    );
+  }
+
+  late final _wire__crate__api__encryption__encryption_algorithm_idPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__encryption__encryption_algorithm_id',
+      );
+  late final _wire__crate__api__encryption__encryption_algorithm_id =
+      _wire__crate__api__encryption__encryption_algorithm_idPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__encryption__generate_aes256_gcm_key(int port_) {
+    return _wire__crate__api__encryption__generate_aes256_gcm_key(port_);
+  }
+
+  late final _wire__crate__api__encryption__generate_aes256_gcm_keyPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__encryption__generate_aes256_gcm_key',
+      );
+  late final _wire__crate__api__encryption__generate_aes256_gcm_key =
+      _wire__crate__api__encryption__generate_aes256_gcm_keyPtr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__encryption__aes_gcm__generate_aes_key(int port_) {
+    return _wire__crate__api__encryption__aes_gcm__generate_aes_key(port_);
+  }
+
+  late final _wire__crate__api__encryption__aes_gcm__generate_aes_keyPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__encryption__aes_gcm__generate_aes_key',
+      );
+  late final _wire__crate__api__encryption__aes_gcm__generate_aes_key =
+      _wire__crate__api__encryption__aes_gcm__generate_aes_keyPtr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__encryption__generate_chacha20_poly1305_key(int port_) {
+    return _wire__crate__api__encryption__generate_chacha20_poly1305_key(port_);
+  }
+
+  late final _wire__crate__api__encryption__generate_chacha20_poly1305_keyPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__encryption__generate_chacha20_poly1305_key',
+      );
+  late final _wire__crate__api__encryption__generate_chacha20_poly1305_key =
+      _wire__crate__api__encryption__generate_chacha20_poly1305_keyPtr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__encryption__chacha20__generate_chacha_key(int port_) {
+    return _wire__crate__api__encryption__chacha20__generate_chacha_key(port_);
+  }
+
+  late final _wire__crate__api__encryption__chacha20__generate_chacha_keyPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+        'frbgen_m_security_wire__crate__api__encryption__chacha20__generate_chacha_key',
+      );
+  late final _wire__crate__api__encryption__chacha20__generate_chacha_key =
+      _wire__crate__api__encryption__chacha20__generate_chacha_keyPtr
+          .asFunction<void Function(int)>();
+
+  void wire__crate__api__hashing__hasher_algorithm_id(int port_, int handle) {
+    return _wire__crate__api__hashing__hasher_algorithm_id(port_, handle);
+  }
+
+  late final _wire__crate__api__hashing__hasher_algorithm_idPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__hashing__hasher_algorithm_id',
+      );
+  late final _wire__crate__api__hashing__hasher_algorithm_id =
+      _wire__crate__api__hashing__hasher_algorithm_idPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__hashing__hasher_finalize(int port_, int handle) {
+    return _wire__crate__api__hashing__hasher_finalize(port_, handle);
+  }
+
+  late final _wire__crate__api__hashing__hasher_finalizePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__hashing__hasher_finalize',
+      );
+  late final _wire__crate__api__hashing__hasher_finalize =
+      _wire__crate__api__hashing__hasher_finalizePtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__hashing__hasher_reset(int port_, int handle) {
+    return _wire__crate__api__hashing__hasher_reset(port_, handle);
+  }
+
+  late final _wire__crate__api__hashing__hasher_resetPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__hashing__hasher_reset',
+      );
+  late final _wire__crate__api__hashing__hasher_reset =
+      _wire__crate__api__hashing__hasher_resetPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__hashing__hasher_update(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+  ) {
+    return _wire__crate__api__hashing__hasher_update(port_, handle, data);
+  }
+
+  late final _wire__crate__api__hashing__hasher_updatePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__hashing__hasher_update');
+  late final _wire__crate__api__hashing__hasher_update =
+      _wire__crate__api__hashing__hasher_updatePtr
+          .asFunction<
+            void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
+
+  WireSyncRust2DartDco wire__crate__api__kdf__hkdf__hkdf_derive(
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> ikm,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> salt,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> info,
+    int output_len,
+  ) {
+    return _wire__crate__api__kdf__hkdf__hkdf_derive(
+      ikm,
+      salt,
+      info,
+      output_len,
+    );
+  }
+
+  late final _wire__crate__api__kdf__hkdf__hkdf_derivePtr =
+      _lookup<
+        ffi.NativeFunction<
+          WireSyncRust2DartDco Function(
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.UintPtr,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__kdf__hkdf__hkdf_derive');
+  late final _wire__crate__api__kdf__hkdf__hkdf_derive =
+      _wire__crate__api__kdf__hkdf__hkdf_derivePtr
+          .asFunction<
+            WireSyncRust2DartDco Function(
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              int,
+            )
+          >();
+
+  void wire__crate__api__kdf__hkdf__hkdf_expand(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> prk,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> info,
+    int output_len,
+  ) {
+    return _wire__crate__api__kdf__hkdf__hkdf_expand(
+      port_,
+      prk,
+      info,
+      output_len,
+    );
+  }
+
+  late final _wire__crate__api__kdf__hkdf__hkdf_expandPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.UintPtr,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__kdf__hkdf__hkdf_expand');
+  late final _wire__crate__api__kdf__hkdf__hkdf_expand =
+      _wire__crate__api__kdf__hkdf__hkdf_expandPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              int,
+            )
+          >();
+
+  WireSyncRust2DartDco wire__crate__api__kdf__hkdf__hkdf_extract(
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> ikm,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> salt,
+  ) {
+    return _wire__crate__api__kdf__hkdf__hkdf_extract(ikm, salt);
+  }
+
+  late final _wire__crate__api__kdf__hkdf__hkdf_extractPtr =
+      _lookup<
+        ffi.NativeFunction<
+          WireSyncRust2DartDco Function(
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__kdf__hkdf__hkdf_extract');
+  late final _wire__crate__api__kdf__hkdf__hkdf_extract =
+      _wire__crate__api__kdf__hkdf__hkdf_extractPtr
+          .asFunction<
+            WireSyncRust2DartDco Function(
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__hashing__sha3_hash(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+  ) {
+    return _wire__crate__api__hashing__sha3_hash(port_, data);
+  }
+
+  late final _wire__crate__api__hashing__sha3_hashPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__hashing__sha3_hash');
+  late final _wire__crate__api__hashing__sha3_hash =
+      _wire__crate__api__hashing__sha3_hashPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
+
+  void wire__crate__api__compression__should_skip_compression(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> file_path,
+  ) {
+    return _wire__crate__api__compression__should_skip_compression(
+      port_,
+      file_path,
+    );
+  }
+
+  late final _wire__crate__api__compression__should_skip_compressionPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >(
+        'frbgen_m_security_wire__crate__api__compression__should_skip_compression',
+      );
+  late final _wire__crate__api__compression__should_skip_compression =
+      _wire__crate__api__compression__should_skip_compressionPtr
+          .asFunction<
+            void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
+          >();
+
+  void wire__crate__api__streaming__stream_compress_encrypt_file(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_compression_config> compression,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
+  ) {
+    return _wire__crate__api__streaming__stream_compress_encrypt_file(
+      port_,
+      cipher,
+      compression,
+      input_path,
+      output_path,
+      progress_sink,
+    );
+  }
+
+  late final _wire__crate__api__streaming__stream_compress_encrypt_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_compression_config>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >(
+        'frbgen_m_security_wire__crate__api__streaming__stream_compress_encrypt_file',
+      );
+  late final _wire__crate__api__streaming__stream_compress_encrypt_file =
+      _wire__crate__api__streaming__stream_compress_encrypt_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_compression_config>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__streaming__stream_decrypt_decompress_file(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
+  ) {
+    return _wire__crate__api__streaming__stream_decrypt_decompress_file(
+      port_,
+      cipher,
+      input_path,
+      output_path,
+      progress_sink,
+    );
+  }
+
+  late final _wire__crate__api__streaming__stream_decrypt_decompress_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >(
+        'frbgen_m_security_wire__crate__api__streaming__stream_decrypt_decompress_file',
+      );
+  late final _wire__crate__api__streaming__stream_decrypt_decompress_file =
+      _wire__crate__api__streaming__stream_decrypt_decompress_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__streaming__stream_decrypt_file(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
+  ) {
+    return _wire__crate__api__streaming__stream_decrypt_file(
+      port_,
+      cipher,
+      input_path,
+      output_path,
+      progress_sink,
+    );
+  }
+
+  late final _wire__crate__api__streaming__stream_decrypt_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__streaming__stream_decrypt_file');
+  late final _wire__crate__api__streaming__stream_decrypt_file =
+      _wire__crate__api__streaming__stream_decrypt_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__streaming__stream_encrypt_file(
+    int port_,
+    int cipher,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
+  ) {
+    return _wire__crate__api__streaming__stream_encrypt_file(
+      port_,
+      cipher,
+      input_path,
+      output_path,
+      progress_sink,
+    );
+  }
+
+  late final _wire__crate__api__streaming__stream_encrypt_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__streaming__stream_encrypt_file');
+  late final _wire__crate__api__streaming__stream_encrypt_file =
+      _wire__crate__api__streaming__stream_encrypt_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__streaming__stream_hash_file(
+    int port_,
+    int hasher,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> file_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
+  ) {
+    return _wire__crate__api__streaming__stream_hash_file(
+      port_,
+      hasher,
+      file_path,
+      progress_sink,
+    );
+  }
+
+  late final _wire__crate__api__streaming__stream_hash_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__streaming__stream_hash_file');
+  late final _wire__crate__api__streaming__stream_hash_file =
+      _wire__crate__api__streaming__stream_hash_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_capacity(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_capacity(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_capacityPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_capacity',
+      );
+  late final _wire__crate__api__evfs__vault_capacity =
+      _wire__crate__api__evfs__vault_capacityPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_close(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_close(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_closePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_close',
+      );
+  late final _wire__crate__api__evfs__vault_close =
+      _wire__crate__api__evfs__vault_closePtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_create(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> path,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> algorithm,
+    int capacity_bytes,
+  ) {
+    return _wire__crate__api__evfs__vault_create(
+      port_,
+      path,
+      key,
+      algorithm,
+      capacity_bytes,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_createPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Uint64,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_create');
+  late final _wire__crate__api__evfs__vault_create =
+      _wire__crate__api__evfs__vault_createPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              int,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_defragment(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_defragment(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_defragmentPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_defragment',
+      );
+  late final _wire__crate__api__evfs__vault_defragment =
+      _wire__crate__api__evfs__vault_defragmentPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_delete(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _wire__crate__api__evfs__vault_delete(port_, handle, name);
+  }
+
+  late final _wire__crate__api__evfs__vault_deletePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_delete');
+  late final _wire__crate__api__evfs__vault_delete =
+      _wire__crate__api__evfs__vault_deletePtr
+          .asFunction<
+            void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
+          >();
+
+  void wire__crate__api__evfs__vault_health(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_health(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_healthPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_health',
+      );
+  late final _wire__crate__api__evfs__vault_health =
+      _wire__crate__api__evfs__vault_healthPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_list(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_list(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_listPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_list',
+      );
+  late final _wire__crate__api__evfs__vault_list =
+      _wire__crate__api__evfs__vault_listPtr
+          .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_open(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> path,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
+  ) {
+    return _wire__crate__api__evfs__vault_open(port_, path, key);
+  }
+
+  late final _wire__crate__api__evfs__vault_openPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_open');
+  late final _wire__crate__api__evfs__vault_open =
+      _wire__crate__api__evfs__vault_openPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_read(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+  ) {
+    return _wire__crate__api__evfs__vault_read(port_, handle, name);
+  }
+
+  late final _wire__crate__api__evfs__vault_readPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_read');
+  late final _wire__crate__api__evfs__vault_read =
+      _wire__crate__api__evfs__vault_readPtr
+          .asFunction<
+            void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
+          >();
+
+  void wire__crate__api__evfs__vault_read_stream(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+    bool verify_checksum,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> sink,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> on_progress,
+  ) {
+    return _wire__crate__api__evfs__vault_read_stream(
+      port_,
+      handle,
+      name,
+      verify_checksum,
+      sink,
+      on_progress,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_read_streamPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Bool,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_read_stream');
+  late final _wire__crate__api__evfs__vault_read_stream =
+      _wire__crate__api__evfs__vault_read_streamPtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              bool,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_resize(
+    int port_,
+    int handle,
+    int new_capacity,
+  ) {
+    return _wire__crate__api__evfs__vault_resize(port_, handle, new_capacity);
+  }
+
+  late final _wire__crate__api__evfs__vault_resizePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64, ffi.UintPtr, ffi.Uint64)
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_resize');
+  late final _wire__crate__api__evfs__vault_resize =
+      _wire__crate__api__evfs__vault_resizePtr
+          .asFunction<void Function(int, int, int)>();
+
+  void wire__crate__api__evfs__vault_write(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
+    ffi.Pointer<wire_cst_compression_config> compression,
+  ) {
+    return _wire__crate__api__evfs__vault_write(
+      port_,
+      handle,
+      name,
+      data,
+      compression,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_writePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_compression_config>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_write');
+  late final _wire__crate__api__evfs__vault_write =
+      _wire__crate__api__evfs__vault_writePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_compression_config>,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_write_file(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> file_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> on_progress,
+  ) {
+    return _wire__crate__api__evfs__vault_write_file(
+      port_,
+      handle,
+      name,
+      file_path,
+      on_progress,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_write_filePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_write_file');
+  late final _wire__crate__api__evfs__vault_write_file =
+      _wire__crate__api__evfs__vault_write_filePtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
 
   void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
@@ -636,4 +2177,291 @@ class RustLibWire implements BaseWire {
   late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle =
       _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandlePtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  ffi.Pointer<wire_cst_compression_config>
+  cst_new_box_autoadd_compression_config() {
+    return _cst_new_box_autoadd_compression_config();
+  }
+
+  late final _cst_new_box_autoadd_compression_configPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Pointer<wire_cst_compression_config> Function()>
+      >('frbgen_m_security_cst_new_box_autoadd_compression_config');
+  late final _cst_new_box_autoadd_compression_config =
+      _cst_new_box_autoadd_compression_configPtr
+          .asFunction<ffi.Pointer<wire_cst_compression_config> Function()>();
+
+  ffi.Pointer<ffi.Int32> cst_new_box_autoadd_i_32(int value) {
+    return _cst_new_box_autoadd_i_32(value);
+  }
+
+  late final _cst_new_box_autoadd_i_32Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Int32> Function(ffi.Int32)>>(
+        'frbgen_m_security_cst_new_box_autoadd_i_32',
+      );
+  late final _cst_new_box_autoadd_i_32 = _cst_new_box_autoadd_i_32Ptr
+      .asFunction<ffi.Pointer<ffi.Int32> Function(int)>();
+
+  ffi.Pointer<wire_cst_list_String> cst_new_list_String(int len) {
+    return _cst_new_list_String(len);
+  }
+
+  late final _cst_new_list_StringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<wire_cst_list_String> Function(ffi.Int32)
+        >
+      >('frbgen_m_security_cst_new_list_String');
+  late final _cst_new_list_String = _cst_new_list_StringPtr
+      .asFunction<ffi.Pointer<wire_cst_list_String> Function(int)>();
+
+  ffi.Pointer<wire_cst_list_prim_u_8_loose> cst_new_list_prim_u_8_loose(
+    int len,
+  ) {
+    return _cst_new_list_prim_u_8_loose(len);
+  }
+
+  late final _cst_new_list_prim_u_8_loosePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<wire_cst_list_prim_u_8_loose> Function(ffi.Int32)
+        >
+      >('frbgen_m_security_cst_new_list_prim_u_8_loose');
+  late final _cst_new_list_prim_u_8_loose = _cst_new_list_prim_u_8_loosePtr
+      .asFunction<ffi.Pointer<wire_cst_list_prim_u_8_loose> Function(int)>();
+
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_new_list_prim_u_8_strict(
+    int len,
+  ) {
+    return _cst_new_list_prim_u_8_strict(len);
+  }
+
+  late final _cst_new_list_prim_u_8_strictPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<wire_cst_list_prim_u_8_strict> Function(ffi.Int32)
+        >
+      >('frbgen_m_security_cst_new_list_prim_u_8_strict');
+  late final _cst_new_list_prim_u_8_strict = _cst_new_list_prim_u_8_strictPtr
+      .asFunction<ffi.Pointer<wire_cst_list_prim_u_8_strict> Function(int)>();
+
+  int dummy_method_to_enforce_bundling() {
+    return _dummy_method_to_enforce_bundling();
+  }
+
+  late final _dummy_method_to_enforce_bundlingPtr =
+      _lookup<ffi.NativeFunction<ffi.Int64 Function()>>(
+        'dummy_method_to_enforce_bundling',
+      );
+  late final _dummy_method_to_enforce_bundling =
+      _dummy_method_to_enforce_bundlingPtr.asFunction<int Function()>();
 }
+
+typedef DartPort = ffi.Int64;
+typedef DartDartPort = int;
+typedef DartPostCObjectFnTypeFunction =
+    ffi.Bool Function(DartPort port_id, ffi.Pointer<ffi.Void> message);
+typedef DartDartPostCObjectFnTypeFunction =
+    bool Function(DartDartPort port_id, ffi.Pointer<ffi.Void> message);
+typedef DartPostCObjectFnType =
+    ffi.Pointer<ffi.NativeFunction<DartPostCObjectFnTypeFunction>>;
+
+final class wire_cst_list_prim_u_8_strict extends ffi.Struct {
+  external ffi.Pointer<ffi.Uint8> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_list_prim_u_8_loose extends ffi.Struct {
+  external ffi.Pointer<ffi.Uint8> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_compression_config extends ffi.Struct {
+  @ffi.Int32()
+  external int algorithm;
+
+  external ffi.Pointer<ffi.Int32> level;
+}
+
+final class wire_cst_list_String extends ffi.Struct {
+  external ffi.Pointer<ffi.Pointer<wire_cst_list_prim_u_8_strict>> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_CryptoError_InvalidKeyLength extends ffi.Struct {
+  @ffi.UintPtr()
+  external int expected;
+
+  @ffi.UintPtr()
+  external int actual;
+}
+
+final class wire_cst_CryptoError_EncryptionFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_HashingFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_KdfFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_IoError extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_InvalidParameter extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_CompressionFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_VaultFull extends ffi.Struct {
+  @ffi.Uint64()
+  external int needed;
+
+  @ffi.Uint64()
+  external int available;
+}
+
+final class wire_cst_CryptoError_SegmentNotFound extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_VaultCorrupted extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class CryptoErrorKind extends ffi.Union {
+  external wire_cst_CryptoError_InvalidKeyLength InvalidKeyLength;
+
+  external wire_cst_CryptoError_EncryptionFailed EncryptionFailed;
+
+  external wire_cst_CryptoError_HashingFailed HashingFailed;
+
+  external wire_cst_CryptoError_KdfFailed KdfFailed;
+
+  external wire_cst_CryptoError_IoError IoError;
+
+  external wire_cst_CryptoError_InvalidParameter InvalidParameter;
+
+  external wire_cst_CryptoError_CompressionFailed CompressionFailed;
+
+  external wire_cst_CryptoError_VaultFull VaultFull;
+
+  external wire_cst_CryptoError_SegmentNotFound SegmentNotFound;
+
+  external wire_cst_CryptoError_VaultCorrupted VaultCorrupted;
+}
+
+final class wire_cst_crypto_error extends ffi.Struct {
+  @ffi.Int32()
+  external int tag;
+
+  external CryptoErrorKind kind;
+}
+
+final class wire_cst_defrag_result extends ffi.Struct {
+  @ffi.Uint32()
+  external int segments_moved;
+
+  @ffi.Uint64()
+  external int bytes_reclaimed;
+
+  @ffi.Uint32()
+  external int free_regions_before;
+}
+
+final class wire_cst_vault_capacity_info extends ffi.Struct {
+  @ffi.Uint64()
+  external int total_bytes;
+
+  @ffi.Uint64()
+  external int used_bytes;
+
+  @ffi.Uint64()
+  external int free_list_bytes;
+
+  @ffi.Uint64()
+  external int unallocated_bytes;
+
+  @ffi.UintPtr()
+  external int segment_count;
+}
+
+final class wire_cst_vault_health_info extends ffi.Struct {
+  @ffi.Uint64()
+  external int total_bytes;
+
+  @ffi.Uint64()
+  external int used_bytes;
+
+  @ffi.Uint64()
+  external int free_list_bytes;
+
+  @ffi.Uint64()
+  external int unallocated_bytes;
+
+  @ffi.Uint32()
+  external int segment_count;
+
+  @ffi.Uint32()
+  external int free_region_count;
+
+  @ffi.Uint64()
+  external int largest_free_block;
+
+  @ffi.Double()
+  external double fragmentation_ratio;
+
+  @ffi.Bool()
+  external bool is_consistent;
+}
+
+const int DEFAULT_LEVEL = 3;
+
+const int MIN_LEVEL = 1;
+
+const int MAX_LEVEL = 22;
+
+const int VAULT_VERSION = 1;
+
+const int VAULT_HEADER_SIZE = 32;
+
+const int MAX_SEGMENT_NAME_LEN = 255;
+
+const int MIN_INDEX_PAD_SIZE = 65536;
+
+const int PRIMARY_INDEX_OFFSET = 32;
+
+const int MAX_INDEX_PAD_SIZE = 16777216;
+
+const int VAULT_CHUNK_AAD_SIZE = 17;
+
+const int FORMAT_VERSION = 1;
+
+const int HEADER_SIZE = 6;
+
+const int CHUNK_SIZE = 65536;
+
+const int NONCE_SIZE = 12;
+
+const int TAG_SIZE = 16;
+
+const int ENCRYPTED_CHUNK_SIZE = 65564;
+
+const int STREAM_VERSION = 1;
+
+const int STREAM_HEADER_SIZE = 16;
+
+const int AAD_SIZE = 9;
