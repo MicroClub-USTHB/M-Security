@@ -364,7 +364,7 @@ flutter test integration_test/
 | **Compression pipeline**                 | Zstd/Brotli compression integrated into streaming and EVFS                          | v0.3.0  |
 | **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0  |
 | **EVFS v2: Defrag & resize**             | Online defragmentation, vault resizing, health diagnostics                          | v0.3.1  |
-| **EVFS v3: Streaming I/O**                | Constant-memory streaming reads/writes, per-chunk AEAD, progress callbacks          | v0.3.2  |
+| **EVFS v2: Streaming I/O**               | Constant-memory streaming reads/writes, per-chunk AEAD, progress callbacks          | v0.3.2  |
 | **Zero-copy FFI optimization**           | mmap vault reads, DCO codec, release profile hardening, symbol stripping            | v0.3.3  |
 | **EVFS v2: Key rotation**                | Re-encrypt vault with new master key                                                | Planned |
 | **Stealth storage**                      | Ephemeral secrets in Rust-managed memory with derived-path obfuscation              | Planned |

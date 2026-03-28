@@ -1,6 +1,6 @@
 [package]
 name = "m_security"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 
 [lib]
@@ -55,7 +55,7 @@ brotli = { version = "7.0", optional = true }
 [features]
 default = ["compression"]
 compression = ["zstd", "brotli"]
-testing = [] # exposes noop cipher — never enable in production builds
+testing = []                     # exposes noop cipher — never enable in production builds
 
 [profile.release]
 panic = "abort"
