@@ -731,7 +731,7 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
 name = "m_security"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -743,7 +743,9 @@ dependencies = [
  "fs4",
  "hex",
  "hkdf",
+ "libc",
  "log",
+ "memmap2",
  "rand",
  "sha2",
  "sha3",
@@ -769,6 +771,15 @@ name = "memchr"
 version = "2.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+
+[[package]]
+name = "memmap2"
+version = "0.9.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "miniz_oxide"

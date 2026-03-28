@@ -29,6 +29,7 @@ Built and maintained by the **Dev Department** of [MicroClub](https://github.com
 | **Password Hashing**     | Argon2id               | PHC winner, Mobile and Desktop presets                      |
 | **Key Derivation**       | HKDF-SHA256            | RFC 5869, extract-then-expand with domain separation        |
 | **Encrypted VFS (EVFS)** | `.vault` container     | Named segments, WAL recovery, shadow index, secure deletion |
+| **Zero-Copy I/O**        | mmap + DCO codec       | Memory-mapped vault reads, zero-copy Rust-to-Dart transfers |
 
 **Security by design:**
 
@@ -38,6 +39,8 @@ Built and maintained by the **Dev Department** of [MicroClub](https://github.com
 - AEAD tag verification prevents silent decryption of tampered data
 - `panic = "abort"` in release profile, preventing undefined behavior from panics crossing FFI
 - `clippy::unwrap_used = "deny"`, ensuring all operations return `Result<T, CryptoError>`
+- Release builds strip all symbols except FRB entry points (LTO + ELF version script)
+- `mlock()` pins mmap'd ciphertext pages to prevent swap-to-disk (unix)
 
 ## Installation
 
@@ -45,7 +48,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.3.2
+  m_security: ^0.3.3
 ```
 
 Then run:
@@ -329,13 +332,13 @@ hkdf_expand(prk, info, output_len)          -> Result<Vec<u8>>
 
 ## Testing
 
-**Rust unit tests** (317 tests including EVFS streaming and defrag):
+**Rust unit tests** (331 tests including EVFS streaming and defrag):
 
 ```bash
 cd rust && cargo test
 ```
 
-**Dart integration tests** (63 tests across all features, requires a running device/simulator):
+**Dart integration tests** (76 tests across all features, requires a running device/simulator):
 
 ```bash
 cd example
@@ -351,7 +354,7 @@ flutter test integration_test/
 | Dart SDK            | ^3.10.8 |
 | Flutter SDK         | >=3.3.0 |
 
-**Rust crates:** `aes-gcm` 0.10, `chacha20poly1305` 0.10, `blake3` 1.8, `sha3` 0.10, `argon2` 0.5, `hkdf` 0.12, `zstd` 0.13, `brotli` 7.0, `zeroize` 1.8
+**Rust crates:** `aes-gcm` 0.10, `chacha20poly1305` 0.10, `blake3` 1.8, `sha3` 0.10, `argon2` 0.5, `hkdf` 0.12, `zstd` 0.13, `brotli` 7.0, `zeroize` 1.8, `memmap2` 0.9
 
 ## Roadmap
 
@@ -361,7 +364,8 @@ flutter test integration_test/
 | **Compression pipeline**                 | Zstd/Brotli compression integrated into streaming and EVFS                          | v0.3.0  |
 | **Encrypted Virtual File System (EVFS)** | `.vault` container with named segments, WAL recovery, shadow index, secure deletion | v0.3.0  |
 | **EVFS v2: Defrag & resize**             | Online defragmentation, vault resizing, health diagnostics                          | v0.3.1  |
-| **EVFS v3: Streaming I/O**                | Constant-memory streaming reads/writes, per-chunk AEAD, progress callbacks          | v0.3.2  |
+| **EVFS v2: Streaming I/O**               | Constant-memory streaming reads/writes, per-chunk AEAD, progress callbacks          | v0.3.2  |
+| **Zero-copy FFI optimization**           | mmap vault reads, DCO codec, release profile hardening, symbol stripping            | v0.3.3  |
 | **EVFS v2: Key rotation**                | Re-encrypt vault with new master key                                                | Planned |
 | **Stealth storage**                      | Ephemeral secrets in Rust-managed memory with derived-path obfuscation              | Planned |
 | **Hardware key wrap**                    | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock       | Planned |

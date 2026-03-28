@@ -1,6 +1,6 @@
 [package]
 name = "m_security"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 
 [lib]
@@ -44,6 +44,10 @@ crc32fast = "1.4"
 # Advisory file locking
 fs4 = "0.12"
 
+# Memory-mapped I/O for zero-copy vault reads
+memmap2 = "0.9"
+libc = "0.2"
+
 # Compression
 zstd = { version = "0.13", optional = true }
 brotli = { version = "7.0", optional = true }
@@ -51,10 +55,14 @@ brotli = { version = "7.0", optional = true }
 [features]
 default = ["compression"]
 compression = ["zstd", "brotli"]
-testing = [] # exposes noop cipher — never enable in production builds
+testing = []                     # exposes noop cipher — never enable in production builds
 
 [profile.release]
 panic = "abort"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+opt-level = 3
 
 [dev-dependencies]
 hex = "0.4"

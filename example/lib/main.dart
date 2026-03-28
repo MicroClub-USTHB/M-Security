@@ -21,7 +21,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.2',
+      title: 'M-Security v0.3.3',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -41,7 +41,7 @@ class _DemoHomeState extends State<DemoHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('M-Security v0.3.2')),
+      appBar: AppBar(title: const Text('M-Security v0.3.3')),
       body: IndexedStack(
         index: _tab,
         children: const [
@@ -774,7 +774,8 @@ class _VaultTabState extends State<_VaultTab> {
         onProgress: (p) => setState(() => _streamProgress = p),
       );
 
-      _status = 'Stream-wrote ${_fmtBytes(BigInt.from(sizeBytes))} as '
+      _status =
+          'Stream-wrote ${_fmtBytes(BigInt.from(sizeBytes))} as '
           '"stream-${_streamSizeKb.text}kb.bin"';
       await _refreshList();
       await _refreshCapacity();
@@ -816,7 +817,8 @@ class _VaultTabState extends State<_VaultTab> {
         offset += chunk.length;
       }
 
-      _status = 'Stream-read "$name": ${_fmtBytes(BigInt.from(total))} '
+      _status =
+          'Stream-read "$name": ${_fmtBytes(BigInt.from(total))} '
           'in ${chunks.length} chunks — ${match ? "PASS" : "FAIL"}';
     } catch (e) {
       _status = 'Error: $e';
@@ -1097,8 +1099,7 @@ class _VaultTabState extends State<_VaultTab> {
           const Divider(height: 24),
 
           // Streaming segment I/O
-          Text('Streaming I/O',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text('Streaming I/O', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           TextField(
             controller: _streamSizeKb,
@@ -1133,7 +1134,8 @@ class _VaultTabState extends State<_VaultTab> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: LinearProgressIndicator(
-                  value: _loading ? _streamProgress : 1),
+                value: _loading ? _streamProgress : 1,
+              ),
             ),
         ],
 

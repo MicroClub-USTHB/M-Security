@@ -16,14 +16,11 @@ Thank you for your interest in contributing to M-Security! This project is built
 
 ## Project Vision
 
-M-Security aims to be a complete security toolkit for Flutter. The current release (v0.3.2) includes the cryptographic foundation, streaming encryption, compression, EVFS v2 (defragmentation, resize, health check), EVFS v3 (streaming I/O), and an encrypted virtual file system. Future releases will continue building on top of it:
+M-Security aims to be a unified, high-performance security layer for Flutter, making strong data protection simple to use and easy to integrate. It is designed to give developers a reliable foundation for handling sensitive data without sacrificing performance or developer experience.
 
-1. **Cryptographic primitives** (v0.1.0): AEAD encryption, hashing, password hashing, key derivation
-2. **Streaming, compression, and EVFS** (v0.3.0): Chunk-based streaming encryption with progress callbacks, Zstd/Brotli compression pipeline, `.vault` container with named segments, WAL crash recovery, shadow index, and secure deletion
-3. **EVFS v2: Defrag, resize, health** (v0.3.1): Vault defragmentation with per-move WAL crash safety, vault resize (grow/shrink) with shadow index + WAL relocation, vault health check with consistency invariant, dynamic index sizing
-4. **EVFS v3: Streaming I/O** (v0.3.2, current): Constant-memory streaming writes/reads with per-chunk AEAD, domain-separated nonces, VaultChunkAad for splice defense, progress callbacks, interop between streaming and monolithic segments
-5. **Stealth storage** (planned): Ephemeral secrets in Rust-managed memory with derived-path obfuscation
-6. **Hardware integration** (planned): Key wrap with Secure Enclave (iOS) / KeyStore (Android), biometric unlock flow (FaceID/Fingerprint), native Swift/Kotlin bridge layer
+The project focuses on securing data across its entire lifecycle, including storage, in-app processing, and access, while maintaining a consistent and intuitive API. It also serves as a cross-platform trust layer, bringing platform-specific security features into a single, cohesive interface.
+
+Ultimately, M-Security strives to become a long-term security backbone for Flutter applications, where robust security is built in by default rather than added later.
 
 Contributions to any of these areas are welcome. If you want to work on an upcoming feature, open an issue first to discuss the approach.
 

@@ -7,6 +7,7 @@ pub mod types;
 
 use helpers::*;
 pub use types::*;
+use types::VaultMmap;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
@@ -74,12 +75,14 @@ pub fn vault_create(
     let mut wal = WriteAheadLog::open(&path)?;
     wal.checkpoint()?;
 
+    let mmap = VaultMmap::new(&file).ok();
     Ok(VaultHandle {
         path,
         algorithm: algo,
         keys,
         index,
         index_pad_size,
+        mmap,
         file,
         wal,
         lock,
@@ -227,12 +230,14 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         file.sync_all()?;
     }
 
+    let mmap = VaultMmap::new(&file).ok();
     Ok(VaultHandle {
         path,
         algorithm,
         keys,
         index,
         index_pad_size,
+        mmap,
         file,
         wal,
         lock,
@@ -323,8 +328,9 @@ pub fn vault_write(
         handle.index_pad_size,
     )?;
 
-    // 9. WAL commit
+    // 9. WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
+    handle.refresh_mmap();
 
     Ok(())
 }
@@ -350,6 +356,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         let mut full_plaintext = Vec::new();
         let checksum = decrypt_streaming_chunks(
             &mut handle.file,
+            handle.mmap.as_ref(),
             handle.keys.cipher_key.as_bytes(),
             handle.keys.nonce_key.as_bytes(),
             handle.algorithm,
@@ -373,19 +380,8 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         return Ok(full_plaintext);
     }
 
-    // Existing monolithic read logic (used when chunk_count == 0)
-    let read_len = usize::try_from(seg_size).map_err(|_| {
-        CryptoError::VaultCorrupted(format!(
-            "segment size {seg_size} exceeds platform address space"
-        ))
-    })?;
-    handle.file.seek(SeekFrom::Start(
-        format::data_region_offset(handle.index_pad_size) + seg_offset,
-    ))?;
-    let mut encrypted = vec![0u8; read_len];
-    handle.file.read_exact(&mut encrypted)?;
-
-    // Decrypt-then-decompress
+    // Monolithic read (chunk_count == 0): prefer mmap zero-copy, fall back to heap
+    let abs_offset = format::data_region_offset(handle.index_pad_size) + seg_offset;
     let params = SegmentCryptoParams {
         cipher_key: handle.keys.cipher_key.as_bytes(),
         nonce_key: handle.keys.nonce_key.as_bytes(),
@@ -393,7 +389,22 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         segment_index: 0,
         generation: seg_gen,
     };
-    let plaintext = segment::decrypt_segment(&params, &encrypted, seg_compression)?;
+
+    let plaintext = if let Some(ref mmap) = handle.mmap {
+        let encrypted = mmap.slice(abs_offset, seg_size)?;
+        segment::decrypt_segment(&params, encrypted, seg_compression)?
+    } else {
+        // Fallback: heap-allocated read_exact (32-bit or mmap-failed)
+        let read_len = usize::try_from(seg_size).map_err(|_| {
+            CryptoError::VaultCorrupted(format!(
+                "segment size {seg_size} exceeds platform address space"
+            ))
+        })?;
+        handle.file.seek(SeekFrom::Start(abs_offset))?;
+        let mut buf = vec![0u8; read_len];
+        handle.file.read_exact(&mut buf)?;
+        segment::decrypt_segment(&params, &buf, seg_compression)?
+    };
 
     // Verify checksum on decompressed plaintext
     if !segment::verify_checksum(&plaintext, &seg_checksum) {
@@ -435,6 +446,7 @@ pub fn vault_read_stream(
 
     let checksum = decrypt_streaming_chunks(
         &mut handle.file,
+        handle.mmap.as_ref(),
         handle.keys.cipher_key.as_bytes(),
         handle.keys.nonce_key.as_bytes(),
         handle.algorithm,
@@ -605,6 +617,7 @@ pub fn vault_write_stream(
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
+    handle.refresh_mmap();
 
     Ok(())
 }
@@ -754,8 +767,9 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
         handle.index_pad_size,
     )?;
 
-    // WAL commit
+    // WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
+    handle.refresh_mmap();
 
     Ok(())
 }
@@ -810,6 +824,7 @@ fn vault_resize_grow_impl(
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
+    handle.refresh_mmap();
 
     Ok(())
 }
@@ -878,6 +893,7 @@ fn vault_resize_shrink_impl(
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
+    handle.refresh_mmap();
 
     Ok(())
 }
@@ -1042,8 +1058,9 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         )?;
     }
 
-    // Checkpoint WAL (clear history)
+    // Checkpoint WAL (clear history) + refresh mmap (data moved)
     handle.wal.checkpoint()?;
+    handle.refresh_mmap();
 
     Ok(DefragResult {
         segments_moved,
