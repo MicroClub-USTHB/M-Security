@@ -94,6 +94,16 @@ pub fn vault_create(
 pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoError> {
     let lock = VaultLock::acquire(&path)?;
 
+    // If a previous key rotation was interrupted after pre-allocation but before
+    // the atomic rename completed, a stale .rotating vault will be sitting next
+    // to the original. The original is intact — just remove the orphan so it
+    // does not interfere with a future rotation attempt.
+    let rotating_path = format!("{path}.rotating");
+    if std::path::Path::new(&rotating_path).exists() {
+        let _ = std::fs::remove_file(&rotating_path);
+        let _ = std::fs::remove_file(format!("{rotating_path}.wal"));
+    }
+
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
