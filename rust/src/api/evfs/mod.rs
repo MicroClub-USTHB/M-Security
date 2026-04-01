@@ -1075,7 +1075,6 @@ pub fn vault_rotate_key(
     mut new_key: Vec<u8>,
 ) -> Result<VaultHandle, CryptoError> {
     // We acquire a lock on both the current vault and the new vault that we do the transition with.
-    let lock = VaultLock::acquire(&handle.path)?;
     let temp_path = format!("{}.rotating", &handle.path);
     let temp_lock = VaultLock::acquire(&temp_path)?;
 
@@ -1278,12 +1277,11 @@ pub fn vault_rotate_key(
 
     // Close the previous vault.
     handle.wal.checkpoint()?;
+    handle.lock.release()?;
     let algorithm = handle.algorithm;
     let original_path = handle.path.clone();
-    // SAFETY: Dropping [`VaultHandle`] zeroizes everything, ensuring no ciphertext/keys are
-    // leaked into memory.
-    drop(handle);
-    lock.release()?;
+    // SAFETY: Dropping [`VaultHandle`] zeroizes everything (which happens at the end of this scope),
+    // ensuring no ciphertext/keys are // leaked into memory.
 
     // And move our vault into the new path
     std::fs::rename(&temp_path, &original_path)
