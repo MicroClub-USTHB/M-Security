@@ -4,6 +4,7 @@ use crate::core::evfs::segment::{self, VaultKeys};
 use crate::core::format::Algorithm;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
+use zeroize::Zeroize;
 
 #[cfg(feature = "compression")]
 use crate::api::compression::CompressionAlgorithm;
@@ -161,12 +162,8 @@ pub(crate) fn decrypt_streaming_chunks(
         }
         .to_bytes();
 
-        let decrypted = segment::aead_decrypt_with_stored_nonce(
-            cipher_key,
-            encrypted_ref,
-            &aad,
-            algorithm,
-        )?;
+        let decrypted =
+            segment::aead_decrypt_with_stored_nonce(cipher_key, encrypted_ref, &aad, algorithm)?;
 
         let plaintext = if is_final {
             crate::core::streaming::strip_last_chunk_padding(&decrypted)?
@@ -191,4 +188,42 @@ pub(crate) fn decrypt_streaming_chunks(
     }
 
     Ok(hasher.finalize().into())
+}
+
+/// Decrypt a raw encrypted monolithic segment blob (`nonce || ciphertext || tag`)
+/// without going through a `VaultHandle` read path.
+///
+/// # Errors
+///
+/// - [`CryptoError::AuthenticationFailed`] — nonce mismatch or AEAD tag failure.
+/// - [`CryptoError::VaultCorrupted`] — BLAKE3 checksum mismatch after decryption.
+/// - Any lower-level [`CryptoError`] propagated from decompression or AEAD.
+#[cfg(feature = "compression")]
+pub(crate) fn decrypt_segment_raw(
+    encrypted: &[u8],
+    cipher_key: &[u8],
+    nonce_key: &[u8],
+    algorithm: Algorithm,
+    generation: u64,
+    compression: CompressionAlgorithm,
+    expected_checksum: &[u8; 32],
+) -> Result<Vec<u8>, CryptoError> {
+    let params = segment::SegmentCryptoParams {
+        cipher_key,
+        nonce_key,
+        algorithm,
+        segment_index: 0, // monolithic segments always use index 0 for nonce derivation
+        generation,
+    };
+
+    let mut plaintext = segment::decrypt_segment(&params, encrypted, compression)?;
+
+    if !segment::verify_checksum(&plaintext, expected_checksum) {
+        plaintext.zeroize();
+        return Err(CryptoError::VaultCorrupted(
+            "decrypt_segment_raw: BLAKE3 integrity check failed".into(),
+        ));
+    }
+
+    Ok(plaintext)
 }

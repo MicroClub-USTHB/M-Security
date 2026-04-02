@@ -6,8 +6,8 @@ mod tests;
 pub mod types;
 
 use helpers::*;
-pub use types::*;
 use types::VaultMmap;
+pub use types::*;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
@@ -19,7 +19,7 @@ use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
 use crate::frb_generated::StreamSink;
 use subtle::ConstantTimeEq;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -93,6 +93,16 @@ pub fn vault_create(
 #[cfg(feature = "compression")]
 pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoError> {
     let lock = VaultLock::acquire(&path)?;
+
+    // If a previous key rotation was interrupted after pre-allocation but before
+    // the atomic rename completed, a stale .rotating vault will be sitting next
+    // to the original. The original is intact — just remove the orphan so it
+    // does not interfere with a future rotation attempt.
+    let rotating_path = format!("{path}.rotating");
+    if std::path::Path::new(&rotating_path).exists() {
+        let _ = std::fs::remove_file(&rotating_path);
+        let _ = std::fs::remove_file(format!("{rotating_path}.wal"));
+    }
 
     let mut file = OpenOptions::new()
         .read(true)
@@ -1066,6 +1076,269 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         segments_moved,
         bytes_reclaimed,
         free_regions_before,
+    })
+}
+
+/// Consumes old handle (keys invalidated after rename). Returns new handle with new keys.
+pub fn vault_rotate_key(
+    mut handle: VaultHandle,
+    mut new_key: Vec<u8>,
+) -> Result<VaultHandle, CryptoError> {
+    // We acquire a lock on both the current vault and the new vault that we do the transition with.
+    let temp_path = format!("{}.rotating", &handle.path);
+
+    // Clean up a stale .rotating file from a previous failed rotation so that
+    // create_new(true) below doesn't fail.
+    if std::path::Path::new(&temp_path).exists() {
+        let _ = std::fs::remove_file(&temp_path);
+        let _ = std::fs::remove_file(format!("{temp_path}.wal"));
+    }
+
+    let temp_lock = VaultLock::acquire(&temp_path)?;
+
+    // Generate the new key
+    let capacity = handle.index.capacity;
+    let new_keys = match segment::derive_vault_keys(&new_key) {
+        Ok(k) => {
+            new_key.zeroize();
+            k
+        }
+        Err(e) => {
+            new_key.zeroize();
+            return Err(e);
+        }
+    };
+    // Re-calc the same constants.
+    let index_pad_size = format::compute_index_size(capacity);
+    let total_size = format::total_vault_size(capacity, index_pad_size)?;
+    let data_off = format::data_region_offset(index_pad_size);
+
+    // Create the temporary/rotating vault file, pre-allocate the size, and write the header.
+    // We need the vault to be setup before writing segments.
+    let mut temp_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&temp_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot create vault: {e}")))?;
+    segment::preallocate_vault(&mut temp_file, total_size)?;
+    let header = VaultHeader::new(handle.algorithm.to_byte(), index_pad_size as u32);
+    temp_file.seek(SeekFrom::Start(0))?;
+    temp_file.write_all(&header.to_bytes())?;
+
+    // Get all the segments from the previous vault.
+    let old_file = &mut handle.file;
+    let segment_entries = handle.index.entries.drain(..);
+    let mut new_index = SegmentIndex::new(capacity);
+
+    for old_entry in segment_entries {
+        if old_entry.is_streaming() {
+            // NOTE: Streaming segments must be fully decrypted before re-chunking because
+            // the chunk boundaries are tied to the plaintext size, not the ciphertext layout.
+            let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
+            decrypt_streaming_chunks(
+                old_file,
+                handle.mmap.as_ref(),
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                index_pad_size,
+                old_entry.offset,
+                old_entry.generation,
+                old_entry.compression,
+                old_entry.chunk_count,
+                |chunk, _| {
+                    full_plaintext.extend_from_slice(&chunk);
+                    Ok(())
+                },
+            )?;
+
+            let total_plaintext_size = full_plaintext.len() as u64;
+            let expected_chunks = format::streaming_chunk_count(total_plaintext_size)?;
+            let total_enc_size = format::streaming_segment_size(total_plaintext_size)?;
+
+            let new_gen = new_index.next_gen();
+            let new_offset = new_index.allocate(total_enc_size)?;
+
+            // Re-encrypt chunk-by-chunk into the rotating vault using the new keys.
+            use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
+            let mut chunk_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0u8; CHUNK_SIZE]);
+            let mut buf_len: usize = 0;
+            let mut chunk_index: u64 = 0;
+            let mut pos: usize = 0;
+
+            while pos < full_plaintext.len() {
+                let take = (CHUNK_SIZE - buf_len).min(full_plaintext.len() - pos);
+                chunk_buf[buf_len..buf_len + take]
+                    .copy_from_slice(&full_plaintext[pos..pos + take]);
+                buf_len += take;
+                pos += take;
+
+                if buf_len == CHUNK_SIZE {
+                    let abs_off = chunk_abs_offset(data_off, new_offset, chunk_index)?;
+                    write_encrypted_chunk(
+                        &mut temp_file,
+                        new_keys.cipher_key.as_bytes(),
+                        new_keys.nonce_key.as_bytes(),
+                        handle.algorithm,
+                        &chunk_buf,
+                        chunk_index,
+                        new_gen,
+                        false,
+                        abs_off,
+                    )?;
+                    chunk_index += 1;
+                    buf_len = 0;
+                }
+            }
+            // full_plaintext is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(full_plaintext);
+
+            // The final chunk always exists (even for empty segments) and must be padded.
+            let padded = Zeroizing::new(pad_last_chunk(&chunk_buf[..buf_len])?);
+            // chunk_buf is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(chunk_buf);
+            let final_off = chunk_abs_offset(data_off, new_offset, chunk_index)?;
+            write_encrypted_chunk(
+                &mut temp_file,
+                new_keys.cipher_key.as_bytes(),
+                new_keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                &padded,
+                chunk_index,
+                new_gen,
+                true,
+                final_off,
+            )?;
+            drop(padded);
+
+            // Preserve the BLAKE3 checksum — it covers the plaintext, which hasn't changed.
+            // Compression is None because decrypt_streaming_chunks already decompressed.
+            let new_entry = SegmentEntry::new(
+                &old_entry.name,
+                new_offset,
+                total_enc_size,
+                new_gen,
+                old_entry.checksum,
+                CompressionAlgorithm::None,
+                expected_chunks,
+            )?;
+            new_index.add(new_entry)?;
+        } else {
+            let abs_offset = data_off + old_entry.offset;
+            let encrypted: Vec<u8> = if let Some(ref mmap) = handle.mmap {
+                mmap.slice(abs_offset, old_entry.size)?.to_vec()
+            } else {
+                old_file.seek(SeekFrom::Start(abs_offset))?;
+                let mut buf = vec![0u8; old_entry.size as usize];
+                old_file.read_exact(&mut buf)?;
+                buf
+            };
+
+            // Decrypt with the old keys (also decompresses and verifies the BLAKE3 checksum).
+            let plaintext = Zeroizing::new(decrypt_segment_raw(
+                &encrypted,
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                old_entry.generation,
+                old_entry.compression,
+                &old_entry.checksum,
+            )?);
+
+            // Re-encrypt with the new keys. No compression: plaintext is already decompressed.
+            let new_gen = new_index.next_gen();
+            let params = SegmentCryptoParams {
+                cipher_key: new_keys.cipher_key.as_bytes(),
+                nonce_key: new_keys.nonce_key.as_bytes(),
+                algorithm: handle.algorithm,
+                segment_index: 0,
+                generation: new_gen,
+            };
+            let (new_encrypted, _) = segment::encrypt_segment(
+                &params,
+                &plaintext,
+                &old_entry.name,
+                &CompressionConfig {
+                    algorithm: CompressionAlgorithm::None,
+                    level: None,
+                },
+            )?;
+
+            let new_offset = new_index.allocate(new_encrypted.len() as u64)?;
+            temp_file.seek(SeekFrom::Start(data_off + new_offset))?;
+            temp_file.write_all(&new_encrypted)?;
+
+            // Preserve the BLAKE3 checksum — it covers the plaintext, which hasn't changed.
+            let new_entry = SegmentEntry::new(
+                &old_entry.name,
+                new_offset,
+                new_encrypted.len() as u64,
+                new_gen,
+                old_entry.checksum,
+                CompressionAlgorithm::None,
+                0,
+            )?;
+            new_index.add(new_entry)?;
+        }
+    }
+
+    // After writing all segments, sync the file and do maintenance stuff.
+    flush_index(
+        &mut temp_file,
+        &new_index,
+        &new_keys,
+        handle.algorithm,
+        capacity,
+        index_pad_size,
+    )?;
+    temp_file.sync_all()?;
+
+    // Open the WAL for the rotating file to ensure everything is fine.
+    let mut rotating_wal = WriteAheadLog::open(&temp_path)?;
+    rotating_wal.checkpoint()?;
+    drop(rotating_wal);
+    let _ = std::fs::remove_file(format!("{temp_path}.wal"));
+    drop(temp_file); // close the rotating vault fd before rename
+    temp_lock.release()?;
+
+    // Checkpoint the original WAL while we still hold the original lock.
+    handle.wal.checkpoint()?;
+    let algorithm = handle.algorithm;
+    let original_path = handle.path.clone();
+
+    // Atomic rename is the commit point — must happen while the original lock is
+    // still held to prevent a concurrent vault_open() from seeing the stale file
+    // or deleting the .rotating file.
+    std::fs::rename(&temp_path, &original_path)
+        .map_err(|e| CryptoError::KeyRotationFailed(format!("rename failed: {e}")))?;
+
+    // Release the old lock only after the rename succeeded.
+    handle.lock.release()?;
+    // SAFETY: Remaining VaultHandle fields (keys, mmap, file) are dropped at end
+    // of scope — SecretBuffer/VaultKeys are ZeroizeOnDrop.
+    let new_lock = VaultLock::acquire(&original_path)?;
+    let new_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&original_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot reopen vault after rotation: {e}")))?;
+    // The WAL at {original_path}.wal was already checkpointed above; open and
+    // checkpoint once more to guard against any edge-case leftover entries.
+    let mut new_wal = WriteAheadLog::open(&original_path)?;
+    new_wal.checkpoint()?;
+    let new_mmap = VaultMmap::new(&new_file).ok();
+
+    Ok(VaultHandle {
+        path: original_path,
+        algorithm,
+        keys: new_keys,
+        index: new_index,
+        index_pad_size,
+        mmap: new_mmap,
+        file: new_file,
+        wal: new_wal,
+        lock: new_lock,
     })
 }
 

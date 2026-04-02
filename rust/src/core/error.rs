@@ -46,6 +46,9 @@ pub enum CryptoError {
 
     #[error("Vault corrupted: {0}")]
     VaultCorrupted(String),
+
+    #[error("Key rotation failed: {0}")]
+    KeyRotationFailed(String),
 }
 
 impl From<std::io::Error> for CryptoError {
