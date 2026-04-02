@@ -19,7 +19,7 @@ use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
 use crate::frb_generated::StreamSink;
 use subtle::ConstantTimeEq;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -1086,12 +1086,28 @@ pub fn vault_rotate_key(
 ) -> Result<VaultHandle, CryptoError> {
     // We acquire a lock on both the current vault and the new vault that we do the transition with.
     let temp_path = format!("{}.rotating", &handle.path);
+
+    // Clean up a stale .rotating file from a previous failed rotation so that
+    // create_new(true) below doesn't fail.
+    if std::path::Path::new(&temp_path).exists() {
+        let _ = std::fs::remove_file(&temp_path);
+        let _ = std::fs::remove_file(format!("{temp_path}.wal"));
+    }
+
     let temp_lock = VaultLock::acquire(&temp_path)?;
 
     // Generate the new key
     let capacity = handle.index.capacity;
-    let new_keys = segment::derive_vault_keys(&new_key)?;
-    new_key.zeroize();
+    let new_keys = match segment::derive_vault_keys(&new_key) {
+        Ok(k) => {
+            new_key.zeroize();
+            k
+        }
+        Err(e) => {
+            new_key.zeroize();
+            return Err(e);
+        }
+    };
     // Re-calc the same constants.
     let index_pad_size = format::compute_index_size(capacity);
     let total_size = format::total_vault_size(capacity, index_pad_size)?;
@@ -1117,9 +1133,9 @@ pub fn vault_rotate_key(
 
     for old_entry in segment_entries {
         if old_entry.is_streaming() {
-            // FIXME: @Adel-Ayoub is there a way to decrypt a segment if it isnt in chunked storage.
-            // It would be nice if we could use only decrypt_segment_raw.
-            let mut full_plaintext: Vec<u8> = Vec::new();
+            // NOTE: Streaming segments must be fully decrypted before re-chunking because
+            // the chunk boundaries are tied to the plaintext size, not the ciphertext layout.
+            let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
             decrypt_streaming_chunks(
                 old_file,
                 handle.mmap.as_ref(),
@@ -1146,7 +1162,7 @@ pub fn vault_rotate_key(
 
             // Re-encrypt chunk-by-chunk into the rotating vault using the new keys.
             use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
-            let mut chunk_buf = vec![0u8; CHUNK_SIZE];
+            let mut chunk_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0u8; CHUNK_SIZE]);
             let mut buf_len: usize = 0;
             let mut chunk_index: u64 = 0;
             let mut pos: usize = 0;
@@ -1175,13 +1191,15 @@ pub fn vault_rotate_key(
                     buf_len = 0;
                 }
             }
-            full_plaintext.zeroize();
+            // full_plaintext is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(full_plaintext);
 
             // The final chunk always exists (even for empty segments) and must be padded.
-            let mut padded = pad_last_chunk(&chunk_buf[..buf_len])?;
-            chunk_buf.zeroize();
+            let padded = Zeroizing::new(pad_last_chunk(&chunk_buf[..buf_len])?);
+            // chunk_buf is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(chunk_buf);
             let final_off = chunk_abs_offset(data_off, new_offset, chunk_index)?;
-            let r = write_encrypted_chunk(
+            write_encrypted_chunk(
                 &mut temp_file,
                 new_keys.cipher_key.as_bytes(),
                 new_keys.nonce_key.as_bytes(),
@@ -1191,12 +1209,11 @@ pub fn vault_rotate_key(
                 new_gen,
                 true,
                 final_off,
-            );
-            padded.zeroize();
-            r?;
+            )?;
+            drop(padded);
 
             // Preserve the BLAKE3 checksum — it covers the plaintext, which hasn't changed.
-            // compression is None because decrypt_streaming_chunks already decompressed.
+            // Compression is None because decrypt_streaming_chunks already decompressed.
             let new_entry = SegmentEntry::new(
                 &old_entry.name,
                 new_offset,
@@ -1219,7 +1236,7 @@ pub fn vault_rotate_key(
             };
 
             // Decrypt with the old keys (also decompresses and verifies the BLAKE3 checksum).
-            let plaintext = decrypt_segment_raw(
+            let plaintext = Zeroizing::new(decrypt_segment_raw(
                 &encrypted,
                 handle.keys.cipher_key.as_bytes(),
                 handle.keys.nonce_key.as_bytes(),
@@ -1227,7 +1244,7 @@ pub fn vault_rotate_key(
                 old_entry.generation,
                 old_entry.compression,
                 &old_entry.checksum,
-            )?;
+            )?);
 
             // Re-encrypt with the new keys. No compression: plaintext is already decompressed.
             let new_gen = new_index.next_gen();
@@ -1277,7 +1294,7 @@ pub fn vault_rotate_key(
     )?;
     temp_file.sync_all()?;
 
-    // Open the WAL for the rotating file to ensure everything is file.
+    // Open the WAL for the rotating file to ensure everything is fine.
     let mut rotating_wal = WriteAheadLog::open(&temp_path)?;
     rotating_wal.checkpoint()?;
     drop(rotating_wal);
@@ -1285,17 +1302,21 @@ pub fn vault_rotate_key(
     drop(temp_file); // close the rotating vault fd before rename
     temp_lock.release()?;
 
-    // Close the previous vault.
+    // Checkpoint the original WAL while we still hold the original lock.
     handle.wal.checkpoint()?;
-    handle.lock.release()?;
     let algorithm = handle.algorithm;
     let original_path = handle.path.clone();
-    // SAFETY: Dropping [`VaultHandle`] zeroizes everything (which happens at the end of this scope),
-    // ensuring no ciphertext/keys are // leaked into memory.
 
-    // And move our vault into the new path
+    // Atomic rename is the commit point — must happen while the original lock is
+    // still held to prevent a concurrent vault_open() from seeing the stale file
+    // or deleting the .rotating file.
     std::fs::rename(&temp_path, &original_path)
         .map_err(|e| CryptoError::KeyRotationFailed(format!("rename failed: {e}")))?;
+
+    // Release the old lock only after the rename succeeded.
+    handle.lock.release()?;
+    // SAFETY: Remaining VaultHandle fields (keys, mmap, file) are dropped at end
+    // of scope — SecretBuffer/VaultKeys are ZeroizeOnDrop.
     let new_lock = VaultLock::acquire(&original_path)?;
     let new_file = OpenOptions::new()
         .read(true)

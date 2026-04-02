@@ -4,6 +4,7 @@ use crate::core::evfs::segment::{self, VaultKeys};
 use crate::core::format::Algorithm;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
+use zeroize::Zeroize;
 
 #[cfg(feature = "compression")]
 use crate::api::compression::CompressionAlgorithm;
@@ -215,9 +216,10 @@ pub(crate) fn decrypt_segment_raw(
         generation,
     };
 
-    let plaintext = segment::decrypt_segment(&params, encrypted, compression)?;
+    let mut plaintext = segment::decrypt_segment(&params, encrypted, compression)?;
 
     if !segment::verify_checksum(&plaintext, expected_checksum) {
+        plaintext.zeroize();
         return Err(CryptoError::VaultCorrupted(
             "decrypt_segment_raw: BLAKE3 integrity check failed".into(),
         ));
