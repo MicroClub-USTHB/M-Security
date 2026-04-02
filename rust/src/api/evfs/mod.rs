@@ -1342,6 +1342,200 @@ pub fn vault_rotate_key(
     })
 }
 
+/// Export all vault segments into a self-contained `.mvex` encrypted archive.
+///
+/// Each segment is decrypted from the vault, then re-encrypted under an
+/// ephemeral export key with a random per-segment nonce. The export key is
+/// AEAD-wrapped with the caller's `wrapping_key`.
+///
+/// The vault is not modified by this operation.
+#[cfg(feature = "compression")]
+pub fn vault_export(
+    handle: &mut VaultHandle,
+    wrapping_key: Vec<u8>,
+    export_path: String,
+) -> Result<(), CryptoError> {
+    use crate::core::evfs::archive::{ArchiveHeader, KEY_WRAP_AAD};
+    use rand::{rngs::OsRng, RngCore};
+
+    // Wrap immediately so wrapping_key is zeroized on all paths (including errors).
+    let wrapping_key = Zeroizing::new(wrapping_key);
+
+    if wrapping_key.len() != 32 {
+        return Err(CryptoError::InvalidKeyLength {
+            expected: 32,
+            actual: wrapping_key.len(),
+        });
+    }
+
+    // 1. Generate random 32-byte ephemeral export key
+    let mut export_key = Zeroizing::new(vec![0u8; 32]);
+    OsRng.fill_bytes(&mut export_key);
+
+    // 2. Wrap export_key with wrapping_key (AEAD, AAD = KEY_WRAP_AAD)
+    //    Result: nonce(12) || ciphertext(32) || tag(16) = 60 bytes
+    let wrapped_key = segment::aead_encrypt_random_nonce(
+        &wrapping_key,
+        &export_key,
+        KEY_WRAP_AAD,
+        handle.algorithm,
+    )?;
+
+    // 3. Prepare header
+    let segment_count = u32::try_from(handle.index.entries.len()).map_err(|_| {
+        CryptoError::ExportFailed("segment count exceeds u32".into())
+    })?;
+    let header = ArchiveHeader::new(handle.algorithm.to_byte(), segment_count);
+
+    // Use create_new to fail atomically if the file already exists.
+    let mut out = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&export_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot create export file: {e}")))?;
+
+    // Run the inner export logic; delete the partial file on any error.
+    match vault_export_write(handle, &export_key, &wrapped_key, &header, &mut out) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            drop(out);
+            let _ = std::fs::remove_file(&export_path);
+            Err(e)
+        }
+    }
+}
+
+/// Write the archive contents. Separated from `vault_export` so the caller
+/// can delete the partial file if this returns an error.
+#[cfg(feature = "compression")]
+fn vault_export_write(
+    handle: &mut VaultHandle,
+    export_key: &[u8],
+    wrapped_key: &[u8],
+    header: &crate::core::evfs::archive::ArchiveHeader,
+    out: &mut std::fs::File,
+) -> Result<(), CryptoError> {
+    use crate::core::evfs::archive::{ArchiveTrailer, SegmentRecord};
+
+    let header_bytes = header.to_bytes();
+    out.write_all(&header_bytes)?;
+    out.write_all(wrapped_key)?;
+
+    // BLAKE3 hasher covers everything before the trailer
+    let mut archive_hasher = blake3::Hasher::new();
+    archive_hasher.update(&header_bytes);
+    archive_hasher.update(wrapped_key);
+
+    // Clone entry metadata to avoid borrow conflict with handle
+    let entries: Vec<_> = handle.index.entries.iter().map(|e| {
+        (
+            e.name.clone(),
+            e.offset,
+            e.size,
+            e.generation,
+            e.compression,
+            e.checksum,
+            e.chunk_count,
+        )
+    }).collect();
+
+    let vault_capacity = handle.index.capacity;
+
+    for (name, offset, size, generation, compression, checksum, chunk_count) in &entries {
+        // Decrypt the segment plaintext (handles both monolithic and streaming)
+        let plaintext: Zeroizing<Vec<u8>> = if *chunk_count > 0 {
+            let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
+            let computed_checksum = decrypt_streaming_chunks(
+                &mut handle.file,
+                handle.mmap.as_ref(),
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                handle.index_pad_size,
+                *offset,
+                *generation,
+                *compression,
+                *chunk_count,
+                |data, _| {
+                    full_plaintext.extend_from_slice(&data);
+                    Ok(())
+                },
+            )?;
+            if computed_checksum.ct_ne(checksum).into() {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "integrity check failed for segment '{name}'"
+                )));
+            }
+            full_plaintext
+        } else {
+            // Cap allocation at vault capacity to prevent OOM from a corrupted index.
+            if *size > vault_capacity {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "segment '{name}' size {size} exceeds vault capacity {vault_capacity}"
+                )));
+            }
+            let abs_offset = format::data_region_offset(handle.index_pad_size) + offset;
+            let params = SegmentCryptoParams {
+                cipher_key: handle.keys.cipher_key.as_bytes(),
+                nonce_key: handle.keys.nonce_key.as_bytes(),
+                algorithm: handle.algorithm,
+                segment_index: 0,
+                generation: *generation,
+            };
+            let pt = if let Some(ref mmap) = handle.mmap {
+                let encrypted = mmap.slice(abs_offset, *size)?;
+                segment::decrypt_segment(&params, encrypted, *compression)?
+            } else {
+                handle.file.seek(SeekFrom::Start(abs_offset))?;
+                let mut buf = vec![0u8; *size as usize];
+                handle.file.read_exact(&mut buf)?;
+                segment::decrypt_segment(&params, &buf, *compression)?
+            };
+            if !segment::verify_checksum(&pt, checksum) {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "integrity check failed for segment '{name}'"
+                )));
+            }
+            Zeroizing::new(pt)
+        };
+
+        // Compute BLAKE3 checksum before re-encryption (while plaintext is live)
+        let record_checksum = segment::compute_checksum(&plaintext);
+
+        // Re-encrypt under the ephemeral export key with segment name as AAD
+        let encrypted_data = segment::aead_encrypt_random_nonce(
+            export_key,
+            &plaintext,
+            name.as_bytes(),
+            handle.algorithm,
+        )?;
+        // plaintext is zeroized on drop via Zeroizing
+
+        let record = SegmentRecord {
+            name: name.clone(),
+            compression: compression.to_u8(),
+            checksum: record_checksum,
+            encrypted_data,
+        };
+
+        let record_header = record.write_header()?;
+        out.write_all(&record_header)?;
+        out.write_all(&record.encrypted_data)?;
+
+        archive_hasher.update(&record_header);
+        archive_hasher.update(&record.encrypted_data);
+    }
+
+    // Write BLAKE3 trailer + fsync
+    let trailer = ArchiveTrailer {
+        checksum: archive_hasher.finalize().into(),
+    };
+    out.write_all(&trailer.to_bytes())?;
+    out.sync_all()?;
+
+    Ok(())
+}
+
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
 #[cfg(feature = "compression")]
 pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
