@@ -49,6 +49,9 @@ pub enum CryptoError {
 
     #[error("Key rotation failed: {0}")]
     KeyRotationFailed(String),
+
+    #[error("Export failed: {0}")]
+    ExportFailed(String),
 }
 
 impl From<std::io::Error> for CryptoError {
