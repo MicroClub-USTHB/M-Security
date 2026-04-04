@@ -265,6 +265,54 @@ class VaultService {
     );
   }
 
+  /// Rotate the vault's master key (re-encrypts all data).
+  ///
+  /// Returns a new [VaultHandle] — the old handle is invalidated.
+  /// If interrupted, open the vault with the old key to recover.
+  static Future<rust_types.VaultHandle> rotateKey({
+    required rust_types.VaultHandle handle,
+    required Uint8List newKey,
+  }) {
+    return rust_evfs.vaultRotateKey(handle: handle, newKey: newKey);
+  }
+
+  /// Export the vault to a portable encrypted archive (.mvex).
+  ///
+  /// The archive is encrypted with a random ephemeral key wrapped by
+  /// [wrappingKey]. Share the wrapping key out-of-band for import.
+  static Future<void> export({
+    required rust_types.VaultHandle handle,
+    required Uint8List wrappingKey,
+    required String exportPath,
+  }) {
+    return rust_evfs.vaultExport(
+      handle: handle,
+      wrappingKey: wrappingKey,
+      exportPath: exportPath,
+    );
+  }
+
+  /// Import a vault from an encrypted archive (.mvex).
+  ///
+  /// Creates a new vault at [destPath] re-encrypted under [newMasterKey].
+  static Future<rust_types.VaultHandle> importVault({
+    required String archivePath,
+    required Uint8List wrappingKey,
+    required String destPath,
+    required Uint8List newMasterKey,
+    required String algorithm,
+    required int capacityBytes,
+  }) {
+    return rust_evfs.vaultImport(
+      archivePath: archivePath,
+      wrappingKey: wrappingKey,
+      destPath: destPath,
+      newMasterKey: newMasterKey,
+      algorithm: algorithm,
+      capacityBytes: BigInt.from(capacityBytes),
+    );
+  }
+
   /// Close the vault (release lock, zeroize keys).
   static Future<void> close({required rust_types.VaultHandle handle}) {
     return rust_evfs.vaultClose(handle: handle);
