@@ -1642,10 +1642,10 @@ pub fn vault_import(
 
             // OOM Crash Protection
             if data_len > capacity_bytes as usize + 65536 {
-                return Err(CryptoError::ImportFailed(format!(
-                    "Segment size {} exceeds destination capacity",
-                    data_len
-                )));
+                return Err(CryptoError::VaultFull {
+                    needed: data_len as u64,
+                    available: capacity_bytes,
+                });
             }
 
             let mut encrypted_data = vec![0u8; data_len];

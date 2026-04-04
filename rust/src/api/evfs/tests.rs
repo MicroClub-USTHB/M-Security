@@ -2807,8 +2807,9 @@ fn decrypt_record(
     use crate::core::evfs::archive::KEY_WRAP_AAD;
     use crate::core::evfs::segment;
 
-    let export_key = segment::aead_decrypt_with_stored_nonce(wk, wrapped_key, KEY_WRAP_AAD, algorithm)
-        .expect("unwrap export key");
+    let export_key =
+        segment::aead_decrypt_with_stored_nonce(wk, wrapped_key, KEY_WRAP_AAD, algorithm)
+            .expect("unwrap export key");
     segment::aead_decrypt_with_stored_nonce(
         &export_key,
         &record.encrypted_data,
@@ -3003,7 +3004,13 @@ fn test_export_with_compressed_segments() {
         algorithm: CompressionAlgorithm::Zstd,
         level: None,
     };
-    vault_write(&mut handle, "compressed.txt".into(), data.clone(), Some(config)).expect("write");
+    vault_write(
+        &mut handle,
+        "compressed.txt".into(),
+        data.clone(),
+        Some(config),
+    )
+    .expect("write");
 
     let epath = export_path(&dir);
     vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
@@ -3053,7 +3060,13 @@ fn test_export_wrong_wrapping_key_cannot_decrypt() {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut handle = create_test_vault(&dir, 1_048_576);
 
-    vault_write(&mut handle, "secret.txt".into(), b"top secret".to_vec(), None).expect("write");
+    vault_write(
+        &mut handle,
+        "secret.txt".into(),
+        b"top secret".to_vec(),
+        None,
+    )
+    .expect("write");
 
     let epath = export_path(&dir);
     vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
@@ -3069,7 +3082,10 @@ fn test_export_wrong_wrapping_key_cannot_decrypt() {
         crate::core::evfs::archive::KEY_WRAP_AAD,
         algo,
     );
-    assert!(result.is_err(), "wrong wrapping key must fail to unwrap export key");
+    assert!(
+        result.is_err(),
+        "wrong wrapping key must fail to unwrap export key"
+    );
 
     vault_close(handle).expect("close");
 }
@@ -3084,4 +3100,299 @@ fn test_export_invalid_wrapping_key_length_rejected() {
     assert!(result.is_err());
 
     vault_close(handle).expect("close");
+}
+
+// -- Import integration tests ---------------------------------------------
+
+fn import_dest_path(dir: &tempfile::TempDir) -> String {
+    dir.path()
+        .join("imported.vault")
+        .to_str()
+        .expect("path")
+        .to_string()
+}
+
+#[test]
+fn test_import_full_roundtrip() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 2_097_152);
+
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    vault_write(&mut handle, "b.txt".into(), b"world".to_vec(), None).expect("write");
+
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let mut imported = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        2_097_152,
+    )
+    .expect("import");
+
+    assert_eq!(
+        vault_read(&mut imported, "a.txt".into()).expect("read a"),
+        b"hello"
+    );
+    assert_eq!(
+        vault_read(&mut imported, "b.txt".into()).expect("read b"),
+        b"world"
+    );
+
+    vault_close(imported).expect("close");
+}
+
+#[test]
+fn test_import_wrong_wrapping_key_fails() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let wrong_wk = vec![0xEE; 32];
+    let result = vault_import(
+        epath,
+        wrong_wk,
+        dest_path,
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576,
+    );
+
+    assert!(matches!(result, Err(CryptoError::ImportFailed(_))));
+}
+
+#[test]
+fn test_import_truncated_archive() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    // Truncate the archive midway
+    let mut archive = std::fs::read(&epath).expect("read");
+    archive.truncate(archive.len() - 10);
+    std::fs::write(&epath, archive).expect("write");
+
+    let dest_path = import_dest_path(&dir);
+    let result = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576,
+    );
+
+    assert!(matches!(result, Err(CryptoError::ImportFailed(_))));
+    assert!(
+        !std::path::Path::new(&dest_path).exists(),
+        "Partial vault must be deleted"
+    );
+}
+
+#[test]
+fn test_import_tampered_segment_data() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    // Tamper with the encrypted data part of the segment record
+    let mut archive = std::fs::read(&epath).expect("read");
+    let pos = archive.len() - 36 - 10; // slightly before the trailer
+    archive[pos] ^= 0xFF;
+    std::fs::write(&epath, archive).expect("write");
+
+    let dest_path = import_dest_path(&dir);
+    let result = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576,
+    );
+
+    assert!(matches!(result, Err(CryptoError::ImportFailed(_))));
+}
+
+#[test]
+fn test_import_tampered_trailer_checksum() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    // Tamper with the trailer checksum
+    let mut archive = std::fs::read(&epath).expect("read");
+    let pos = archive.len() - 36 + 5; // within the 32 byte checksum
+    archive[pos] ^= 0xFF;
+    std::fs::write(&epath, archive).expect("write");
+
+    let dest_path = import_dest_path(&dir);
+    let result = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576,
+    );
+
+    assert!(matches!(result, Err(CryptoError::ImportFailed(_))));
+}
+
+#[test]
+fn test_import_insufficient_capacity() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 5_000_000);
+    vault_write(&mut handle, "big.txt".into(), vec![0xBB; 2_000_000], None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let result = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576, // Bound restriction triggers EVFS index allocation rejection
+    );
+
+    assert!(matches!(result, Err(CryptoError::VaultFull { .. })));
+}
+
+#[test]
+fn test_import_streaming_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 4_194_304);
+
+    let data: Vec<u8> = (0..200_000).map(|i| (i % 251) as u8).collect();
+    let chunks: Vec<Vec<u8>> = data.chunks(65536).map(|c| c.to_vec()).collect();
+    vault_write_stream(
+        &mut handle,
+        "stream.bin".into(),
+        data.len() as u64,
+        chunks.into_iter(),
+    )
+    .expect("stream write");
+
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let mut imported = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        4_194_304,
+    )
+    .expect("import");
+
+    let readback = vault_read(&mut imported, "stream.bin".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(imported).expect("close");
+}
+
+#[test]
+fn test_import_compressed_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let data = b"compress me please ".repeat(100);
+    let config = CompressionConfig {
+        algorithm: CompressionAlgorithm::Zstd,
+        level: None,
+    };
+    vault_write(
+        &mut handle,
+        "compressed.txt".into(),
+        data.clone(),
+        Some(config),
+    )
+    .expect("write");
+
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let mut imported = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "aes-256-gcm".into(),
+        1_048_576,
+    )
+    .expect("import");
+
+    let entry = imported.index.find("compressed.txt").expect("find");
+    assert_eq!(entry.compression, CompressionAlgorithm::Zstd);
+
+    let readback = vault_read(&mut imported, "compressed.txt".into()).expect("read");
+    assert_eq!(readback, data);
+
+    vault_close(imported).expect("close");
+}
+
+#[test]
+fn test_import_chacha20() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = vault_create(
+        vault_path(&dir),
+        test_key(),
+        "chacha20-poly1305".into(),
+        1_048_576,
+    )
+    .expect("create");
+
+    vault_write(&mut handle, "c.txt".into(), b"chacha".to_vec(), None).expect("write");
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest_path = import_dest_path(&dir);
+    let mut imported = vault_import(
+        epath,
+        wrapping_key(),
+        dest_path.clone(),
+        test_key2(),
+        "chacha20-poly1305".into(),
+        1_048_576,
+    )
+    .expect("import");
+
+    assert_eq!(
+        imported.algorithm,
+        crate::core::format::Algorithm::ChaCha20Poly1305
+    );
+    assert_eq!(
+        vault_read(&mut imported, "c.txt".into()).expect("read c"),
+        b"chacha"
+    );
+
+    vault_close(imported).expect("close");
 }
