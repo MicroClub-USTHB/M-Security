@@ -1382,9 +1382,8 @@ pub fn vault_export(
     )?;
 
     // 3. Prepare header
-    let segment_count = u32::try_from(handle.index.entries.len()).map_err(|_| {
-        CryptoError::ExportFailed("segment count exceeds u32".into())
-    })?;
+    let segment_count = u32::try_from(handle.index.entries.len())
+        .map_err(|_| CryptoError::ExportFailed("segment count exceeds u32".into()))?;
     let header = ArchiveHeader::new(handle.algorithm.to_byte(), segment_count);
 
     // Use create_new to fail atomically if the file already exists.
@@ -1427,17 +1426,22 @@ fn vault_export_write(
     archive_hasher.update(wrapped_key);
 
     // Clone entry metadata to avoid borrow conflict with handle
-    let entries: Vec<_> = handle.index.entries.iter().map(|e| {
-        (
-            e.name.clone(),
-            e.offset,
-            e.size,
-            e.generation,
-            e.compression,
-            e.checksum,
-            e.chunk_count,
-        )
-    }).collect();
+    let entries: Vec<_> = handle
+        .index
+        .entries
+        .iter()
+        .map(|e| {
+            (
+                e.name.clone(),
+                e.offset,
+                e.size,
+                e.generation,
+                e.compression,
+                e.checksum,
+                e.chunk_count,
+            )
+        })
+        .collect();
 
     let vault_capacity = handle.index.capacity;
 
@@ -1543,4 +1547,200 @@ pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
     handle.lock.release()?;
     // VaultKeys are zeroized on drop (ZeroizeOnDrop)
     Ok(())
+}
+
+/// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+#[cfg(feature = "compression")]
+pub fn vault_import(
+    archive_path: String,
+    wrapping_key: Vec<u8>,
+    dest_path: String,
+    new_master_key: Vec<u8>,
+    algorithm: String,
+    capacity_bytes: u64,
+) -> Result<VaultHandle, CryptoError> {
+    use crate::core::evfs::archive::{
+        ArchiveHeader, ArchiveTrailer, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE, KEY_WRAP_AAD,
+        WRAPPED_KEY_SIZE,
+    };
+
+    // Ensure automatic zeroization on drop
+    let wrapping_key = Zeroizing::new(wrapping_key);
+
+    let mut archive = File::open(&archive_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot open archive '{archive_path}': {e}")))?;
+
+    // Read & Validate Header
+    let mut header_buf = [0u8; ARCHIVE_HEADER_SIZE];
+    archive
+        .read_exact(&mut header_buf)
+        .map_err(|_| CryptoError::ImportFailed("Truncated archive header".into()))?;
+    let header = ArchiveHeader::from_bytes(&header_buf)?;
+
+    // Read WrappedExportKey
+    let mut wrapped_key = [0u8; WRAPPED_KEY_SIZE];
+    archive
+        .read_exact(&mut wrapped_key)
+        .map_err(|_| CryptoError::ImportFailed("Truncated wrapped key".into()))?;
+
+    let mut archive_hasher = blake3::Hasher::new();
+    archive_hasher.update(&header_buf);
+    archive_hasher.update(&wrapped_key);
+
+    let algo = Algorithm::from_byte(header.algorithm).map_err(|_| {
+        CryptoError::ImportFailed(format!("Unsupported algorithm byte: {}", header.algorithm))
+    })?;
+
+    // Unwrap the ephemeral export key
+    let export_key = Zeroizing::new(
+        segment::aead_decrypt_with_stored_nonce(&wrapping_key, &wrapped_key, KEY_WRAP_AAD, algo)
+            .map_err(|_| {
+                CryptoError::ImportFailed("Invalid wrapping key or corrupted wrapped key".into())
+            })?,
+    );
+
+    // Create new destination vault
+    let mut dest_vault =
+        match vault_create(dest_path.clone(), new_master_key, algorithm, capacity_bytes) {
+            Ok(v) => v,
+            Err(e) => return Err(e),
+        };
+
+    // Process all segments inside a closure to handle atomic crash recovery cleanup
+    let mut process_records = || -> Result<(), CryptoError> {
+        for _ in 0..header.segment_count {
+            // Read SegmentRecordHeader components sequentially
+            let mut name_len_buf = [0u8; 2];
+            archive
+                .read_exact(&mut name_len_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment record".into()))?;
+            let name_len = u16::from_le_bytes(name_len_buf) as usize;
+
+            let mut name_buf = vec![0u8; name_len];
+            archive
+                .read_exact(&mut name_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment name".into()))?;
+            let name = String::from_utf8(name_buf)
+                .map_err(|_| CryptoError::ImportFailed("Invalid UTF-8 in segment name".into()))?;
+
+            let mut comp_buf = [0u8; 1];
+            archive
+                .read_exact(&mut comp_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment compression".into()))?;
+            let compression = comp_buf[0];
+
+            let mut checksum = [0u8; 32];
+            archive
+                .read_exact(&mut checksum)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment checksum".into()))?;
+
+            let mut data_len_buf = [0u8; 8];
+            archive
+                .read_exact(&mut data_len_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment data length".into()))?;
+            let data_len = u64::from_le_bytes(data_len_buf) as usize;
+
+            // OOM Crash Protection
+            if data_len > capacity_bytes as usize + 65536 {
+                return Err(CryptoError::ImportFailed(format!(
+                    "Segment size {} exceeds destination capacity",
+                    data_len
+                )));
+            }
+
+            let mut encrypted_data = vec![0u8; data_len];
+            archive.read_exact(&mut encrypted_data).map_err(|_| {
+                CryptoError::ImportFailed("Truncated segment encrypted data".into())
+            })?;
+
+            // Feed global trailer hasher
+            let mut header_bytes = Vec::new();
+            header_bytes.extend_from_slice(&name_len_buf);
+            header_bytes.extend_from_slice(name.as_bytes());
+            header_bytes.push(compression);
+            header_bytes.extend_from_slice(&checksum);
+            header_bytes.extend_from_slice(&data_len_buf);
+
+            archive_hasher.update(&header_bytes);
+            archive_hasher.update(&encrypted_data);
+
+            // 4. Decrypt using export_key
+            let mut plaintext = segment::aead_decrypt_with_stored_nonce(
+                &export_key,
+                &encrypted_data,
+                name.as_bytes(),
+                algo,
+            )
+            .map_err(|_| {
+                CryptoError::ImportFailed(format!("Authentication failed for segment '{name}'"))
+            })?;
+
+            // Verify BLAKE3 checksum (constant-time verification)
+            let computed_checksum = segment::compute_checksum(&plaintext);
+            if computed_checksum.ct_ne(&checksum).into() {
+                plaintext.zeroize();
+                return Err(CryptoError::ImportFailed(format!(
+                    "Checksum mismatch for segment '{name}'"
+                )));
+            }
+
+            let comp_algo = match compression {
+                1 => CompressionAlgorithm::Zstd,
+                2 => CompressionAlgorithm::Brotli,
+                _ => CompressionAlgorithm::None,
+            };
+
+            // vault_write takes ownership of plaintext and handles its zeroization internally
+            vault_write(
+                &mut dest_vault,
+                name,
+                plaintext,
+                Some(CompressionConfig {
+                    algorithm: comp_algo,
+                    level: None,
+                }),
+            )?;
+        }
+
+        // 5. Verify archive trailer
+        let mut trailer_buf = [0u8; ARCHIVE_TRAILER_SIZE];
+        archive
+            .read_exact(&mut trailer_buf)
+            .map_err(|_| CryptoError::ImportFailed("Truncated archive trailer".into()))?;
+        let trailer = ArchiveTrailer::from_bytes(&trailer_buf)?;
+
+        let final_hash = archive_hasher.finalize();
+        if trailer.checksum.ct_ne(final_hash.as_bytes()).into() {
+            return Err(CryptoError::ImportFailed(
+                "Archive trailer checksum mismatch".into(),
+            ));
+        }
+
+        Ok(())
+    };
+
+    match process_records() {
+        Ok(()) => {
+            // Guard against appended malicious trailing payload
+            let mut extra = [0u8; 1];
+            if archive.read_exact(&mut extra).is_ok() {
+                drop(dest_vault);
+                let _ = std::fs::remove_file(&dest_path);
+                let _ = std::fs::remove_file(format!("{dest_path}.wal"));
+                let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
+                return Err(CryptoError::ImportFailed(
+                    "Trailing garbage at end of archive".into(),
+                ));
+            }
+            Ok(dest_vault)
+        }
+        Err(e) => {
+            // Crash Recovery: safely delete partial/corrupted destination vault
+            drop(dest_vault);
+            let _ = std::fs::remove_file(&dest_path);
+            let _ = std::fs::remove_file(format!("{dest_path}.wal"));
+            let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
+            Err(e)
+        }
+    }
 }
