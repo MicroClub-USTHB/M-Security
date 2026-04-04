@@ -29,6 +29,7 @@ Built and maintained by the **Dev Department** of [MicroClub](https://github.com
 | **Password Hashing**     | Argon2id               | PHC winner, Mobile and Desktop presets                      |
 | **Key Derivation**       | HKDF-SHA256            | RFC 5869, extract-then-expand with domain separation        |
 | **Encrypted VFS (EVFS)** | `.vault` container     | Named segments, WAL recovery, shadow index, secure deletion |
+| **Key Management**       | Rotation, export/import | Atomic re-encryption, `.mvex` portable archives             |
 | **Zero-Copy I/O**        | mmap + DCO codec       | Memory-mapped vault reads, zero-copy Rust-to-Dart transfers |
 
 **Security by design:**
@@ -48,7 +49,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.3.3
+  m_security: ^0.3.4
 ```
 
 Then run:
@@ -224,6 +225,31 @@ await VaultService.delete(handle: handle, name: 'secret.txt');
 await VaultService.close(handle: handle);
 ```
 
+#### Key Management
+
+```dart
+// Rotate master key (re-encrypts all segments atomically)
+final newHandle = await VaultService.rotateKey(handle: handle, newKey: newKey);
+// Old handle is invalidated; use newHandle from here
+
+// Export vault to portable encrypted archive
+await VaultService.export(
+  handle: handle,
+  wrappingKey: wrappingKey,
+  exportPath: '/path/to/backup.mvex',
+);
+
+// Import vault from archive (creates new vault with fresh key)
+final imported = await VaultService.importVault(
+  archivePath: '/path/to/backup.mvex',
+  wrappingKey: wrappingKey,
+  destPath: '/path/to/restored.vault',
+  newMasterKey: localKey,
+  algorithm: 'aes-256-gcm',
+  capacityBytes: 10 * 1024 * 1024,
+);
+```
+
 #### Vault Maintenance
 
 ```dart
@@ -366,7 +392,7 @@ flutter test integration_test/
 | **EVFS v2: Defrag & resize**             | Online defragmentation, vault resizing, health diagnostics                          | v0.3.1  |
 | **EVFS v2: Streaming I/O**               | Constant-memory streaming reads/writes, per-chunk AEAD, progress callbacks          | v0.3.2  |
 | **Zero-copy FFI optimization**           | mmap vault reads, DCO codec, release profile hardening, symbol stripping            | v0.3.3  |
-| **EVFS v2: Key rotation**                | Re-encrypt vault with new master key                                                | Planned |
+| **EVFS v2: Key management**              | Key rotation, vault export/import (`.mvex` archives), Dart wrappers                 | v0.3.4  |
 | **Stealth storage**                      | Ephemeral secrets in Rust-managed memory with derived-path obfuscation              | Planned |
 | **Hardware key wrap**                    | Master key in Secure Enclave (iOS) / KeyStore (Android) with biometric unlock       | Planned |
 
