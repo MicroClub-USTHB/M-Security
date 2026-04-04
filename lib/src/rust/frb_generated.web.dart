@@ -452,6 +452,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     if (raw is CryptoError_VaultCorrupted) {
       return [13, cst_encode_String(raw.field0)].jsify()!;
     }
+    if (raw is CryptoError_KeyRotationFailed) {
+      return [14, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_ExportFailed) {
+      return [15, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_ImportFailed) {
+      return [16, cst_encode_String(raw.field0)].jsify()!;
+    }
 
     throw Exception('unreachable');
   }
@@ -1131,8 +1140,38 @@ class RustLibWire implements BaseWire {
     String name,
   ) => wasmModule.wire__crate__api__evfs__vault_delete(port_, handle, name);
 
+  void wire__crate__api__evfs__vault_export(
+    NativePortType port_,
+    int handle,
+    JSAny wrapping_key,
+    String export_path,
+  ) => wasmModule.wire__crate__api__evfs__vault_export(
+    port_,
+    handle,
+    wrapping_key,
+    export_path,
+  );
+
   void wire__crate__api__evfs__vault_health(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_health(port_, handle);
+
+  void wire__crate__api__evfs__vault_import(
+    NativePortType port_,
+    String archive_path,
+    JSAny wrapping_key,
+    String dest_path,
+    JSAny new_master_key,
+    String algorithm,
+    JSAny capacity_bytes,
+  ) => wasmModule.wire__crate__api__evfs__vault_import(
+    port_,
+    archive_path,
+    wrapping_key,
+    dest_path,
+    new_master_key,
+    algorithm,
+    capacity_bytes,
+  );
 
   void wire__crate__api__evfs__vault_list(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_list(port_, handle);
@@ -1173,6 +1212,16 @@ class RustLibWire implements BaseWire {
     port_,
     handle,
     new_capacity,
+  );
+
+  void wire__crate__api__evfs__vault_rotate_key(
+    NativePortType port_,
+    int handle,
+    JSAny new_key,
+  ) => wasmModule.wire__crate__api__evfs__vault_rotate_key(
+    port_,
+    handle,
+    new_key,
   );
 
   void wire__crate__api__evfs__vault_write(
@@ -1480,9 +1529,26 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
   );
 
+  external void wire__crate__api__evfs__vault_export(
+    NativePortType port_,
+    int handle,
+    JSAny wrapping_key,
+    String export_path,
+  );
+
   external void wire__crate__api__evfs__vault_health(
     NativePortType port_,
     int handle,
+  );
+
+  external void wire__crate__api__evfs__vault_import(
+    NativePortType port_,
+    String archive_path,
+    JSAny wrapping_key,
+    String dest_path,
+    JSAny new_master_key,
+    String algorithm,
+    JSAny capacity_bytes,
   );
 
   external void wire__crate__api__evfs__vault_list(
@@ -1515,6 +1581,12 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     NativePortType port_,
     int handle,
     JSAny new_capacity,
+  );
+
+  external void wire__crate__api__evfs__vault_rotate_key(
+    NativePortType port_,
+    int handle,
+    JSAny new_key,
   );
 
   external void wire__crate__api__evfs__vault_write(

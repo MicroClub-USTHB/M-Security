@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 2084471439;
+  int get rustContentHash => 1455605677;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -254,8 +254,23 @@ abstract class RustLibApi extends BaseApi {
     required String name,
   });
 
+  Future<void> crateApiEvfsVaultExport({
+    required VaultHandle handle,
+    required List<int> wrappingKey,
+    required String exportPath,
+  });
+
   Future<VaultHealthInfo> crateApiEvfsVaultHealth({
     required VaultHandle handle,
+  });
+
+  Future<VaultHandle> crateApiEvfsVaultImport({
+    required String archivePath,
+    required List<int> wrappingKey,
+    required String destPath,
+    required List<int> newMasterKey,
+    required String algorithm,
+    required BigInt capacityBytes,
   });
 
   Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle});
@@ -281,6 +296,11 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiEvfsVaultResize({
     required VaultHandle handle,
     required BigInt newCapacity,
+  });
+
+  Future<VaultHandle> crateApiEvfsVaultRotateKey({
+    required VaultHandle handle,
+    required List<int> newKey,
   });
 
   Future<void> crateApiEvfsVaultWrite({
@@ -1596,6 +1616,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiEvfsVaultExport({
+    required VaultHandle handle,
+    required List<int> wrappingKey,
+    required String exportPath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_list_prim_u_8_loose(wrappingKey);
+          var arg2 = cst_encode_String(exportPath);
+          return wire.wire__crate__api__evfs__vault_export(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+          );
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultExportConstMeta,
+        argValues: [handle, wrappingKey, exportPath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultExportConstMeta => const TaskConstMeta(
+    debugName: "vault_export",
+    argNames: ["handle", "wrappingKey", "exportPath"],
+  );
+
+  @override
   Future<VaultHealthInfo> crateApiEvfsVaultHealth({
     required VaultHandle handle,
   }) {
@@ -1621,6 +1679,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiEvfsVaultHealthConstMeta =>
       const TaskConstMeta(debugName: "vault_health", argNames: ["handle"]);
+
+  @override
+  Future<VaultHandle> crateApiEvfsVaultImport({
+    required String archivePath,
+    required List<int> wrappingKey,
+    required String destPath,
+    required List<int> newMasterKey,
+    required String algorithm,
+    required BigInt capacityBytes,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 = cst_encode_String(archivePath);
+          var arg1 = cst_encode_list_prim_u_8_loose(wrappingKey);
+          var arg2 = cst_encode_String(destPath);
+          var arg3 = cst_encode_list_prim_u_8_loose(newMasterKey);
+          var arg4 = cst_encode_String(algorithm);
+          var arg5 = cst_encode_u_64(capacityBytes);
+          return wire.wire__crate__api__evfs__vault_import(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+            arg3,
+            arg4,
+            arg5,
+          );
+        },
+        codec: DcoCodec(
+          decodeSuccessData:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+          decodeErrorData: dco_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultImportConstMeta,
+        argValues: [
+          archivePath,
+          wrappingKey,
+          destPath,
+          newMasterKey,
+          algorithm,
+          capacityBytes,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultImportConstMeta => const TaskConstMeta(
+    debugName: "vault_import",
+    argNames: [
+      "archivePath",
+      "wrappingKey",
+      "destPath",
+      "newMasterKey",
+      "algorithm",
+      "capacityBytes",
+    ],
+  );
 
   @override
   Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle}) {
@@ -1779,6 +1896,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiEvfsVaultResizeConstMeta => const TaskConstMeta(
     debugName: "vault_resize",
     argNames: ["handle", "newCapacity"],
+  );
+
+  @override
+  Future<VaultHandle> crateApiEvfsVaultRotateKey({
+    required VaultHandle handle,
+    required List<int> newKey,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_list_prim_u_8_loose(newKey);
+          return wire.wire__crate__api__evfs__vault_rotate_key(
+            port_,
+            arg0,
+            arg1,
+          );
+        },
+        codec: DcoCodec(
+          decodeSuccessData:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
+          decodeErrorData: dco_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultRotateKeyConstMeta,
+        argValues: [handle, newKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultRotateKeyConstMeta => const TaskConstMeta(
+    debugName: "vault_rotate_key",
+    argNames: ["handle", "newKey"],
   );
 
   @override
@@ -2086,6 +2239,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_SegmentNotFound(dco_decode_String(raw[1]));
       case 13:
         return CryptoError_VaultCorrupted(dco_decode_String(raw[1]));
+      case 14:
+        return CryptoError_KeyRotationFailed(dco_decode_String(raw[1]));
+      case 15:
+        return CryptoError_ExportFailed(dco_decode_String(raw[1]));
+      case 16:
+        return CryptoError_ImportFailed(dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
     }
@@ -2466,6 +2625,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 13:
         var var_field0 = sse_decode_String(deserializer);
         return CryptoError_VaultCorrupted(var_field0);
+      case 14:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_KeyRotationFailed(var_field0);
+      case 15:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_ExportFailed(var_field0);
+      case 16:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_ImportFailed(var_field0);
       default:
         throw UnimplementedError('');
     }
@@ -3052,6 +3220,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_String(field0, serializer);
       case CryptoError_VaultCorrupted(field0: final field0):
         sse_encode_i_32(13, serializer);
+        sse_encode_String(field0, serializer);
+      case CryptoError_KeyRotationFailed(field0: final field0):
+        sse_encode_i_32(14, serializer);
+        sse_encode_String(field0, serializer);
+      case CryptoError_ExportFailed(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_String(field0, serializer);
+      case CryptoError_ImportFailed(field0: final field0):
+        sse_encode_i_32(16, serializer);
         sse_encode_String(field0, serializer);
     }
   }

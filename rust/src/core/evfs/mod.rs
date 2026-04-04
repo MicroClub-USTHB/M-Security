@@ -4,6 +4,7 @@
 //! does not scan them. Only the public vault API in `api/evfs/` is
 //! exposed to Flutter.
 
+pub mod archive;
 pub mod format;
 pub mod segment;
 pub mod wal;

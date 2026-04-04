@@ -41,7 +41,7 @@ jobs:
         with:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install flutter_rust_bridge_codegen
+      - run: cargo install flutter_rust_bridge_codegen@2.11.1
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -62,7 +62,7 @@ jobs:
       - uses: nttld/setup-ndk@v1
         with:
           ndk-version: r27c
-      - run: cargo install flutter_rust_bridge_codegen
+      - run: cargo install flutter_rust_bridge_codegen@2.11.1
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -80,7 +80,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
-      - run: cargo install flutter_rust_bridge_codegen
+      - run: cargo install flutter_rust_bridge_codegen@2.11.1
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -97,7 +97,7 @@ jobs:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-      - run: cargo install flutter_rust_bridge_codegen
+      - run: cargo install flutter_rust_bridge_codegen@2.11.1
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs

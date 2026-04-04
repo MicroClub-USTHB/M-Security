@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2084471439;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1455605677;
 
 // Section: executor
 
@@ -1290,6 +1290,53 @@ fn wire__crate__api__evfs__vault_delete_impl(
         },
     )
 }
+fn wire__crate__api__evfs__vault_export_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    handle: impl CstDecode<
+        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>,
+    >,
+    wrapping_key: impl CstDecode<Vec<u8>>,
+    export_path: impl CstDecode<String>,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_export",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_handle = handle.cst_decode();
+            let api_wrapping_key = wrapping_key.cst_decode();
+            let api_export_path = export_path.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref_mut()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = crate::api::evfs::vault_export(
+                        &mut *api_handle_guard,
+                        api_wrapping_key,
+                        api_export_path,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__evfs__vault_health_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     handle: impl CstDecode<
@@ -1324,6 +1371,44 @@ fn wire__crate__api__evfs__vault_health_impl(
                     let api_handle_guard = api_handle_guard.unwrap();
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::evfs::vault_health(&*api_handle_guard))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__evfs__vault_import_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    archive_path: impl CstDecode<String>,
+    wrapping_key: impl CstDecode<Vec<u8>>,
+    dest_path: impl CstDecode<String>,
+    new_master_key: impl CstDecode<Vec<u8>>,
+    algorithm: impl CstDecode<String>,
+    capacity_bytes: impl CstDecode<u64>,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_import",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_archive_path = archive_path.cst_decode();
+            let api_wrapping_key = wrapping_key.cst_decode();
+            let api_dest_path = dest_path.cst_decode();
+            let api_new_master_key = new_master_key.cst_decode();
+            let api_algorithm = algorithm.cst_decode();
+            let api_capacity_bytes = capacity_bytes.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
+                    let output_ok = crate::api::evfs::vault_import(
+                        api_archive_path,
+                        api_wrapping_key,
+                        api_dest_path,
+                        api_new_master_key,
+                        api_algorithm,
+                        api_capacity_bytes,
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -1523,6 +1608,29 @@ fn wire__crate__api__evfs__vault_resize_impl(
                     let mut api_handle_guard = api_handle_guard.unwrap();
                     let output_ok =
                         crate::api::evfs::vault_resize(&mut *api_handle_guard, api_new_capacity)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__evfs__vault_rotate_key_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    handle: impl CstDecode<VaultHandle>,
+    new_key: impl CstDecode<Vec<u8>>,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_rotate_key",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_handle = handle.cst_decode();
+            let api_new_key = new_key.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
+                    let output_ok = crate::api::evfs::vault_rotate_key(api_handle, api_new_key)?;
                     Ok(output_ok)
                 })())
             }
@@ -1897,6 +2005,18 @@ impl SseDecode for crate::core::error::CryptoError {
                 let mut var_field0 = <String>::sse_decode(deserializer);
                 return crate::core::error::CryptoError::VaultCorrupted(var_field0);
             }
+            14 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::KeyRotationFailed(var_field0);
+            }
+            15 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::ExportFailed(var_field0);
+            }
+            16 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::ImportFailed(var_field0);
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2248,6 +2368,15 @@ impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
             crate::core::error::CryptoError::VaultCorrupted(field0) => {
                 [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
+            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
+                [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::core::error::CryptoError::ExportFailed(field0) => {
+                [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::core::error::CryptoError::ImportFailed(field0) => {
+                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2526,6 +2655,18 @@ impl SseEncode for crate::core::error::CryptoError {
             }
             crate::core::error::CryptoError::VaultCorrupted(field0) => {
                 <i32>::sse_encode(13, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
+                <i32>::sse_encode(14, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::ExportFailed(field0) => {
+                <i32>::sse_encode(15, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::ImportFailed(field0) => {
+                <i32>::sse_encode(16, serializer);
                 <String>::sse_encode(field0, serializer);
             }
             _ => {
@@ -2874,6 +3015,18 @@ mod io {
                 13 => {
                     let ans = unsafe { self.kind.VaultCorrupted };
                     crate::core::error::CryptoError::VaultCorrupted(ans.field0.cst_decode())
+                }
+                14 => {
+                    let ans = unsafe { self.kind.KeyRotationFailed };
+                    crate::core::error::CryptoError::KeyRotationFailed(ans.field0.cst_decode())
+                }
+                15 => {
+                    let ans = unsafe { self.kind.ExportFailed };
+                    crate::core::error::CryptoError::ExportFailed(ans.field0.cst_decode())
+                }
+                16 => {
+                    let ans = unsafe { self.kind.ImportFailed };
+                    crate::core::error::CryptoError::ImportFailed(ans.field0.cst_decode())
                 }
                 _ => unreachable!(),
             }
@@ -3393,11 +3546,42 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_export(
+        port_: i64,
+        handle: usize,
+        wrapping_key: *mut wire_cst_list_prim_u_8_loose,
+        export_path: *mut wire_cst_list_prim_u_8_strict,
+    ) {
+        wire__crate__api__evfs__vault_export_impl(port_, handle, wrapping_key, export_path)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_health(
         port_: i64,
         handle: usize,
     ) {
         wire__crate__api__evfs__vault_health_impl(port_, handle)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_import(
+        port_: i64,
+        archive_path: *mut wire_cst_list_prim_u_8_strict,
+        wrapping_key: *mut wire_cst_list_prim_u_8_loose,
+        dest_path: *mut wire_cst_list_prim_u_8_strict,
+        new_master_key: *mut wire_cst_list_prim_u_8_loose,
+        algorithm: *mut wire_cst_list_prim_u_8_strict,
+        capacity_bytes: u64,
+    ) {
+        wire__crate__api__evfs__vault_import_impl(
+            port_,
+            archive_path,
+            wrapping_key,
+            dest_path,
+            new_master_key,
+            algorithm,
+            capacity_bytes,
+        )
     }
 
     #[unsafe(no_mangle)]
@@ -3452,6 +3636,15 @@ mod io {
         new_capacity: u64,
     ) {
         wire__crate__api__evfs__vault_resize_impl(port_, handle, new_capacity)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_rotate_key(
+        port_: i64,
+        handle: usize,
+        new_key: *mut wire_cst_list_prim_u_8_loose,
+    ) {
+        wire__crate__api__evfs__vault_rotate_key_impl(port_, handle, new_key)
     }
 
     #[unsafe(no_mangle)]
@@ -3602,6 +3795,9 @@ mod io {
         VaultFull: wire_cst_CryptoError_VaultFull,
         SegmentNotFound: wire_cst_CryptoError_SegmentNotFound,
         VaultCorrupted: wire_cst_CryptoError_VaultCorrupted,
+        KeyRotationFailed: wire_cst_CryptoError_KeyRotationFailed,
+        ExportFailed: wire_cst_CryptoError_ExportFailed,
+        ImportFailed: wire_cst_CryptoError_ImportFailed,
         nil__: (),
     }
     #[repr(C)]
@@ -3654,6 +3850,21 @@ mod io {
     #[repr(C)]
     #[derive(Clone, Copy)]
     pub struct wire_cst_CryptoError_VaultCorrupted {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_KeyRotationFailed {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_ExportFailed {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_ImportFailed {
         field0: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
@@ -3804,6 +4015,9 @@ mod web {
                 11 => crate::core::error::CryptoError::VaultLocked,
                 12 => crate::core::error::CryptoError::SegmentNotFound(self_.get(1).cst_decode()),
                 13 => crate::core::error::CryptoError::VaultCorrupted(self_.get(1).cst_decode()),
+                14 => crate::core::error::CryptoError::KeyRotationFailed(self_.get(1).cst_decode()),
+                15 => crate::core::error::CryptoError::ExportFailed(self_.get(1).cst_decode()),
+                16 => crate::core::error::CryptoError::ImportFailed(self_.get(1).cst_decode()),
                 _ => unreachable!(),
             }
         }
@@ -4458,11 +4672,42 @@ mod web {
     }
 
     #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_export(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        wrapping_key: Box<[u8]>,
+        export_path: String,
+    ) {
+        wire__crate__api__evfs__vault_export_impl(port_, handle, wrapping_key, export_path)
+    }
+
+    #[wasm_bindgen]
     pub fn wire__crate__api__evfs__vault_health(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
     ) {
         wire__crate__api__evfs__vault_health_impl(port_, handle)
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_import(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        archive_path: String,
+        wrapping_key: Box<[u8]>,
+        dest_path: String,
+        new_master_key: Box<[u8]>,
+        algorithm: String,
+        capacity_bytes: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+    ) {
+        wire__crate__api__evfs__vault_import_impl(
+            port_,
+            archive_path,
+            wrapping_key,
+            dest_path,
+            new_master_key,
+            algorithm,
+            capacity_bytes,
+        )
     }
 
     #[wasm_bindgen]
@@ -4517,6 +4762,15 @@ mod web {
         new_capacity: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
     ) {
         wire__crate__api__evfs__vault_resize_impl(port_, handle, new_capacity)
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_rotate_key(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        new_key: Box<[u8]>,
+    ) {
+        wire__crate__api__evfs__vault_rotate_key_impl(port_, handle, new_key)
     }
 
     #[wasm_bindgen]
