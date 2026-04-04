@@ -263,9 +263,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
 pub fn vault_write(
     handle: &mut VaultHandle,
     name: String,
-    mut data: Vec<u8>,
+    data: Vec<u8>,
     compression: Option<CompressionConfig>,
 ) -> Result<(), CryptoError> {
+    // SAFETY: Zeroizing guarantees plaintext is wiped on all exit paths
+    let data = Zeroizing::new(data);
+
     let config = compression.unwrap_or(CompressionConfig {
         algorithm: CompressionAlgorithm::None,
         level: None,
@@ -284,7 +287,7 @@ pub fn vault_write(
         generation: gen,
     };
     let (encrypted, effective_algo) = segment::encrypt_segment(&params, &data, &name, &config)?;
-    data.zeroize();
+    drop(data);
 
     // 3. WAL journal old index
     let old_encrypted_index = read_encrypted_index(
@@ -1575,7 +1578,14 @@ pub fn vault_import(
     archive
         .read_exact(&mut header_buf)
         .map_err(|_| CryptoError::ImportFailed("Truncated archive header".into()))?;
-    let header = ArchiveHeader::from_bytes(&header_buf)?;
+    let header = ArchiveHeader::from_bytes(&header_buf)
+        .map_err(|_| CryptoError::ImportFailed("invalid archive header".into()))?;
+
+    if header.segment_count > 100_000 {
+        return Err(CryptoError::ImportFailed(
+            "archive segment count exceeds sanity limit".into(),
+        ));
+    }
 
     // Read WrappedExportKey
     let mut wrapped_key = [0u8; WRAPPED_KEY_SIZE];
@@ -1601,10 +1611,7 @@ pub fn vault_import(
 
     // Create new destination vault
     let mut dest_vault =
-        match vault_create(dest_path.clone(), new_master_key, algorithm, capacity_bytes) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        vault_create(dest_path.clone(), new_master_key, algorithm, capacity_bytes)?;
 
     // Process all segments inside a closure to handle atomic crash recovery cleanup
     let mut process_records = || -> Result<(), CryptoError> {
@@ -1623,6 +1630,13 @@ pub fn vault_import(
             let name = String::from_utf8(name_buf)
                 .map_err(|_| CryptoError::ImportFailed("Invalid UTF-8 in segment name".into()))?;
 
+            if name.is_empty() || name.len() > 255 {
+                return Err(CryptoError::ImportFailed(format!(
+                    "invalid segment name length: {}",
+                    name.len()
+                )));
+            }
+
             let mut comp_buf = [0u8; 1];
             archive
                 .read_exact(&mut comp_buf)
@@ -1638,15 +1652,18 @@ pub fn vault_import(
             archive
                 .read_exact(&mut data_len_buf)
                 .map_err(|_| CryptoError::ImportFailed("Truncated segment data length".into()))?;
-            let data_len = u64::from_le_bytes(data_len_buf) as usize;
+            let data_len_u64 = u64::from_le_bytes(data_len_buf);
 
-            // OOM Crash Protection
-            if data_len > capacity_bytes as usize + 65536 {
+            // OOM guard — u64 arithmetic avoids truncation on 32-bit targets
+            if data_len_u64 > capacity_bytes.saturating_add(65536) {
                 return Err(CryptoError::VaultFull {
-                    needed: data_len as u64,
+                    needed: data_len_u64,
                     available: capacity_bytes,
                 });
             }
+            let data_len = usize::try_from(data_len_u64).map_err(|_| {
+                CryptoError::ImportFailed("segment data_len exceeds address space".into())
+            })?;
 
             let mut encrypted_data = vec![0u8; data_len];
             archive.read_exact(&mut encrypted_data).map_err(|_| {
@@ -1685,9 +1702,14 @@ pub fn vault_import(
             }
 
             let comp_algo = match compression {
+                0 => CompressionAlgorithm::None,
                 1 => CompressionAlgorithm::Zstd,
                 2 => CompressionAlgorithm::Brotli,
-                _ => CompressionAlgorithm::None,
+                _ => {
+                    return Err(CryptoError::ImportFailed(format!(
+                        "unknown compression byte: {compression}"
+                    )))
+                }
             };
 
             // vault_write takes ownership of plaintext and handles its zeroization internally
@@ -1707,7 +1729,8 @@ pub fn vault_import(
         archive
             .read_exact(&mut trailer_buf)
             .map_err(|_| CryptoError::ImportFailed("Truncated archive trailer".into()))?;
-        let trailer = ArchiveTrailer::from_bytes(&trailer_buf)?;
+        let trailer = ArchiveTrailer::from_bytes(&trailer_buf)
+            .map_err(|_| CryptoError::ImportFailed("invalid archive trailer".into()))?;
 
         let final_hash = archive_hasher.finalize();
         if trailer.checksum.ct_ne(final_hash.as_bytes()).into() {
@@ -1726,6 +1749,7 @@ pub fn vault_import(
             if archive.read_exact(&mut extra).is_ok() {
                 drop(dest_vault);
                 let _ = std::fs::remove_file(&dest_path);
+                let _ = std::fs::remove_file(format!("{dest_path}.lock"));
                 let _ = std::fs::remove_file(format!("{dest_path}.wal"));
                 let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
                 return Err(CryptoError::ImportFailed(
@@ -1738,6 +1762,7 @@ pub fn vault_import(
             // Crash Recovery: safely delete partial/corrupted destination vault
             drop(dest_vault);
             let _ = std::fs::remove_file(&dest_path);
+            let _ = std::fs::remove_file(format!("{dest_path}.lock"));
             let _ = std::fs::remove_file(format!("{dest_path}.wal"));
             let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
             Err(e)
