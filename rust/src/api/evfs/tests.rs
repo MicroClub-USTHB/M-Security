@@ -2759,8 +2759,10 @@ fn parse_archive(
     let data = std::fs::read(path).expect("read archive");
     assert!(data.len() >= ARCHIVE_HEADER_SIZE + WRAPPED_KEY_SIZE + ARCHIVE_TRAILER_SIZE);
 
-    let header = ArchiveHeader::from_bytes(data[..ARCHIVE_HEADER_SIZE].try_into().unwrap())
-        .expect("parse header");
+    let header = ArchiveHeader::from_bytes(
+        data[..ARCHIVE_HEADER_SIZE].try_into().expect("header slice"),
+    )
+    .expect("parse header");
 
     let wk_start = ARCHIVE_HEADER_SIZE;
     let wrapped_key = data[wk_start..wk_start + WRAPPED_KEY_SIZE].to_vec();
@@ -2783,7 +2785,7 @@ fn parse_archive(
     }
 
     let trailer_bytes: [u8; ARCHIVE_TRAILER_SIZE] =
-        data[pos..pos + ARCHIVE_TRAILER_SIZE].try_into().unwrap();
+        data[pos..pos + ARCHIVE_TRAILER_SIZE].try_into().expect("trailer slice");
     let trailer = ArchiveTrailer::from_bytes(&trailer_bytes).expect("parse trailer");
 
     // Verify BLAKE3 trailer covers everything before the trailer
