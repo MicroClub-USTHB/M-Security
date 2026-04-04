@@ -52,6 +52,9 @@ pub enum CryptoError {
 
     #[error("Export failed: {0}")]
     ExportFailed(String),
+
+    #[error("Import failed: {0}")]
+    ImportFailed(String),
 }
 
 impl From<std::io::Error> for CryptoError {
