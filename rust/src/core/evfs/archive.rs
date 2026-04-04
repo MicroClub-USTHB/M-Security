@@ -149,7 +149,11 @@ impl SegmentRecord {
         checksum.copy_from_slice(&data[pos..pos + 32]);
         pos += 32;
 
-        let data_len = u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap());
+        let data_len = u64::from_le_bytes(
+            data[pos..pos + 8]
+                .try_into()
+                .map_err(|_| CryptoError::ExportFailed("truncated data_len field".into()))?,
+        );
         pos += 8;
 
         Ok((name, compression, checksum, data_len, pos))

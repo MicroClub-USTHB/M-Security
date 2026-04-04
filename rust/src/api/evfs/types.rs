@@ -55,9 +55,9 @@ impl VaultMmap {
         let size = usize::try_from(len).map_err(|_| {
             CryptoError::VaultCorrupted(format!("mmap length {len} exceeds address space"))
         })?;
-        let end = start.checked_add(size).ok_or_else(|| {
-            CryptoError::VaultCorrupted("mmap range overflow".into())
-        })?;
+        let end = start
+            .checked_add(size)
+            .ok_or_else(|| CryptoError::VaultCorrupted("mmap range overflow".into()))?;
         if end > self.mmap.len() {
             return Err(CryptoError::VaultCorrupted(format!(
                 "mmap read {start}..{end} exceeds file size {}",
