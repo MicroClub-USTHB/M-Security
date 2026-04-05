@@ -101,6 +101,8 @@ pub struct VaultHandle {
     pub(crate) file: File,
     pub(crate) wal: WriteAheadLog,
     pub(crate) lock: VaultLock,
+    /// True when the in-memory index has been modified but not yet flushed to disk.
+    pub(crate) index_dirty: bool,
 }
 
 impl VaultHandle {

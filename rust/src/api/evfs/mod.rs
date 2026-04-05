@@ -86,6 +86,7 @@ pub fn vault_create(
         file,
         wal,
         lock,
+        index_dirty: false,
     })
 }
 
@@ -251,6 +252,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         file,
         wal,
         lock,
+        index_dirty: false,
     })
 }
 
@@ -332,6 +334,7 @@ pub fn vault_write(
     handle.index.add(entry)?;
 
     // 8. Flush index (primary + shadow)
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -340,6 +343,7 @@ pub fn vault_write(
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // 9. WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
@@ -619,6 +623,7 @@ pub fn vault_write_stream(
     )?;
     handle.index.add(entry)?;
 
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -627,6 +632,7 @@ pub fn vault_write_stream(
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
@@ -771,6 +777,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
     handle.index.deallocate(entry.offset, entry.size);
 
     // Flush index (primary + shadow)
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -779,6 +786,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
@@ -826,6 +834,7 @@ fn vault_resize_grow_impl(
 
     // Update capacity and flush index to primary + shadow at new position
     handle.index.capacity = new_capacity;
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -834,6 +843,7 @@ fn vault_resize_grow_impl(
         new_capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
@@ -890,6 +900,7 @@ fn vault_resize_shrink_impl(
     });
 
     // Flush index to primary + shadow at new position.
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -898,6 +909,7 @@ fn vault_resize_shrink_impl(
         new_capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // Truncate file to new total size.
     let new_total = format::total_vault_size(new_capacity, handle.index_pad_size)?;
@@ -936,6 +948,25 @@ pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
 /// Get vault health/diagnostics (read-only).
 pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
     handle.health()
+}
+
+/// Explicitly flush the in-memory index to disk if it has been modified.
+/// No-op if the index is clean (no mutations since last flush).
+#[cfg(feature = "compression")]
+pub fn vault_flush(handle: &mut VaultHandle) -> Result<(), CryptoError> {
+    if !handle.index_dirty {
+        return Ok(());
+    }
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+        handle.index_pad_size,
+    )?;
+    handle.index_dirty = false;
+    Ok(())
 }
 
 /// Defragment the vault: compact all segments toward the data region start,
@@ -1015,6 +1046,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         handle.index.apply_move(m.entry_index, m.new_offset)?;
 
         // Flush index to primary + shadow
+        handle.index_dirty = true;
         flush_index(
             &mut handle.file,
             &handle.index,
@@ -1023,6 +1055,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
             handle.index.capacity,
             handle.index_pad_size,
         )?;
+        handle.index_dirty = false;
 
         // WAL commit — move is now durable
         handle.wal.commit()?;
@@ -1053,6 +1086,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
     handle.index.complete_defrag();
 
     // Flush the cleaned-up index
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -1061,6 +1095,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // Secure-erase the free tail (CSPRNG overwrite + fsync)
     if packed_end < handle.index.capacity {
@@ -1342,6 +1377,7 @@ pub fn vault_rotate_key(
         file: new_file,
         wal: new_wal,
         lock: new_lock,
+        index_dirty: false,
     })
 }
 
@@ -1546,6 +1582,17 @@ fn vault_export_write(
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
 #[cfg(feature = "compression")]
 pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
+    if handle.index_dirty {
+        flush_index(
+            &mut handle.file,
+            &handle.index,
+            &handle.keys,
+            handle.algorithm,
+            handle.index.capacity,
+            handle.index_pad_size,
+        )?;
+        handle.index_dirty = false;
+    }
     handle.wal.checkpoint()?;
     handle.lock.release()?;
     // VaultKeys are zeroized on drop (ZeroizeOnDrop)
