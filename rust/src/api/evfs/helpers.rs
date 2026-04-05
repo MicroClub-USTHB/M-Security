@@ -190,6 +190,88 @@ pub(crate) fn decrypt_streaming_chunks(
     Ok(hasher.finalize().into())
 }
 
+/// Decrypt all chunks of a streaming segment using mmap only (no File I/O).
+/// Returns `(reassembled_plaintext, blake3_checksum)`.
+///
+/// This is the parallel-read variant of [`decrypt_streaming_chunks`] — it takes
+/// an immutable `&VaultMmap` instead of `&mut File`, making it safe to call from
+/// multiple threads concurrently.
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "compression")]
+pub(crate) fn decrypt_streaming_chunks_mmap(
+    mmap: &super::types::VaultMmap,
+    cipher_key: &[u8],
+    nonce_key: &[u8],
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    seg_offset: u64,
+    generation: u64,
+    compression: CompressionAlgorithm,
+    chunk_count: u32,
+) -> Result<(Vec<u8>, [u8; 32]), CryptoError> {
+    let data_region = format::data_region_offset(index_pad_size);
+    let enc_chunk_size = crate::core::streaming::ENCRYPTED_CHUNK_SIZE;
+    let mut hasher = blake3::Hasher::new();
+    let mut decompressor = if compression != CompressionAlgorithm::None {
+        Some(crate::core::compression::streaming::new_decompressor(
+            compression,
+        )?)
+    } else {
+        None
+    };
+    let mut decomp_buf = Vec::with_capacity(crate::core::streaming::CHUNK_SIZE * 2);
+    let mut full_plaintext = Vec::new();
+
+    for i in 0..chunk_count {
+        let chunk_offset = (i as u64)
+            .checked_mul(enc_chunk_size as u64)
+            .and_then(|co| data_region.checked_add(seg_offset)?.checked_add(co))
+            .ok_or_else(|| CryptoError::InvalidParameter("chunk offset overflow".into()))?;
+
+        let encrypted_ref = mmap.slice(chunk_offset, enc_chunk_size as u64)?;
+
+        let expected_nonce = segment::derive_chunk_nonce(nonce_key, i as u64, generation)?;
+        let (stored_nonce, _) = encrypted_ref.split_at(crate::core::streaming::NONCE_SIZE);
+        if stored_nonce.ct_ne(&expected_nonce).into() {
+            return Err(CryptoError::AuthenticationFailed);
+        }
+
+        let is_final = i == chunk_count - 1;
+        let aad = segment::VaultChunkAad {
+            generation,
+            chunk_index: i as u64,
+            is_final,
+        }
+        .to_bytes();
+
+        let decrypted =
+            segment::aead_decrypt_with_stored_nonce(cipher_key, encrypted_ref, &aad, algorithm)?;
+
+        let plaintext = if is_final {
+            crate::core::streaming::strip_last_chunk_padding(&decrypted)?
+        } else {
+            decrypted
+        };
+
+        let final_data = if let Some(ref mut dec) = decompressor {
+            dec.decompress_chunk(&plaintext, &mut decomp_buf)?;
+            if is_final {
+                dec.finish(&mut decomp_buf)?;
+            }
+            let data = decomp_buf.clone();
+            decomp_buf.clear();
+            data
+        } else {
+            plaintext
+        };
+
+        hasher.update(&final_data);
+        full_plaintext.extend_from_slice(&final_data);
+    }
+
+    Ok((full_plaintext, hasher.finalize().into()))
+}
+
 /// Decrypt a raw encrypted monolithic segment blob (`nonce || ciphertext || tag`)
 /// without going through a `VaultHandle` read path.
 ///
