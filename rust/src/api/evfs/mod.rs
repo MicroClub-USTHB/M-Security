@@ -957,6 +957,14 @@ pub fn vault_flush(handle: &mut VaultHandle) -> Result<(), CryptoError> {
     if !handle.index_dirty {
         return Ok(());
     }
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
+    handle
+        .wal
+        .begin(WalOp::UpdateIndex, &old_encrypted_index)?;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -966,6 +974,7 @@ pub fn vault_flush(handle: &mut VaultHandle) -> Result<(), CryptoError> {
         handle.index_pad_size,
     )?;
     handle.index_dirty = false;
+    handle.wal.commit()?;
     Ok(())
 }
 
@@ -1579,24 +1588,22 @@ fn vault_export_write(
     Ok(())
 }
 
-/// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
+/// Close the vault — flush dirty index, checkpoint WAL, release lock, zeroize keys on drop.
 #[cfg(feature = "compression")]
 pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
-    if handle.index_dirty {
-        flush_index(
-            &mut handle.file,
-            &handle.index,
-            &handle.keys,
-            handle.algorithm,
-            handle.index.capacity,
-            handle.index_pad_size,
-        )?;
-        handle.index_dirty = false;
-    }
-    handle.wal.checkpoint()?;
-    handle.lock.release()?;
+    // NOTE: index_dirty should only be true here if a prior mutation's flush_index
+    // failed and the caller proceeded to close anyway. Normal paths always clear it.
+    let flush_result = if handle.index_dirty {
+        vault_flush(&mut handle)
+    } else {
+        Ok(())
+    };
+    // Best-effort cleanup: checkpoint WAL and release lock even if flush failed,
+    // so the vault file is not left permanently locked.
+    let _ = handle.wal.checkpoint();
+    let _ = handle.lock.release();
     // VaultKeys are zeroized on drop (ZeroizeOnDrop)
-    Ok(())
+    flush_result
 }
 
 /// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.

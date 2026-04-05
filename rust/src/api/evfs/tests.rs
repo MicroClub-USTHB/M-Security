@@ -3476,14 +3476,54 @@ fn test_vault_flush_noop_when_clean() {
 }
 
 #[test]
-fn test_vault_flush_clears_dirty() {
+fn test_vault_flush_persists_and_survives_reopen() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let mut handle = create_test_vault(&dir, 1_048_576);
-    // Manually set dirty to simulate a deferred mutation
-    handle.index_dirty = true;
-    vault_flush(&mut handle).expect("flush dirty");
+    let path = vault_path(&dir);
+    let mut handle =
+        vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
+    vault_write(&mut handle, "a.txt".into(), b"hello".to_vec(), None).expect("write");
+    // Explicit flush then close — data must survive reopen
+    vault_flush(&mut handle).expect("flush");
     assert!(!handle.index_dirty);
     vault_close(handle).expect("close");
+
+    let mut reopened = vault_open(path, test_key()).expect("reopen");
+    assert_eq!(
+        vault_read(&mut reopened, "a.txt".into()).expect("read"),
+        b"hello"
+    );
+    vault_close(reopened).expect("close");
+}
+
+#[test]
+fn test_vault_close_flushes_dirty_and_persists() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_path(&dir);
+    let mut handle =
+        vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
+    vault_write(&mut handle, "b.txt".into(), b"world".to_vec(), None).expect("write");
+    // Simulate a dirty handle at close time by manually setting the flag.
+    // This exercises the vault_close dirty-flush path.
+    handle.index_dirty = true;
+    vault_close(handle).expect("close");
+
+    let mut reopened = vault_open(path, test_key()).expect("reopen");
+    assert_eq!(
+        vault_read(&mut reopened, "b.txt".into()).expect("read"),
+        b"world"
+    );
+    vault_close(reopened).expect("close");
+}
+
+#[test]
+fn test_index_dirty_false_after_rotate_key() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_path(&dir);
+    let handle =
+        vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
+    let rotated = vault_rotate_key(handle, test_key2()).expect("rotate");
+    assert!(!rotated.index_dirty);
+    vault_close(rotated).expect("close");
 }
 
 #[test]
