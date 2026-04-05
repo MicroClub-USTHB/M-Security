@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.4](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.4) - 2026-04-05
+
+### Added
+
+- Master key rotation via `vault_rotate_key()` — re-encrypts all vault data under a new key using atomic copy-to-new-vault + rename strategy. Crash recovery: stale `.rotating` file cleaned on `vault_open()`.
+- Vault export via `vault_export()` — produces a self-contained `.mvex` encrypted archive with BLAKE3 integrity trailer, ephemeral export key AEAD-wrapped with caller's wrapping key, and per-segment re-encryption.
+- Vault import via `vault_import()` — reads `.mvex` archive, creates new vault re-encrypted under a local master key. Validates header, unwraps export key, verifies per-segment BLAKE3 checksums and trailer integrity.
+- `ImportFailed`, `ExportFailed`, and `KeyRotationFailed` error variants in `CryptoError`.
+- Dart `VaultService.rotateKey()`, `VaultService.export()`, and `VaultService.importVault()` static methods.
+- 7 Dart integration tests for key management (rotation roundtrip, old key rejection, export-import roundtrip, wrong wrapping key, 1MB+ segment, multiple rotations, rotate-then-export-import).
+- 26 Rust tests for key management (10 rotation + 7 export + 9 import).
+- Example app Key Management section with Rotate Key, Export, and Import buttons.
+- CI workflow pinned `flutter_rust_bridge_codegen` to v2.11.1 to match runtime dependency.
+
+### Security
+
+- Old sub-keys zeroized immediately after rotation via `ZeroizeOnDrop`.
+- Export wrapping uses AAD `b"msec-export-key-wrap"` for domain separation.
+- Archive format authenticated: per-segment AAD (segment name) + BLAKE3 trailer covering all preceding bytes.
+- `vault_write` plaintext wrapped in `Zeroizing<Vec<u8>>` — guarantees zeroization on all exit paths including `encrypt_segment` failure.
+- Import hardened: `u64` to `usize` safe cast via `try_from` (32-bit overflow protection), OOM guard in `u64` arithmetic with `saturating_add`, `.lock` file cleanup in error paths, segment name validation (1-255 bytes), `segment_count` sanity bound (100K), unknown compression byte rejection.
+- Atomic rename before lock release in rotation (closes race window).
+
+### Fixed
+
+- `unwrap()` in `archive.rs` replaced with `map_err()` for clippy compliance.
+- `from_bytes` errors remapped to `ImportFailed` at import call sites.
+- Example app lint: replaced `src/` imports with public `m_security.dart` re-exports.
+
 ## [v0.3.3](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.3) - 2026-03-28
 
 ### Added

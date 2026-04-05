@@ -6,8 +6,8 @@ mod tests;
 pub mod types;
 
 use helpers::*;
-pub use types::*;
 use types::VaultMmap;
+pub use types::*;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
@@ -19,7 +19,7 @@ use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
 use crate::core::format::Algorithm;
 use crate::frb_generated::StreamSink;
 use subtle::ConstantTimeEq;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -93,6 +93,16 @@ pub fn vault_create(
 #[cfg(feature = "compression")]
 pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoError> {
     let lock = VaultLock::acquire(&path)?;
+
+    // If a previous key rotation was interrupted after pre-allocation but before
+    // the atomic rename completed, a stale .rotating vault will be sitting next
+    // to the original. The original is intact — just remove the orphan so it
+    // does not interfere with a future rotation attempt.
+    let rotating_path = format!("{path}.rotating");
+    if std::path::Path::new(&rotating_path).exists() {
+        let _ = std::fs::remove_file(&rotating_path);
+        let _ = std::fs::remove_file(format!("{rotating_path}.wal"));
+    }
 
     let mut file = OpenOptions::new()
         .read(true)
@@ -253,9 +263,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
 pub fn vault_write(
     handle: &mut VaultHandle,
     name: String,
-    mut data: Vec<u8>,
+    data: Vec<u8>,
     compression: Option<CompressionConfig>,
 ) -> Result<(), CryptoError> {
+    // SAFETY: Zeroizing guarantees plaintext is wiped on all exit paths
+    let data = Zeroizing::new(data);
+
     let config = compression.unwrap_or(CompressionConfig {
         algorithm: CompressionAlgorithm::None,
         level: None,
@@ -274,7 +287,7 @@ pub fn vault_write(
         generation: gen,
     };
     let (encrypted, effective_algo) = segment::encrypt_segment(&params, &data, &name, &config)?;
-    data.zeroize();
+    drop(data);
 
     // 3. WAL journal old index
     let old_encrypted_index = read_encrypted_index(
@@ -1069,6 +1082,467 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
     })
 }
 
+/// Consumes old handle (keys invalidated after rename). Returns new handle with new keys.
+pub fn vault_rotate_key(
+    mut handle: VaultHandle,
+    mut new_key: Vec<u8>,
+) -> Result<VaultHandle, CryptoError> {
+    // We acquire a lock on both the current vault and the new vault that we do the transition with.
+    let temp_path = format!("{}.rotating", &handle.path);
+
+    // Clean up a stale .rotating file from a previous failed rotation so that
+    // create_new(true) below doesn't fail.
+    if std::path::Path::new(&temp_path).exists() {
+        let _ = std::fs::remove_file(&temp_path);
+        let _ = std::fs::remove_file(format!("{temp_path}.wal"));
+    }
+
+    let temp_lock = VaultLock::acquire(&temp_path)?;
+
+    // Generate the new key
+    let capacity = handle.index.capacity;
+    let new_keys = match segment::derive_vault_keys(&new_key) {
+        Ok(k) => {
+            new_key.zeroize();
+            k
+        }
+        Err(e) => {
+            new_key.zeroize();
+            return Err(e);
+        }
+    };
+    // Re-calc the same constants.
+    let index_pad_size = format::compute_index_size(capacity);
+    let total_size = format::total_vault_size(capacity, index_pad_size)?;
+    let data_off = format::data_region_offset(index_pad_size);
+
+    // Create the temporary/rotating vault file, pre-allocate the size, and write the header.
+    // We need the vault to be setup before writing segments.
+    let mut temp_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&temp_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot create vault: {e}")))?;
+    segment::preallocate_vault(&mut temp_file, total_size)?;
+    let header = VaultHeader::new(handle.algorithm.to_byte(), index_pad_size as u32);
+    temp_file.seek(SeekFrom::Start(0))?;
+    temp_file.write_all(&header.to_bytes())?;
+
+    // Get all the segments from the previous vault.
+    let old_file = &mut handle.file;
+    let segment_entries = handle.index.entries.drain(..);
+    let mut new_index = SegmentIndex::new(capacity);
+
+    for old_entry in segment_entries {
+        if old_entry.is_streaming() {
+            // NOTE: Streaming segments must be fully decrypted before re-chunking because
+            // the chunk boundaries are tied to the plaintext size, not the ciphertext layout.
+            let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
+            decrypt_streaming_chunks(
+                old_file,
+                handle.mmap.as_ref(),
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                index_pad_size,
+                old_entry.offset,
+                old_entry.generation,
+                old_entry.compression,
+                old_entry.chunk_count,
+                |chunk, _| {
+                    full_plaintext.extend_from_slice(&chunk);
+                    Ok(())
+                },
+            )?;
+
+            let total_plaintext_size = full_plaintext.len() as u64;
+            let expected_chunks = format::streaming_chunk_count(total_plaintext_size)?;
+            let total_enc_size = format::streaming_segment_size(total_plaintext_size)?;
+
+            let new_gen = new_index.next_gen();
+            let new_offset = new_index.allocate(total_enc_size)?;
+
+            // Re-encrypt chunk-by-chunk into the rotating vault using the new keys.
+            use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
+            let mut chunk_buf: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0u8; CHUNK_SIZE]);
+            let mut buf_len: usize = 0;
+            let mut chunk_index: u64 = 0;
+            let mut pos: usize = 0;
+
+            while pos < full_plaintext.len() {
+                let take = (CHUNK_SIZE - buf_len).min(full_plaintext.len() - pos);
+                chunk_buf[buf_len..buf_len + take]
+                    .copy_from_slice(&full_plaintext[pos..pos + take]);
+                buf_len += take;
+                pos += take;
+
+                if buf_len == CHUNK_SIZE {
+                    let abs_off = chunk_abs_offset(data_off, new_offset, chunk_index)?;
+                    write_encrypted_chunk(
+                        &mut temp_file,
+                        new_keys.cipher_key.as_bytes(),
+                        new_keys.nonce_key.as_bytes(),
+                        handle.algorithm,
+                        &chunk_buf,
+                        chunk_index,
+                        new_gen,
+                        false,
+                        abs_off,
+                    )?;
+                    chunk_index += 1;
+                    buf_len = 0;
+                }
+            }
+            // full_plaintext is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(full_plaintext);
+
+            // The final chunk always exists (even for empty segments) and must be padded.
+            let padded = Zeroizing::new(pad_last_chunk(&chunk_buf[..buf_len])?);
+            // chunk_buf is zeroized on drop via Zeroizing<Vec<u8>>.
+            drop(chunk_buf);
+            let final_off = chunk_abs_offset(data_off, new_offset, chunk_index)?;
+            write_encrypted_chunk(
+                &mut temp_file,
+                new_keys.cipher_key.as_bytes(),
+                new_keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                &padded,
+                chunk_index,
+                new_gen,
+                true,
+                final_off,
+            )?;
+            drop(padded);
+
+            // Preserve the BLAKE3 checksum — it covers the plaintext, which hasn't changed.
+            // Compression is None because decrypt_streaming_chunks already decompressed.
+            let new_entry = SegmentEntry::new(
+                &old_entry.name,
+                new_offset,
+                total_enc_size,
+                new_gen,
+                old_entry.checksum,
+                CompressionAlgorithm::None,
+                expected_chunks,
+            )?;
+            new_index.add(new_entry)?;
+        } else {
+            let abs_offset = data_off + old_entry.offset;
+            let encrypted: Vec<u8> = if let Some(ref mmap) = handle.mmap {
+                mmap.slice(abs_offset, old_entry.size)?.to_vec()
+            } else {
+                old_file.seek(SeekFrom::Start(abs_offset))?;
+                let mut buf = vec![0u8; old_entry.size as usize];
+                old_file.read_exact(&mut buf)?;
+                buf
+            };
+
+            // Decrypt with the old keys (also decompresses and verifies the BLAKE3 checksum).
+            let plaintext = Zeroizing::new(decrypt_segment_raw(
+                &encrypted,
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                old_entry.generation,
+                old_entry.compression,
+                &old_entry.checksum,
+            )?);
+
+            // Re-encrypt with the new keys. No compression: plaintext is already decompressed.
+            let new_gen = new_index.next_gen();
+            let params = SegmentCryptoParams {
+                cipher_key: new_keys.cipher_key.as_bytes(),
+                nonce_key: new_keys.nonce_key.as_bytes(),
+                algorithm: handle.algorithm,
+                segment_index: 0,
+                generation: new_gen,
+            };
+            let (new_encrypted, _) = segment::encrypt_segment(
+                &params,
+                &plaintext,
+                &old_entry.name,
+                &CompressionConfig {
+                    algorithm: CompressionAlgorithm::None,
+                    level: None,
+                },
+            )?;
+
+            let new_offset = new_index.allocate(new_encrypted.len() as u64)?;
+            temp_file.seek(SeekFrom::Start(data_off + new_offset))?;
+            temp_file.write_all(&new_encrypted)?;
+
+            // Preserve the BLAKE3 checksum — it covers the plaintext, which hasn't changed.
+            let new_entry = SegmentEntry::new(
+                &old_entry.name,
+                new_offset,
+                new_encrypted.len() as u64,
+                new_gen,
+                old_entry.checksum,
+                CompressionAlgorithm::None,
+                0,
+            )?;
+            new_index.add(new_entry)?;
+        }
+    }
+
+    // After writing all segments, sync the file and do maintenance stuff.
+    flush_index(
+        &mut temp_file,
+        &new_index,
+        &new_keys,
+        handle.algorithm,
+        capacity,
+        index_pad_size,
+    )?;
+    temp_file.sync_all()?;
+
+    // Open the WAL for the rotating file to ensure everything is fine.
+    let mut rotating_wal = WriteAheadLog::open(&temp_path)?;
+    rotating_wal.checkpoint()?;
+    drop(rotating_wal);
+    let _ = std::fs::remove_file(format!("{temp_path}.wal"));
+    drop(temp_file); // close the rotating vault fd before rename
+    temp_lock.release()?;
+
+    // Checkpoint the original WAL while we still hold the original lock.
+    handle.wal.checkpoint()?;
+    let algorithm = handle.algorithm;
+    let original_path = handle.path.clone();
+
+    // Atomic rename is the commit point — must happen while the original lock is
+    // still held to prevent a concurrent vault_open() from seeing the stale file
+    // or deleting the .rotating file.
+    std::fs::rename(&temp_path, &original_path)
+        .map_err(|e| CryptoError::KeyRotationFailed(format!("rename failed: {e}")))?;
+
+    // Release the old lock only after the rename succeeded.
+    handle.lock.release()?;
+    // SAFETY: Remaining VaultHandle fields (keys, mmap, file) are dropped at end
+    // of scope — SecretBuffer/VaultKeys are ZeroizeOnDrop.
+    let new_lock = VaultLock::acquire(&original_path)?;
+    let new_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&original_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot reopen vault after rotation: {e}")))?;
+    // The WAL at {original_path}.wal was already checkpointed above; open and
+    // checkpoint once more to guard against any edge-case leftover entries.
+    let mut new_wal = WriteAheadLog::open(&original_path)?;
+    new_wal.checkpoint()?;
+    let new_mmap = VaultMmap::new(&new_file).ok();
+
+    Ok(VaultHandle {
+        path: original_path,
+        algorithm,
+        keys: new_keys,
+        index: new_index,
+        index_pad_size,
+        mmap: new_mmap,
+        file: new_file,
+        wal: new_wal,
+        lock: new_lock,
+    })
+}
+
+/// Export all vault segments into a self-contained `.mvex` encrypted archive.
+///
+/// Each segment is decrypted from the vault, then re-encrypted under an
+/// ephemeral export key with a random per-segment nonce. The export key is
+/// AEAD-wrapped with the caller's `wrapping_key`.
+///
+/// The vault is not modified by this operation.
+#[cfg(feature = "compression")]
+pub fn vault_export(
+    handle: &mut VaultHandle,
+    wrapping_key: Vec<u8>,
+    export_path: String,
+) -> Result<(), CryptoError> {
+    use crate::core::evfs::archive::{ArchiveHeader, KEY_WRAP_AAD};
+    use rand::{rngs::OsRng, RngCore};
+
+    // Wrap immediately so wrapping_key is zeroized on all paths (including errors).
+    let wrapping_key = Zeroizing::new(wrapping_key);
+
+    if wrapping_key.len() != 32 {
+        return Err(CryptoError::InvalidKeyLength {
+            expected: 32,
+            actual: wrapping_key.len(),
+        });
+    }
+
+    // 1. Generate random 32-byte ephemeral export key
+    let mut export_key = Zeroizing::new(vec![0u8; 32]);
+    OsRng.fill_bytes(&mut export_key);
+
+    // 2. Wrap export_key with wrapping_key (AEAD, AAD = KEY_WRAP_AAD)
+    //    Result: nonce(12) || ciphertext(32) || tag(16) = 60 bytes
+    let wrapped_key = segment::aead_encrypt_random_nonce(
+        &wrapping_key,
+        &export_key,
+        KEY_WRAP_AAD,
+        handle.algorithm,
+    )?;
+
+    // 3. Prepare header
+    let segment_count = u32::try_from(handle.index.entries.len())
+        .map_err(|_| CryptoError::ExportFailed("segment count exceeds u32".into()))?;
+    let header = ArchiveHeader::new(handle.algorithm.to_byte(), segment_count);
+
+    // Use create_new to fail atomically if the file already exists.
+    let mut out = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&export_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot create export file: {e}")))?;
+
+    // Run the inner export logic; delete the partial file on any error.
+    match vault_export_write(handle, &export_key, &wrapped_key, &header, &mut out) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            drop(out);
+            let _ = std::fs::remove_file(&export_path);
+            Err(e)
+        }
+    }
+}
+
+/// Write the archive contents. Separated from `vault_export` so the caller
+/// can delete the partial file if this returns an error.
+#[cfg(feature = "compression")]
+fn vault_export_write(
+    handle: &mut VaultHandle,
+    export_key: &[u8],
+    wrapped_key: &[u8],
+    header: &crate::core::evfs::archive::ArchiveHeader,
+    out: &mut std::fs::File,
+) -> Result<(), CryptoError> {
+    use crate::core::evfs::archive::{ArchiveTrailer, SegmentRecord};
+
+    let header_bytes = header.to_bytes();
+    out.write_all(&header_bytes)?;
+    out.write_all(wrapped_key)?;
+
+    // BLAKE3 hasher covers everything before the trailer
+    let mut archive_hasher = blake3::Hasher::new();
+    archive_hasher.update(&header_bytes);
+    archive_hasher.update(wrapped_key);
+
+    // Clone entry metadata to avoid borrow conflict with handle
+    let entries: Vec<_> = handle
+        .index
+        .entries
+        .iter()
+        .map(|e| {
+            (
+                e.name.clone(),
+                e.offset,
+                e.size,
+                e.generation,
+                e.compression,
+                e.checksum,
+                e.chunk_count,
+            )
+        })
+        .collect();
+
+    let vault_capacity = handle.index.capacity;
+
+    for (name, offset, size, generation, compression, checksum, chunk_count) in &entries {
+        // Decrypt the segment plaintext (handles both monolithic and streaming)
+        let plaintext: Zeroizing<Vec<u8>> = if *chunk_count > 0 {
+            let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
+            let computed_checksum = decrypt_streaming_chunks(
+                &mut handle.file,
+                handle.mmap.as_ref(),
+                handle.keys.cipher_key.as_bytes(),
+                handle.keys.nonce_key.as_bytes(),
+                handle.algorithm,
+                handle.index_pad_size,
+                *offset,
+                *generation,
+                *compression,
+                *chunk_count,
+                |data, _| {
+                    full_plaintext.extend_from_slice(&data);
+                    Ok(())
+                },
+            )?;
+            if computed_checksum.ct_ne(checksum).into() {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "integrity check failed for segment '{name}'"
+                )));
+            }
+            full_plaintext
+        } else {
+            // Cap allocation at vault capacity to prevent OOM from a corrupted index.
+            if *size > vault_capacity {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "segment '{name}' size {size} exceeds vault capacity {vault_capacity}"
+                )));
+            }
+            let abs_offset = format::data_region_offset(handle.index_pad_size) + offset;
+            let params = SegmentCryptoParams {
+                cipher_key: handle.keys.cipher_key.as_bytes(),
+                nonce_key: handle.keys.nonce_key.as_bytes(),
+                algorithm: handle.algorithm,
+                segment_index: 0,
+                generation: *generation,
+            };
+            let pt = if let Some(ref mmap) = handle.mmap {
+                let encrypted = mmap.slice(abs_offset, *size)?;
+                segment::decrypt_segment(&params, encrypted, *compression)?
+            } else {
+                handle.file.seek(SeekFrom::Start(abs_offset))?;
+                let mut buf = vec![0u8; *size as usize];
+                handle.file.read_exact(&mut buf)?;
+                segment::decrypt_segment(&params, &buf, *compression)?
+            };
+            if !segment::verify_checksum(&pt, checksum) {
+                return Err(CryptoError::VaultCorrupted(format!(
+                    "integrity check failed for segment '{name}'"
+                )));
+            }
+            Zeroizing::new(pt)
+        };
+
+        // Compute BLAKE3 checksum before re-encryption (while plaintext is live)
+        let record_checksum = segment::compute_checksum(&plaintext);
+
+        // Re-encrypt under the ephemeral export key with segment name as AAD
+        let encrypted_data = segment::aead_encrypt_random_nonce(
+            export_key,
+            &plaintext,
+            name.as_bytes(),
+            handle.algorithm,
+        )?;
+        // plaintext is zeroized on drop via Zeroizing
+
+        let record = SegmentRecord {
+            name: name.clone(),
+            compression: compression.to_u8(),
+            checksum: record_checksum,
+            encrypted_data,
+        };
+
+        let record_header = record.write_header()?;
+        out.write_all(&record_header)?;
+        out.write_all(&record.encrypted_data)?;
+
+        archive_hasher.update(&record_header);
+        archive_hasher.update(&record.encrypted_data);
+    }
+
+    // Write BLAKE3 trailer + fsync
+    let trailer = ArchiveTrailer {
+        checksum: archive_hasher.finalize().into(),
+    };
+    out.write_all(&trailer.to_bytes())?;
+    out.sync_all()?;
+
+    Ok(())
+}
+
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
 #[cfg(feature = "compression")]
 pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
@@ -1076,4 +1550,222 @@ pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
     handle.lock.release()?;
     // VaultKeys are zeroized on drop (ZeroizeOnDrop)
     Ok(())
+}
+
+/// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+#[cfg(feature = "compression")]
+pub fn vault_import(
+    archive_path: String,
+    wrapping_key: Vec<u8>,
+    dest_path: String,
+    new_master_key: Vec<u8>,
+    algorithm: String,
+    capacity_bytes: u64,
+) -> Result<VaultHandle, CryptoError> {
+    use crate::core::evfs::archive::{
+        ArchiveHeader, ArchiveTrailer, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE, KEY_WRAP_AAD,
+        WRAPPED_KEY_SIZE,
+    };
+
+    // Ensure automatic zeroization on drop
+    let wrapping_key = Zeroizing::new(wrapping_key);
+
+    let mut archive = File::open(&archive_path)
+        .map_err(|e| CryptoError::IoError(format!("cannot open archive '{archive_path}': {e}")))?;
+
+    // Read & Validate Header
+    let mut header_buf = [0u8; ARCHIVE_HEADER_SIZE];
+    archive
+        .read_exact(&mut header_buf)
+        .map_err(|_| CryptoError::ImportFailed("Truncated archive header".into()))?;
+    let header = ArchiveHeader::from_bytes(&header_buf)
+        .map_err(|_| CryptoError::ImportFailed("invalid archive header".into()))?;
+
+    if header.segment_count > 100_000 {
+        return Err(CryptoError::ImportFailed(
+            "archive segment count exceeds sanity limit".into(),
+        ));
+    }
+
+    // Read WrappedExportKey
+    let mut wrapped_key = [0u8; WRAPPED_KEY_SIZE];
+    archive
+        .read_exact(&mut wrapped_key)
+        .map_err(|_| CryptoError::ImportFailed("Truncated wrapped key".into()))?;
+
+    let mut archive_hasher = blake3::Hasher::new();
+    archive_hasher.update(&header_buf);
+    archive_hasher.update(&wrapped_key);
+
+    let algo = Algorithm::from_byte(header.algorithm).map_err(|_| {
+        CryptoError::ImportFailed(format!("Unsupported algorithm byte: {}", header.algorithm))
+    })?;
+
+    // Unwrap the ephemeral export key
+    let export_key = Zeroizing::new(
+        segment::aead_decrypt_with_stored_nonce(&wrapping_key, &wrapped_key, KEY_WRAP_AAD, algo)
+            .map_err(|_| {
+                CryptoError::ImportFailed("Invalid wrapping key or corrupted wrapped key".into())
+            })?,
+    );
+
+    // Create new destination vault
+    let mut dest_vault =
+        vault_create(dest_path.clone(), new_master_key, algorithm, capacity_bytes)?;
+
+    // Process all segments inside a closure to handle atomic crash recovery cleanup
+    let mut process_records = || -> Result<(), CryptoError> {
+        for _ in 0..header.segment_count {
+            // Read SegmentRecordHeader components sequentially
+            let mut name_len_buf = [0u8; 2];
+            archive
+                .read_exact(&mut name_len_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment record".into()))?;
+            let name_len = u16::from_le_bytes(name_len_buf) as usize;
+
+            let mut name_buf = vec![0u8; name_len];
+            archive
+                .read_exact(&mut name_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment name".into()))?;
+            let name = String::from_utf8(name_buf)
+                .map_err(|_| CryptoError::ImportFailed("Invalid UTF-8 in segment name".into()))?;
+
+            if name.is_empty() || name.len() > 255 {
+                return Err(CryptoError::ImportFailed(format!(
+                    "invalid segment name length: {}",
+                    name.len()
+                )));
+            }
+
+            let mut comp_buf = [0u8; 1];
+            archive
+                .read_exact(&mut comp_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment compression".into()))?;
+            let compression = comp_buf[0];
+
+            let mut checksum = [0u8; 32];
+            archive
+                .read_exact(&mut checksum)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment checksum".into()))?;
+
+            let mut data_len_buf = [0u8; 8];
+            archive
+                .read_exact(&mut data_len_buf)
+                .map_err(|_| CryptoError::ImportFailed("Truncated segment data length".into()))?;
+            let data_len_u64 = u64::from_le_bytes(data_len_buf);
+
+            // OOM guard — u64 arithmetic avoids truncation on 32-bit targets
+            if data_len_u64 > capacity_bytes.saturating_add(65536) {
+                return Err(CryptoError::VaultFull {
+                    needed: data_len_u64,
+                    available: capacity_bytes,
+                });
+            }
+            let data_len = usize::try_from(data_len_u64).map_err(|_| {
+                CryptoError::ImportFailed("segment data_len exceeds address space".into())
+            })?;
+
+            let mut encrypted_data = vec![0u8; data_len];
+            archive.read_exact(&mut encrypted_data).map_err(|_| {
+                CryptoError::ImportFailed("Truncated segment encrypted data".into())
+            })?;
+
+            // Feed global trailer hasher
+            let mut header_bytes = Vec::new();
+            header_bytes.extend_from_slice(&name_len_buf);
+            header_bytes.extend_from_slice(name.as_bytes());
+            header_bytes.push(compression);
+            header_bytes.extend_from_slice(&checksum);
+            header_bytes.extend_from_slice(&data_len_buf);
+
+            archive_hasher.update(&header_bytes);
+            archive_hasher.update(&encrypted_data);
+
+            // 4. Decrypt using export_key
+            let mut plaintext = segment::aead_decrypt_with_stored_nonce(
+                &export_key,
+                &encrypted_data,
+                name.as_bytes(),
+                algo,
+            )
+            .map_err(|_| {
+                CryptoError::ImportFailed(format!("Authentication failed for segment '{name}'"))
+            })?;
+
+            // Verify BLAKE3 checksum (constant-time verification)
+            let computed_checksum = segment::compute_checksum(&plaintext);
+            if computed_checksum.ct_ne(&checksum).into() {
+                plaintext.zeroize();
+                return Err(CryptoError::ImportFailed(format!(
+                    "Checksum mismatch for segment '{name}'"
+                )));
+            }
+
+            let comp_algo = match compression {
+                0 => CompressionAlgorithm::None,
+                1 => CompressionAlgorithm::Zstd,
+                2 => CompressionAlgorithm::Brotli,
+                _ => {
+                    return Err(CryptoError::ImportFailed(format!(
+                        "unknown compression byte: {compression}"
+                    )))
+                }
+            };
+
+            // vault_write takes ownership of plaintext and handles its zeroization internally
+            vault_write(
+                &mut dest_vault,
+                name,
+                plaintext,
+                Some(CompressionConfig {
+                    algorithm: comp_algo,
+                    level: None,
+                }),
+            )?;
+        }
+
+        // 5. Verify archive trailer
+        let mut trailer_buf = [0u8; ARCHIVE_TRAILER_SIZE];
+        archive
+            .read_exact(&mut trailer_buf)
+            .map_err(|_| CryptoError::ImportFailed("Truncated archive trailer".into()))?;
+        let trailer = ArchiveTrailer::from_bytes(&trailer_buf)
+            .map_err(|_| CryptoError::ImportFailed("invalid archive trailer".into()))?;
+
+        let final_hash = archive_hasher.finalize();
+        if trailer.checksum.ct_ne(final_hash.as_bytes()).into() {
+            return Err(CryptoError::ImportFailed(
+                "Archive trailer checksum mismatch".into(),
+            ));
+        }
+
+        Ok(())
+    };
+
+    match process_records() {
+        Ok(()) => {
+            // Guard against appended malicious trailing payload
+            let mut extra = [0u8; 1];
+            if archive.read_exact(&mut extra).is_ok() {
+                drop(dest_vault);
+                let _ = std::fs::remove_file(&dest_path);
+                let _ = std::fs::remove_file(format!("{dest_path}.lock"));
+                let _ = std::fs::remove_file(format!("{dest_path}.wal"));
+                let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
+                return Err(CryptoError::ImportFailed(
+                    "Trailing garbage at end of archive".into(),
+                ));
+            }
+            Ok(dest_vault)
+        }
+        Err(e) => {
+            // Crash Recovery: safely delete partial/corrupted destination vault
+            drop(dest_vault);
+            let _ = std::fs::remove_file(&dest_path);
+            let _ = std::fs::remove_file(format!("{dest_path}.lock"));
+            let _ = std::fs::remove_file(format!("{dest_path}.wal"));
+            let _ = std::fs::remove_file(format!("{dest_path}.defrag"));
+            Err(e)
+        }
+    }
 }

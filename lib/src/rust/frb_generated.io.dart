@@ -562,6 +562,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       wireObj.kind.VaultCorrupted.field0 = pre_field0;
       return;
     }
+    if (apiObj is CryptoError_KeyRotationFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 14;
+      wireObj.kind.KeyRotationFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_ExportFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 15;
+      wireObj.kind.ExportFailed.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_ImportFailed) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 16;
+      wireObj.kind.ImportFailed.field0 = pre_field0;
+      return;
+    }
   }
 
   @protected
@@ -1858,6 +1876,42 @@ class RustLibWire implements BaseWire {
             void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
           >();
 
+  void wire__crate__api__evfs__vault_export(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> wrapping_key,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> export_path,
+  ) {
+    return _wire__crate__api__evfs__vault_export(
+      port_,
+      handle,
+      wrapping_key,
+      export_path,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_exportPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_export');
+  late final _wire__crate__api__evfs__vault_export =
+      _wire__crate__api__evfs__vault_exportPtr
+          .asFunction<
+            void Function(
+              int,
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
   void wire__crate__api__evfs__vault_health(int port_, int handle) {
     return _wire__crate__api__evfs__vault_health(port_, handle);
   }
@@ -1869,6 +1923,54 @@ class RustLibWire implements BaseWire {
   late final _wire__crate__api__evfs__vault_health =
       _wire__crate__api__evfs__vault_healthPtr
           .asFunction<void Function(int, int)>();
+
+  void wire__crate__api__evfs__vault_import(
+    int port_,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> archive_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> wrapping_key,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> dest_path,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> new_master_key,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> algorithm,
+    int capacity_bytes,
+  ) {
+    return _wire__crate__api__evfs__vault_import(
+      port_,
+      archive_path,
+      wrapping_key,
+      dest_path,
+      new_master_key,
+      algorithm,
+      capacity_bytes,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_importPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Uint64,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_import');
+  late final _wire__crate__api__evfs__vault_import =
+      _wire__crate__api__evfs__vault_importPtr
+          .asFunction<
+            void Function(
+              int,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              int,
+            )
+          >();
 
   void wire__crate__api__evfs__vault_list(int port_, int handle) {
     return _wire__crate__api__evfs__vault_list(port_, handle);
@@ -1995,6 +2097,30 @@ class RustLibWire implements BaseWire {
   late final _wire__crate__api__evfs__vault_resize =
       _wire__crate__api__evfs__vault_resizePtr
           .asFunction<void Function(int, int, int)>();
+
+  void wire__crate__api__evfs__vault_rotate_key(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> new_key,
+  ) {
+    return _wire__crate__api__evfs__vault_rotate_key(port_, handle, new_key);
+  }
+
+  late final _wire__crate__api__evfs__vault_rotate_keyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_rotate_key');
+  late final _wire__crate__api__evfs__vault_rotate_key =
+      _wire__crate__api__evfs__vault_rotate_keyPtr
+          .asFunction<
+            void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
+          >();
 
   void wire__crate__api__evfs__vault_write(
     int port_,
@@ -2342,6 +2468,18 @@ final class wire_cst_CryptoError_VaultCorrupted extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
 }
 
+final class wire_cst_CryptoError_KeyRotationFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_ExportFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
+final class wire_cst_CryptoError_ImportFailed extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
 final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_InvalidKeyLength InvalidKeyLength;
 
@@ -2362,6 +2500,12 @@ final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_SegmentNotFound SegmentNotFound;
 
   external wire_cst_CryptoError_VaultCorrupted VaultCorrupted;
+
+  external wire_cst_CryptoError_KeyRotationFailed KeyRotationFailed;
+
+  external wire_cst_CryptoError_ExportFailed ExportFailed;
+
+  external wire_cst_CryptoError_ImportFailed ImportFailed;
 }
 
 final class wire_cst_crypto_error extends ffi.Struct {
@@ -2433,6 +2577,14 @@ const int DEFAULT_LEVEL = 3;
 const int MIN_LEVEL = 1;
 
 const int MAX_LEVEL = 22;
+
+const int ARCHIVE_VERSION = 1;
+
+const int ARCHIVE_HEADER_SIZE = 32;
+
+const int WRAPPED_KEY_SIZE = 60;
+
+const int ARCHIVE_TRAILER_SIZE = 36;
 
 const int VAULT_VERSION = 1;
 

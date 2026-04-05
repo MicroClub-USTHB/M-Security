@@ -9,7 +9,7 @@ import 'compression.dart';
 import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
+// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `vault_export_write`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
 // These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `vault_write_stream`
 
 /// Create a new vault file at `path` with the given capacity.
@@ -123,6 +123,49 @@ Future<VaultHealthInfo> vaultHealth({required VaultHandle handle}) =>
 Future<DefragResult> vaultDefragment({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultDefragment(handle: handle);
 
+/// Consumes old handle (keys invalidated after rename). Returns new handle with new keys.
+Future<VaultHandle> vaultRotateKey({
+  required VaultHandle handle,
+  required List<int> newKey,
+}) => RustLib.instance.api.crateApiEvfsVaultRotateKey(
+  handle: handle,
+  newKey: newKey,
+);
+
+/// Export all vault segments into a self-contained `.mvex` encrypted archive.
+///
+/// Each segment is decrypted from the vault, then re-encrypted under an
+/// ephemeral export key with a random per-segment nonce. The export key is
+/// AEAD-wrapped with the caller's `wrapping_key`.
+///
+/// The vault is not modified by this operation.
+Future<void> vaultExport({
+  required VaultHandle handle,
+  required List<int> wrappingKey,
+  required String exportPath,
+}) => RustLib.instance.api.crateApiEvfsVaultExport(
+  handle: handle,
+  wrappingKey: wrappingKey,
+  exportPath: exportPath,
+);
+
 /// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
 Future<void> vaultClose({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);
+
+/// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+Future<VaultHandle> vaultImport({
+  required String archivePath,
+  required List<int> wrappingKey,
+  required String destPath,
+  required List<int> newMasterKey,
+  required String algorithm,
+  required BigInt capacityBytes,
+}) => RustLib.instance.api.crateApiEvfsVaultImport(
+  archivePath: archivePath,
+  wrappingKey: wrappingKey,
+  destPath: destPath,
+  newMasterKey: newMasterKey,
+  algorithm: algorithm,
+  capacityBytes: capacityBytes,
+);

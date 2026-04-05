@@ -3,11 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:m_security/m_security.dart' as msec;
 import 'package:m_security/m_security.dart';
-import 'package:m_security/src/rust/api/encryption.dart' as rust_enc;
-import 'package:m_security/src/rust/api/hashing.dart' as hashing;
-import 'package:m_security/src/rust/api/compression.dart';
-import 'package:m_security/src/rust/api/evfs/types.dart' as rust_evfs_types;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +18,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.3',
+      title: 'M-Security v0.3.4',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -41,7 +38,7 @@ class _DemoHomeState extends State<DemoHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('M-Security v0.3.3')),
+      appBar: AppBar(title: const Text('M-Security v0.3.4')),
       body: IndexedStack(
         index: _tab,
         children: const [
@@ -113,7 +110,7 @@ class _HashingTabState extends State<_HashingTab> {
               onPressed: _loading
                   ? null
                   : () => _run('BLAKE3', () async {
-                      final h = await hashing.blake3Hash(
+                      final h = await msec.blake3Hash(
                         data: utf8.encode(_input.text),
                       );
                       return _hex(h);
@@ -124,7 +121,7 @@ class _HashingTabState extends State<_HashingTab> {
               onPressed: _loading
                   ? null
                   : () => _run('SHA-3', () async {
-                      final h = await hashing.sha3Hash(
+                      final h = await msec.sha3Hash(
                         data: utf8.encode(_input.text),
                       );
                       return _hex(h);
@@ -186,7 +183,7 @@ class _EncryptionTabState extends State<_EncryptionTab> {
   final _input = TextEditingController(text: 'Secret message');
   String _algo = 'AES-256-GCM';
   Uint8List? _encrypted;
-  rust_enc.CipherHandle? _cipher;
+  msec.CipherHandle? _cipher;
   String _encHex = '';
   String _decrypted = '';
   bool _loading = false;
@@ -199,12 +196,12 @@ class _EncryptionTabState extends State<_EncryptionTab> {
     });
     try {
       final key = _algo == 'AES-256-GCM'
-          ? await rust_enc.generateAes256GcmKey()
-          : await rust_enc.generateChacha20Poly1305Key();
+          ? await msec.generateAes256GcmKey()
+          : await msec.generateChacha20Poly1305Key();
       _cipher = _algo == 'AES-256-GCM'
-          ? await rust_enc.createAes256Gcm(key: key)
-          : await rust_enc.createChacha20Poly1305(key: key);
-      _encrypted = await rust_enc.encrypt(
+          ? await msec.createAes256Gcm(key: key)
+          : await msec.createChacha20Poly1305(key: key);
+      _encrypted = await msec.encrypt(
         cipher: _cipher!,
         plaintext: Uint8List.fromList(utf8.encode(_input.text)),
         aad: Uint8List(0),
@@ -220,7 +217,7 @@ class _EncryptionTabState extends State<_EncryptionTab> {
     if (_encrypted == null || _cipher == null) return;
     setState(() => _loading = true);
     try {
-      final plain = await rust_enc.decrypt(
+      final plain = await msec.decrypt(
         cipher: _cipher!,
         ciphertext: _encrypted!,
         aad: Uint8List(0),
@@ -419,11 +416,11 @@ class _StreamingTabState extends State<_StreamingTab> {
 
       // Create cipher
       final key = _algo == 'AES-256-GCM'
-          ? await rust_enc.generateAes256GcmKey()
-          : await rust_enc.generateChacha20Poly1305Key();
+          ? await msec.generateAes256GcmKey()
+          : await msec.generateChacha20Poly1305Key();
       final cipher = _algo == 'AES-256-GCM'
-          ? await rust_enc.createAes256Gcm(key: key)
-          : await rust_enc.createChacha20Poly1305(key: key);
+          ? await msec.createAes256Gcm(key: key)
+          : await msec.createChacha20Poly1305(key: key);
 
       // Encrypt
       setState(() => _status = 'Encrypting ${_sizeKb.text}KB...');
@@ -453,8 +450,8 @@ class _StreamingTabState extends State<_StreamingTab> {
 
       // Decrypt
       final cipher2 = _algo == 'AES-256-GCM'
-          ? await rust_enc.createAes256Gcm(key: key)
-          : await rust_enc.createChacha20Poly1305(key: key);
+          ? await msec.createAes256Gcm(key: key)
+          : await msec.createChacha20Poly1305(key: key);
 
       if (_compAlgo == 'None') {
         await StreamingService.decryptFile(
@@ -492,7 +489,7 @@ class _StreamingTabState extends State<_StreamingTab> {
   Future<void> _testStreamHash() async {
     setState(() {
       _loading = true;
-      _status = 'Creating test file for hashing...';
+      _status = 'Creating test file for msec...';
       _progress = 0;
     });
     try {
@@ -507,11 +504,11 @@ class _StreamingTabState extends State<_StreamingTab> {
       await File(filePath).writeAsBytes(data);
 
       // One-shot hash for comparison
-      final oneshotHash = await hashing.blake3Hash(data: data);
+      final oneshotHash = await msec.blake3Hash(data: data);
 
       // Streaming hash
       setState(() => _status = 'Streaming BLAKE3 hash...');
-      final hasher = await hashing.createBlake3();
+      final hasher = await msec.createBlake3();
       final streamHash = await StreamingService.hashFile(
         filePath: filePath,
         hasher: hasher,
@@ -621,8 +618,10 @@ class _VaultTabState extends State<_VaultTab> {
   bool _vaultOpen = false;
   String _compAlgo = 'Zstd';
   final _resizeMb = TextEditingController(text: '10');
+  String _keyMgmtInfo = '';
+  String? _exportPath;
 
-  rust_evfs_types.VaultHandle? _handle;
+  msec.VaultHandle? _handle;
   Uint8List? _key;
   String? _vaultPath;
 
@@ -631,7 +630,7 @@ class _VaultTabState extends State<_VaultTab> {
     try {
       final dir = await Directory.systemTemp.createTemp('demo_vault');
       _vaultPath = '${dir.path}/demo.vault';
-      _key = await rust_enc.generateAes256GcmKey();
+      _key = await msec.generateAes256GcmKey();
       final sizeMb = int.tryParse(_vaultSizeMb.text) ?? 5;
       _handle = await VaultService.create(
         path: _vaultPath!,
@@ -893,6 +892,89 @@ class _VaultTabState extends State<_VaultTab> {
     setState(() => _loading = false);
   }
 
+  Future<void> _rotateKey() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      final newKey = await msec.generateAes256GcmKey();
+      _handle = await VaultService.rotateKey(handle: _handle!, newKey: newKey);
+      _key = newKey;
+      _keyMgmtInfo = 'Key rotated — all segments re-encrypted under new key';
+      _status = 'Key rotation complete';
+      await _refreshList();
+      await _refreshCapacity();
+    } catch (e) {
+      _keyMgmtInfo = 'Rotation error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _exportVault() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      final dir = Directory(_vaultPath!).parent;
+      _exportPath = '${dir.path}/export.mvex';
+      final wrappingKey = await msec.generateAes256GcmKey();
+      await VaultService.export(
+        handle: _handle!,
+        wrappingKey: wrappingKey,
+        exportPath: _exportPath!,
+      );
+      final size = await File(_exportPath!).length();
+      _keyMgmtInfo =
+          'Exported to ${_exportPath!.split('/').last} '
+          '(${_fmtBytes(BigInt.from(size))})\n'
+          'Wrapping key: ${_hex(wrappingKey).substring(0, 16)}...';
+      _exportWrappingKey = wrappingKey;
+      _status = 'Vault exported';
+    } catch (e) {
+      _keyMgmtInfo = 'Export error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Uint8List? _exportWrappingKey;
+
+  Future<void> _importVault() async {
+    if (_exportPath == null || _exportWrappingKey == null) {
+      setState(() => _keyMgmtInfo = 'Export a vault first');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      if (_vaultOpen && _handle != null) {
+        await VaultService.close(handle: _handle!);
+      }
+
+      final dir = Directory(_vaultPath!).parent;
+      final importPath = '${dir.path}/imported.vault';
+      final importKey = await msec.generateAes256GcmKey();
+
+      _handle = await VaultService.importVault(
+        archivePath: _exportPath!,
+        wrappingKey: _exportWrappingKey!,
+        destPath: importPath,
+        newMasterKey: importKey,
+        algorithm: 'aes-256-gcm',
+        capacityBytes: (int.tryParse(_vaultSizeMb.text) ?? 5) * 1024 * 1024,
+      );
+      _key = importKey;
+      _vaultPath = importPath;
+      _vaultOpen = true;
+
+      await _refreshList();
+      await _refreshCapacity();
+      _keyMgmtInfo =
+          'Imported ${_segments.length} segments into new vault\n'
+          'Path: ${importPath.split('/').last}';
+      _status = 'Vault imported';
+    } catch (e) {
+      _keyMgmtInfo = 'Import error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -1095,6 +1177,42 @@ class _VaultTabState extends State<_VaultTab> {
           ),
           if (_healthInfo.isNotEmpty) _ResultCard('Health', _healthInfo),
           if (_defragInfo.isNotEmpty) _ResultCard('Defrag', _defragInfo),
+
+          const Divider(height: 24),
+
+          // Key Management
+          Text('Key Management', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _loading ? null : _rotateKey,
+                  icon: const Icon(Icons.autorenew, size: 18),
+                  label: const Text('Rotate Key'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _loading ? null : _exportVault,
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Export'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _loading || _exportPath == null
+                      ? null
+                      : _importVault,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Import'),
+                ),
+              ),
+            ],
+          ),
+          if (_keyMgmtInfo.isNotEmpty) _ResultCard('Key Mgmt', _keyMgmtInfo),
 
           const Divider(height: 24),
 
