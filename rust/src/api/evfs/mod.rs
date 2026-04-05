@@ -950,6 +950,188 @@ pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
     handle.health()
 }
 
+/// Read multiple segments concurrently using mmap zero-copy + rayon.
+///
+/// Returns results in the same order as `names`. Each entry is either the
+/// decrypted segment data or a per-segment error (e.g. `SegmentNotFound`).
+/// All segments are decrypted into memory simultaneously — callers should
+/// be mindful of total memory when reading many large segments at once.
+///
+/// Falls back to sequential file-based reads when mmap is unavailable.
+#[cfg(feature = "compression")]
+pub fn vault_read_parallel(
+    handle: &VaultHandle,
+    names: Vec<String>,
+) -> Vec<Result<SegmentResult, CryptoError>> {
+    if names.is_empty() {
+        return Vec::new();
+    }
+
+    if let Some(ref mmap) = handle.mmap {
+        use rayon::prelude::*;
+        names
+            .par_iter()
+            .map(|name| {
+                read_segment_from_mmap(
+                    name,
+                    mmap,
+                    &handle.keys,
+                    handle.algorithm,
+                    handle.index_pad_size,
+                    &handle.index,
+                )
+            })
+            .collect()
+    } else {
+        // No mmap — sequential fallback, each read opens its own fd
+        names
+            .iter()
+            .map(|name| {
+                read_segment_with_file(
+                    name,
+                    &handle.path,
+                    &handle.keys,
+                    handle.algorithm,
+                    handle.index_pad_size,
+                    &handle.index,
+                )
+            })
+            .collect()
+    }
+}
+
+/// Read a single segment using only the mmap (no file I/O).
+#[cfg(feature = "compression")]
+fn read_segment_from_mmap(
+    name: &str,
+    mmap: &types::VaultMmap,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> Result<SegmentResult, CryptoError> {
+    let entry = index
+        .find(name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.to_string()))?;
+
+    let data = if entry.chunk_count > 0 {
+        let (plaintext, checksum) = decrypt_streaming_chunks_mmap(
+            mmap,
+            keys.cipher_key.as_bytes(),
+            keys.nonce_key.as_bytes(),
+            algorithm,
+            index_pad_size,
+            entry.offset,
+            entry.generation,
+            entry.compression,
+            entry.chunk_count,
+        )?;
+        if checksum.ct_ne(&entry.checksum).into() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        plaintext
+    } else {
+        let abs_offset = format::data_region_offset(index_pad_size) + entry.offset;
+        let encrypted = mmap.slice(abs_offset, entry.size)?;
+        let params = SegmentCryptoParams {
+            cipher_key: keys.cipher_key.as_bytes(),
+            nonce_key: keys.nonce_key.as_bytes(),
+            algorithm,
+            segment_index: 0,
+            generation: entry.generation,
+        };
+        let plaintext = segment::decrypt_segment(&params, encrypted, entry.compression)?;
+        if !segment::verify_checksum(&plaintext, &entry.checksum) {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        plaintext
+    };
+
+    Ok(SegmentResult {
+        name: name.to_string(),
+        data,
+    })
+}
+
+/// Read a single segment by opening a temporary read-only file handle.
+/// Used as fallback when mmap is unavailable.
+#[cfg(feature = "compression")]
+fn read_segment_with_file(
+    name: &str,
+    path: &str,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> Result<SegmentResult, CryptoError> {
+    let entry = index
+        .find(name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.to_string()))?;
+
+    let mut file = File::open(path)
+        .map_err(|e| CryptoError::IoError(format!("cannot open vault for read: {e}")))?;
+
+    let data = if entry.chunk_count > 0 {
+        let mut full_plaintext = Vec::new();
+        let checksum = decrypt_streaming_chunks(
+            &mut file,
+            None,
+            keys.cipher_key.as_bytes(),
+            keys.nonce_key.as_bytes(),
+            algorithm,
+            index_pad_size,
+            entry.offset,
+            entry.generation,
+            entry.compression,
+            entry.chunk_count,
+            |chunk_data, _| {
+                full_plaintext.extend_from_slice(&chunk_data);
+                Ok(())
+            },
+        )?;
+        if checksum.ct_ne(&entry.checksum).into() {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        full_plaintext
+    } else {
+        let abs_offset = format::data_region_offset(index_pad_size) + entry.offset;
+        let read_len = usize::try_from(entry.size).map_err(|_| {
+            CryptoError::VaultCorrupted(format!(
+                "segment size {} exceeds platform address space",
+                entry.size
+            ))
+        })?;
+        file.seek(SeekFrom::Start(abs_offset))?;
+        let mut buf = vec![0u8; read_len];
+        file.read_exact(&mut buf)?;
+        let params = SegmentCryptoParams {
+            cipher_key: keys.cipher_key.as_bytes(),
+            nonce_key: keys.nonce_key.as_bytes(),
+            algorithm,
+            segment_index: 0,
+            generation: entry.generation,
+        };
+        let plaintext = segment::decrypt_segment(&params, &buf, entry.compression)?;
+        if !segment::verify_checksum(&plaintext, &entry.checksum) {
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        plaintext
+    };
+
+    Ok(SegmentResult {
+        name: name.to_string(),
+        data,
+    })
+}
+
 /// Explicitly flush the in-memory index to disk if it has been modified.
 /// No-op if the index is clean (no mutations since last flush).
 #[cfg(feature = "compression")]
