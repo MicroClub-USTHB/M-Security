@@ -133,6 +133,13 @@ pub struct DefragResult {
     pub free_regions_before: u32,
 }
 
+/// Result of a single segment read from `vault_read_parallel`.
+#[frb(non_opaque)]
+pub struct SegmentResult {
+    pub name: String,
+    pub data: Vec<u8>,
+}
+
 /// Vault health and diagnostic info returned to callers.
 #[frb(non_opaque)]
 #[derive(Debug, Clone, PartialEq)]
