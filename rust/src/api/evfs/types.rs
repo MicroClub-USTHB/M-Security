@@ -134,10 +134,14 @@ pub struct DefragResult {
 }
 
 /// Result of a single segment read from `vault_read_parallel`.
+///
+/// On success, `data` contains the decrypted plaintext and `error` is `None`.
+/// On failure, `data` is empty and `error` contains the error description.
 #[frb(non_opaque)]
 pub struct SegmentResult {
     pub name: String,
     pub data: Vec<u8>,
+    pub error: Option<String>,
 }
 
 /// Vault health and diagnostic info returned to callers.
