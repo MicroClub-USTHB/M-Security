@@ -3548,3 +3548,179 @@ fn test_index_clean_after_resize() {
     assert!(!handle.index_dirty);
     vault_close(handle).expect("close");
 }
+
+// -- Parallel reads -------------------------------------------------------
+
+// Compile-time assertion: VaultHandle must be Sync for &VaultHandle across rayon threads
+#[allow(dead_code)]
+const _: () = {
+    fn assert_sync<T: Sync>() {}
+    fn _check() {
+        assert_sync::<super::types::VaultHandle>();
+    }
+};
+
+#[test]
+fn test_parallel_read_matches_sequential() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 4_194_304);
+
+    vault_write(&mut handle, "a.txt".into(), b"alpha".to_vec(), None).expect("write a");
+    vault_write(&mut handle, "b.txt".into(), b"bravo".to_vec(), None).expect("write b");
+    vault_write(&mut handle, "c.txt".into(), b"charlie".to_vec(), None).expect("write c");
+
+    // Sequential reads for comparison
+    let seq_a = vault_read(&mut handle, "a.txt".into()).expect("read a");
+    let seq_b = vault_read(&mut handle, "b.txt".into()).expect("read b");
+    let seq_c = vault_read(&mut handle, "c.txt".into()).expect("read c");
+
+    // Parallel read
+    let results = vault_read_parallel(
+        &handle,
+        vec!["a.txt".into(), "b.txt".into(), "c.txt".into()],
+    );
+
+    assert_eq!(results.len(), 3);
+    assert_eq!(results[0].as_ref().expect("par a").data, seq_a);
+    assert_eq!(results[1].as_ref().expect("par b").data, seq_b);
+    assert_eq!(results[2].as_ref().expect("par c").data, seq_c);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_10_segments() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 4_194_304);
+
+    let mut expected = Vec::new();
+    for i in 0..10u8 {
+        let name = format!("seg_{i}");
+        let data = vec![i; 1024];
+        vault_write(&mut handle, name, data.clone(), None).expect("write");
+        expected.push(data);
+    }
+
+    let names: Vec<String> = (0..10).map(|i| format!("seg_{i}")).collect();
+    let results = vault_read_parallel(&handle, names);
+
+    assert_eq!(results.len(), 10);
+    for (i, result) in results.iter().enumerate() {
+        let sr = result.as_ref().expect("parallel read");
+        assert_eq!(sr.name, format!("seg_{i}"));
+        assert_eq!(sr.data, expected[i]);
+    }
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_mixed_monolithic_and_streaming() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 4_194_304);
+
+    // Monolithic segment
+    let mono_data = vec![0xAA; 512];
+    vault_write(&mut handle, "mono".into(), mono_data.clone(), None).expect("write mono");
+
+    // Streaming segment (>64KB triggers chunking)
+    let stream_data: Vec<u8> = (0..=255u8).cycle().take(100_000).collect();
+    let stream_iter = stream_data.chunks(8192).map(|c| c.to_vec());
+    vault_write_stream(&mut handle, "stream".into(), stream_data.len() as u64, stream_iter)
+        .expect("write stream");
+
+    let results = vault_read_parallel(&handle, vec!["mono".into(), "stream".into()]);
+
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0].as_ref().expect("mono").data, mono_data);
+    assert_eq!(results[1].as_ref().expect("stream").data, stream_data);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_missing_segment() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    vault_write(&mut handle, "exists".into(), vec![1, 2, 3], None).expect("write");
+
+    let results = vault_read_parallel(&handle, vec!["exists".into(), "missing".into()]);
+
+    assert_eq!(results.len(), 2);
+    assert!(results[0].is_ok());
+    assert!(matches!(
+        results[1],
+        Err(CryptoError::SegmentNotFound(_))
+    ));
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_empty_names() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let handle = create_test_vault(&dir, 1_048_576);
+
+    let results = vault_read_parallel(&handle, vec![]);
+    assert!(results.is_empty());
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_single_name() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    vault_write(&mut handle, "only".into(), b"solo".to_vec(), None).expect("write");
+
+    let seq = vault_read(&mut handle, "only".into()).expect("sequential");
+    let results = vault_read_parallel(&handle, vec!["only".into()]);
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].as_ref().expect("parallel").data, seq);
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_preserves_order() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 4_194_304);
+
+    for i in 0..10u8 {
+        vault_write(&mut handle, format!("seg_{i}"), vec![i; 256], None).expect("write");
+    }
+
+    // Request in reverse order
+    let names: Vec<String> = (0..10).rev().map(|i| format!("seg_{i}")).collect();
+    let results = vault_read_parallel(&handle, names.clone());
+
+    assert_eq!(results.len(), 10);
+    for (i, result) in results.iter().enumerate() {
+        let sr = result.as_ref().expect("read");
+        assert_eq!(sr.name, names[i]);
+    }
+
+    vault_close(handle).expect("close");
+}
+
+#[test]
+fn test_parallel_read_chacha20() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_path(&dir);
+
+    let mut handle =
+        vault_create(path, test_key(), "chacha20-poly1305".into(), 4_194_304).expect("create");
+
+    vault_write(&mut handle, "x".into(), b"chacha-data".to_vec(), None).expect("write");
+    vault_write(&mut handle, "y".into(), b"poly1305-data".to_vec(), None).expect("write");
+
+    let results = vault_read_parallel(&handle, vec!["x".into(), "y".into()]);
+
+    assert_eq!(results[0].as_ref().expect("x").data, b"chacha-data");
+    assert_eq!(results[1].as_ref().expect("y").data, b"poly1305-data");
+
+    vault_close(handle).expect("close");
+}
