@@ -18,7 +18,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.3',
+      title: 'M-Security v0.3.4',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -38,7 +38,7 @@ class _DemoHomeState extends State<DemoHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('M-Security v0.3.3')),
+      appBar: AppBar(title: const Text('M-Security v0.3.4')),
       body: IndexedStack(
         index: _tab,
         children: const [
@@ -1181,10 +1181,7 @@ class _VaultTabState extends State<_VaultTab> {
           const Divider(height: 24),
 
           // Key Management
-          Text(
-            'Key Management',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Key Management', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Row(
             children: [
