@@ -553,6 +553,20 @@ impl SegmentIndex {
         self.entries.iter_mut().find(|e| e.name == name)
     }
 
+    /// Renames a segment in the index.
+    /// Caller must validate names and check for duplicates before calling.
+    pub fn rename(&mut self, old_name: &str, new_name: &str) -> Result<(), CryptoError> {
+        let entry = self
+            .entries
+            .iter_mut()
+            .find(|e| e.name == old_name)
+            .ok_or_else(|| CryptoError::SegmentNotFound(old_name.to_string()))?;
+
+        entry.name = new_name.to_string();
+
+        Ok(())
+    }
+
     pub fn remove(&mut self, name: &str) -> Option<SegmentEntry> {
         if let Some(pos) = self.entries.iter().position(|e| e.name == name) {
             Some(self.entries.remove(pos))

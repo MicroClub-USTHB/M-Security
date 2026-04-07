@@ -12,7 +12,8 @@ pub use types::*;
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
 use crate::core::evfs::format::{
-    self, SegmentEntry, SegmentIndex, VaultHeader, PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
+    self, SegmentEntry, SegmentIndex, VaultHeader, MAX_SEGMENT_NAME_LEN, PRIMARY_INDEX_OFFSET,
+    VAULT_HEADER_SIZE,
 };
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
@@ -747,6 +748,63 @@ fn write_encrypted_chunk(
     Ok(())
 }
 
+/// Renames an existing segment in the vault index without modifying its encrypted data.
+/// Index-only operation — no data I/O, no re-encryption.
+#[cfg(feature = "compression")]
+pub fn vault_rename_segment(
+    handle: &mut VaultHandle,
+    old_name: String,
+    new_name: String,
+) -> Result<(), CryptoError> {
+    // No-op when names are identical
+    if old_name == new_name {
+        return Ok(());
+    }
+
+    // Pre-flight read-only checks to avoid unnecessary WAL I/O on failure
+    if new_name.is_empty() || new_name.len() > MAX_SEGMENT_NAME_LEN {
+        return Err(CryptoError::InvalidParameter(format!(
+            "invalid new segment name length: {}",
+            new_name.len()
+        )));
+    }
+    if handle.index.find(&old_name).is_none() {
+        return Err(CryptoError::SegmentNotFound(old_name));
+    }
+    if handle.index.find(&new_name).is_some() {
+        return Err(CryptoError::DuplicateSegment(new_name));
+    }
+
+    // WAL journal old index snapshot
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+
+    // Update entry in memory
+    handle.index.rename(&old_name, &new_name)?;
+
+    // Flush index (primary + shadow) + fsync
+    handle.index_dirty = true;
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+        handle.index_pad_size,
+    )?;
+    handle.index_dirty = false;
+
+    // WAL commit + refresh mmap
+    handle.wal.commit()?;
+    handle.refresh_mmap();
+
+    Ok(())
+}
+
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
 #[cfg(feature = "compression")]
@@ -961,10 +1019,7 @@ pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
 ///
 /// Falls back to sequential file-based reads when mmap is unavailable.
 #[cfg(feature = "compression")]
-pub fn vault_read_parallel(
-    handle: &VaultHandle,
-    names: Vec<String>,
-) -> Vec<SegmentResult> {
+pub fn vault_read_parallel(handle: &VaultHandle, names: Vec<String>) -> Vec<SegmentResult> {
     if names.is_empty() {
         return Vec::new();
     }
@@ -1208,9 +1263,7 @@ pub fn vault_flush(handle: &mut VaultHandle) -> Result<(), CryptoError> {
         PRIMARY_INDEX_OFFSET,
         format::encrypted_index_size(handle.index_pad_size),
     )?;
-    handle
-        .wal
-        .begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
     flush_index(
         &mut handle.file,
         &handle.index,
