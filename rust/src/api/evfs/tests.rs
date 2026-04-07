@@ -3917,3 +3917,17 @@ fn test_rename_chacha20() {
 
     vault_close(handle).expect("close");
 }
+
+#[test]
+fn test_rename_to_same_name_is_noop() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    vault_write(&mut handle, "same.txt".into(), b"data".to_vec(), None).expect("write");
+    vault_rename_segment(&mut handle, "same.txt".into(), "same.txt".into()).expect("noop rename");
+
+    let data = vault_read(&mut handle, "same.txt".into()).expect("read");
+    assert_eq!(data, b"data");
+
+    vault_close(handle).expect("close");
+}

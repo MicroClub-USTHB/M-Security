@@ -756,6 +756,11 @@ pub fn vault_rename_segment(
     old_name: String,
     new_name: String,
 ) -> Result<(), CryptoError> {
+    // No-op when names are identical
+    if old_name == new_name {
+        return Ok(());
+    }
+
     // Pre-flight read-only checks to avoid unnecessary WAL I/O on failure
     if new_name.is_empty() || new_name.len() > MAX_SEGMENT_NAME_LEN {
         return Err(CryptoError::InvalidParameter(format!(
@@ -763,11 +768,11 @@ pub fn vault_rename_segment(
             new_name.len()
         )));
     }
-    if handle.index.find(&new_name).is_some() {
-        return Err(CryptoError::DuplicateSegment(new_name));
-    }
     if handle.index.find(&old_name).is_none() {
         return Err(CryptoError::SegmentNotFound(old_name));
+    }
+    if handle.index.find(&new_name).is_some() {
+        return Err(CryptoError::DuplicateSegment(new_name));
     }
 
     // WAL journal old index snapshot

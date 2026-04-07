@@ -553,20 +553,9 @@ impl SegmentIndex {
         self.entries.iter_mut().find(|e| e.name == name)
     }
 
-    /// Renames a segment in the index. Returns an error if the old name is missing,
-    /// the new name is invalid, or the new name is already taken.
+    /// Renames a segment in the index.
+    /// Caller must validate names and check for duplicates before calling.
     pub fn rename(&mut self, old_name: &str, new_name: &str) -> Result<(), CryptoError> {
-        if new_name.is_empty() || new_name.len() > MAX_SEGMENT_NAME_LEN {
-            return Err(CryptoError::InvalidParameter(format!(
-                "new segment name invalid: {}",
-                new_name.len()
-            )));
-        }
-
-        if self.find(new_name).is_some() {
-            return Err(CryptoError::DuplicateSegment(new_name.to_string()));
-        }
-
         let entry = self
             .entries
             .iter_mut()
