@@ -11,6 +11,7 @@ pub use types::*;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
+use std::collections::HashMap;
 use crate::core::evfs::format::{
     self, SegmentEntry, SegmentIndex, VaultHeader, MAX_SEGMENT_NAME_LEN, PRIMARY_INDEX_OFFSET,
     VAULT_HEADER_SIZE,
@@ -268,6 +269,7 @@ pub fn vault_write(
     name: String,
     data: Vec<u8>,
     compression: Option<CompressionConfig>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     // SAFETY: Zeroizing guarantees plaintext is wiped on all exit paths
     let data = Zeroizing::new(data);
@@ -331,6 +333,7 @@ pub fn vault_write(
         checksum,
         effective_algo,
         0, // monolithic (one-shot) segment
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
@@ -356,7 +359,10 @@ pub fn vault_write(
 /// Read a named segment. Handles both monolithic and streaming segments.
 /// Decompression is automatic for monolithic segments.
 #[cfg(feature = "compression")]
-pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, CryptoError> {
+pub fn vault_read(
+    handle: &mut VaultHandle,
+    name: String,
+) -> Result<SegmentReadResult, CryptoError> {
     let entry = handle
         .index
         .find(&name)
@@ -368,6 +374,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     let seg_compression = entry.compression;
     let seg_checksum = entry.checksum;
     let chunk_count = entry.chunk_count;
+    let seg_metadata = entry.metadata.clone();
 
     // INTEROP: If the segment is chunked, reassemble it into a single vector
     if chunk_count > 0 {
@@ -395,7 +402,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
             )));
         }
 
-        return Ok(full_plaintext);
+        return Ok(SegmentReadResult {
+            data: full_plaintext,
+            metadata: seg_metadata,
+        });
     }
 
     // Monolithic read (chunk_count == 0): prefer mmap zero-copy, fall back to heap
@@ -431,7 +441,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         )));
     }
 
-    Ok(plaintext)
+    Ok(SegmentReadResult {
+        data: plaintext,
+        metadata: seg_metadata,
+    })
 }
 
 /// Read a named segment sequentially through a stream. Decompression is automatic.
@@ -456,8 +469,8 @@ pub fn vault_read_stream(
 
     // INTEROP: If chunk_count is 0, this is a monolithic segment. Handle with a one-shot read.
     if chunk_count == 0 {
-        let plaintext = vault_read(handle, name)?;
-        let _ = sink.add(plaintext);
+        let result = vault_read(handle, name)?;
+        let _ = sink.add(result.data);
         let _ = on_progress.add(1.0);
         return Ok(());
     }
@@ -496,6 +509,7 @@ pub fn vault_write_stream(
     name: String,
     total_plaintext_size: u64,
     data_stream: impl Iterator<Item = Vec<u8>>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
 
@@ -621,6 +635,7 @@ pub fn vault_write_stream(
         checksum,
         CompressionAlgorithm::None,
         expected_chunks,
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
@@ -685,7 +700,7 @@ pub fn vault_write_file(
         }
     });
 
-    let result = vault_write_stream(handle, name, file_size, data_stream);
+    let result = vault_write_stream(handle, name, file_size, data_stream, None);
 
     // Surface the real I/O error instead of a misleading "stream underflow"
     if let Some(io_err) = read_error {
@@ -1568,6 +1583,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 expected_chunks,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         } else {
@@ -1624,6 +1640,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 0,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         }
@@ -1772,7 +1789,7 @@ fn vault_export_write(
     archive_hasher.update(&header_bytes);
     archive_hasher.update(wrapped_key);
 
-    // Clone entry metadata to avoid borrow conflict with handle
+    // Clone entry data to avoid borrow conflict with handle
     let entries: Vec<_> = handle
         .index
         .entries
@@ -1786,13 +1803,14 @@ fn vault_export_write(
                 e.compression,
                 e.checksum,
                 e.chunk_count,
+                e.metadata.clone(),
             )
         })
         .collect();
 
     let vault_capacity = handle.index.capacity;
 
-    for (name, offset, size, generation, compression, checksum, chunk_count) in &entries {
+    for (name, offset, size, generation, compression, checksum, chunk_count, _metadata) in &entries {
         // Decrypt the segment plaintext (handles both monolithic and streaming)
         let plaintext: Zeroizing<Vec<u8>> = if *chunk_count > 0 {
             let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
@@ -2066,6 +2084,7 @@ pub fn vault_import(
             };
 
             // vault_write takes ownership of plaintext and handles its zeroization internally
+            // NOTE: metadata is not preserved in .mvex v1 — imported segments get empty metadata
             vault_write(
                 &mut dest_vault,
                 name,
@@ -2074,6 +2093,7 @@ pub fn vault_import(
                     algorithm: comp_algo,
                     level: None,
                 }),
+                None,
             )?;
         }
 

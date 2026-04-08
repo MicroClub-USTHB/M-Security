@@ -1513,7 +1513,7 @@ fn wire__crate__api__evfs__vault_read_impl(
                     }
                     let mut api_handle_guard = api_handle_guard.unwrap();
                     let output_ok = crate::api::evfs::vault_read(&mut *api_handle_guard, api_name)?;
-                    Ok(output_ok)
+                    Ok(output_ok.data)
                 })())
             }
         },
@@ -1680,6 +1680,7 @@ fn wire__crate__api__evfs__vault_write_impl(
                         api_name,
                         api_data,
                         api_compression,
+                        None,
                     )?;
                     Ok(output_ok)
                 })())
