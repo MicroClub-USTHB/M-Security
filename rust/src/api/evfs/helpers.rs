@@ -70,10 +70,13 @@ pub(crate) fn read_encrypted_index(
 }
 
 /// Decrypt an encrypted index blob into a SegmentIndex.
+///
+/// `vault_version` selects the wire format: v1 = no metadata, v2+ = with metadata.
 pub(crate) fn decrypt_index_blob(
     encrypted: &[u8],
     keys: &VaultKeys,
     algorithm: Algorithm,
+    vault_version: u8,
 ) -> Result<SegmentIndex, CryptoError> {
     let plaintext = segment::aead_decrypt_with_stored_nonce(
         keys.index_key.as_bytes(),
@@ -81,7 +84,7 @@ pub(crate) fn decrypt_index_blob(
         &[],
         algorithm,
     )?;
-    SegmentIndex::from_bytes(&plaintext)
+    SegmentIndex::from_bytes(&plaintext, vault_version)
 }
 
 /// Compute vault data capacity from file size.

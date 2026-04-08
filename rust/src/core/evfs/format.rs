@@ -9,7 +9,7 @@ use std::collections::HashMap;
 // ---------------------------------------------------------------------------
 
 pub const VAULT_MAGIC: &[u8; 4] = b"MVLT";
-pub const VAULT_VERSION: u8 = 1;
+pub const VAULT_VERSION: u8 = 2;
 pub const VAULT_HEADER_SIZE: usize = 32;
 
 /// Max segment name length in bytes (UTF-8).
@@ -188,7 +188,7 @@ impl VaultHeader {
             ));
         }
         let version = data[4];
-        if version != VAULT_VERSION {
+        if version != 1 && version != VAULT_VERSION {
             return Err(CryptoError::VaultCorrupted(format!(
                 "unsupported vault version: {version}"
             )));
@@ -435,7 +435,14 @@ impl SegmentIndex {
             let meta_count = u16::try_from(entry.metadata.len()).map_err(|_| {
                 CryptoError::InvalidParameter("too many metadata pairs for u16".into())
             })?;
+            if meta_count > MAX_METADATA_PAIRS {
+                return Err(CryptoError::InvalidParameter(format!(
+                    "segment '{}': {} metadata pairs exceeds limit {MAX_METADATA_PAIRS}",
+                    entry.name, meta_count
+                )));
+            }
             put_u16(&mut buf, meta_count);
+            let meta_start = buf.len();
             for (key, val) in &entry.metadata {
                 let klen = u16::try_from(key.len()).map_err(|_| {
                     CryptoError::InvalidParameter("metadata key too long for u16".into())
@@ -447,6 +454,12 @@ impl SegmentIndex {
                 buf.extend_from_slice(key.as_bytes());
                 put_u16(&mut buf, vlen);
                 buf.extend_from_slice(val.as_bytes());
+            }
+            if buf.len() - meta_start > MAX_METADATA_BYTES {
+                return Err(CryptoError::InvalidParameter(format!(
+                    "segment '{}': metadata exceeds {MAX_METADATA_BYTES} byte limit",
+                    entry.name
+                )));
             }
         }
 
@@ -467,7 +480,10 @@ impl SegmentIndex {
     }
 
     /// Deserialize index from decrypted bytes.
-    pub fn from_bytes(data: &[u8]) -> Result<Self, CryptoError> {
+    ///
+    /// `vault_version` controls the wire format: v1 entries have no metadata
+    /// field, v2+ entries include `[meta_count: u16]` after `chunk_count`.
+    pub fn from_bytes(data: &[u8], vault_version: u8) -> Result<Self, CryptoError> {
         if data.len() < 32 {
             return Err(CryptoError::VaultCorrupted("index too short".into()));
         }
@@ -534,34 +550,39 @@ impl SegmentIndex {
                 }
             }
 
-            // Metadata: [meta_count: u16] ([key_len: u16][key][val_len: u16][val])*
-            let meta_count = read_u16(data, &mut off)?;
-            if meta_count > MAX_METADATA_PAIRS {
-                return Err(CryptoError::VaultCorrupted(format!(
-                    "segment '{name}': metadata count {meta_count} exceeds limit {MAX_METADATA_PAIRS}"
-                )));
-            }
-            let mut metadata = HashMap::with_capacity(meta_count as usize);
-            let meta_start = off;
-            for _ in 0..meta_count {
-                let klen = read_u16(data, &mut off)? as usize;
-                let key_bytes = read_bytes(data, &mut off, klen)?;
-                let key = String::from_utf8(key_bytes).map_err(|_| {
-                    CryptoError::VaultCorrupted("metadata key is not valid UTF-8".into())
-                })?;
-                let vlen = read_u16(data, &mut off)? as usize;
-                let val_bytes = read_bytes(data, &mut off, vlen)?;
-                let val = String::from_utf8(val_bytes).map_err(|_| {
-                    CryptoError::VaultCorrupted("metadata value is not valid UTF-8".into())
-                })?;
-                // OOM guard: cap total metadata bytes consumed
-                if off - meta_start > MAX_METADATA_BYTES {
+            // Metadata: v2+ only. v1 entries have no metadata on disk.
+            let metadata = if vault_version >= 2 {
+                let meta_count = read_u16(data, &mut off)?;
+                if meta_count > MAX_METADATA_PAIRS {
                     return Err(CryptoError::VaultCorrupted(format!(
-                        "segment '{name}': metadata exceeds {MAX_METADATA_BYTES} byte limit"
+                        "segment '{name}': metadata count {meta_count} exceeds limit {MAX_METADATA_PAIRS}"
                     )));
                 }
-                metadata.insert(key, val);
-            }
+                let mut map = HashMap::with_capacity(meta_count as usize);
+                let meta_start = off;
+                for _ in 0..meta_count {
+                    // OOM guard: check before allocating the next pair
+                    if off - meta_start > MAX_METADATA_BYTES {
+                        return Err(CryptoError::VaultCorrupted(format!(
+                            "segment '{name}': metadata exceeds {MAX_METADATA_BYTES} byte limit"
+                        )));
+                    }
+                    let klen = read_u16(data, &mut off)? as usize;
+                    let key_bytes = read_bytes(data, &mut off, klen)?;
+                    let key = String::from_utf8(key_bytes).map_err(|_| {
+                        CryptoError::VaultCorrupted("metadata key is not valid UTF-8".into())
+                    })?;
+                    let vlen = read_u16(data, &mut off)? as usize;
+                    let val_bytes = read_bytes(data, &mut off, vlen)?;
+                    let val = String::from_utf8(val_bytes).map_err(|_| {
+                        CryptoError::VaultCorrupted("metadata value is not valid UTF-8".into())
+                    })?;
+                    map.insert(key, val);
+                }
+                map
+            } else {
+                HashMap::new()
+            };
 
             entries.push(SegmentEntry {
                 name,
@@ -972,7 +993,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
         assert_eq!(parsed.entries[0].name, "hello.txt");
@@ -1038,7 +1059,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
 
         assert_eq!(parsed.entries[0].metadata, meta);
         assert!(parsed.entries[1].metadata.is_empty());
@@ -1064,7 +1085,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
     }
@@ -1097,7 +1118,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
         assert_eq!(parsed.entries[2].compression, CompressionAlgorithm::None);
@@ -1121,7 +1142,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
         assert_eq!(
             parsed.free_regions[0],
@@ -1775,7 +1796,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
 
         assert_eq!(parsed.entries[0].chunk_count, 0);
         assert!(!parsed.entries[0].is_streaming());
@@ -1803,7 +1824,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let result = SegmentIndex::from_bytes(&bytes);
+        let result = SegmentIndex::from_bytes(&bytes, VAULT_VERSION);
         assert!(result.is_err());
         let err = result.expect_err("should fail").to_string();
         assert!(err.contains("chunk_count"), "Error: {err}");
@@ -1823,7 +1844,7 @@ mod tests {
         let bytes2 = idx2
             .to_bytes(compute_index_size(idx2.capacity))
             .expect("serialize");
-        assert!(SegmentIndex::from_bytes(&bytes2).is_ok());
+        assert!(SegmentIndex::from_bytes(&bytes2, VAULT_VERSION).is_ok());
     }
 
     #[test]
