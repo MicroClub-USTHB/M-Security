@@ -11,6 +11,7 @@ pub use types::*;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
+use std::collections::HashMap;
 use crate::core::evfs::format::{
     self, SegmentEntry, SegmentIndex, VaultHeader, MAX_SEGMENT_NAME_LEN, PRIMARY_INDEX_OFFSET,
     VAULT_HEADER_SIZE,
@@ -194,12 +195,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // Decrypt index (try primary, fall back to shadow)
     let mut index = {
         let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET, enc_idx_size)?;
-        match decrypt_index_blob(&primary_bytes, &keys, algorithm) {
+        match decrypt_index_blob(&primary_bytes, &keys, algorithm, header.version) {
             Ok(idx) => idx,
             Err(_) => {
                 let shadow_off = format::shadow_index_offset(capacity, index_pad_size)?;
                 let shadow_bytes = read_encrypted_index(&mut file, shadow_off, enc_idx_size)?;
-                let idx = decrypt_index_blob(&shadow_bytes, &keys, algorithm).map_err(|_| {
+                let idx = decrypt_index_blob(&shadow_bytes, &keys, algorithm, header.version).map_err(|_| {
                     CryptoError::VaultCorrupted(
                         "both primary and shadow index are corrupted".into(),
                     )
@@ -268,6 +269,7 @@ pub fn vault_write(
     name: String,
     data: Vec<u8>,
     compression: Option<CompressionConfig>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     // SAFETY: Zeroizing guarantees plaintext is wiped on all exit paths
     let data = Zeroizing::new(data);
@@ -331,6 +333,7 @@ pub fn vault_write(
         checksum,
         effective_algo,
         0, // monolithic (one-shot) segment
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
@@ -356,7 +359,10 @@ pub fn vault_write(
 /// Read a named segment. Handles both monolithic and streaming segments.
 /// Decompression is automatic for monolithic segments.
 #[cfg(feature = "compression")]
-pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, CryptoError> {
+pub fn vault_read(
+    handle: &mut VaultHandle,
+    name: String,
+) -> Result<SegmentReadResult, CryptoError> {
     let entry = handle
         .index
         .find(&name)
@@ -368,6 +374,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     let seg_compression = entry.compression;
     let seg_checksum = entry.checksum;
     let chunk_count = entry.chunk_count;
+    let seg_metadata = entry.metadata.clone();
 
     // INTEROP: If the segment is chunked, reassemble it into a single vector
     if chunk_count > 0 {
@@ -395,7 +402,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
             )));
         }
 
-        return Ok(full_plaintext);
+        return Ok(SegmentReadResult {
+            data: full_plaintext,
+            metadata: seg_metadata,
+        });
     }
 
     // Monolithic read (chunk_count == 0): prefer mmap zero-copy, fall back to heap
@@ -431,7 +441,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         )));
     }
 
-    Ok(plaintext)
+    Ok(SegmentReadResult {
+        data: plaintext,
+        metadata: seg_metadata,
+    })
 }
 
 /// Read a named segment sequentially through a stream. Decompression is automatic.
@@ -456,8 +469,8 @@ pub fn vault_read_stream(
 
     // INTEROP: If chunk_count is 0, this is a monolithic segment. Handle with a one-shot read.
     if chunk_count == 0 {
-        let plaintext = vault_read(handle, name)?;
-        let _ = sink.add(plaintext);
+        let result = vault_read(handle, name)?;
+        let _ = sink.add(result.data);
         let _ = on_progress.add(1.0);
         return Ok(());
     }
@@ -496,6 +509,7 @@ pub fn vault_write_stream(
     name: String,
     total_plaintext_size: u64,
     data_stream: impl Iterator<Item = Vec<u8>>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
 
@@ -621,6 +635,7 @@ pub fn vault_write_stream(
         checksum,
         CompressionAlgorithm::None,
         expected_chunks,
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
@@ -685,7 +700,7 @@ pub fn vault_write_file(
         }
     });
 
-    let result = vault_write_stream(handle, name, file_size, data_stream);
+    let result = vault_write_stream(handle, name, file_size, data_stream, None);
 
     // Surface the real I/O error instead of a misleading "stream underflow"
     if let Some(io_err) = read_error {
@@ -1018,6 +1033,9 @@ pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
 /// be mindful of total memory when reading many large segments at once.
 ///
 /// Falls back to sequential file-based reads when mmap is unavailable.
+///
+/// **Note:** This API does not return per-segment metadata. Use [`vault_read`]
+/// if you need the `metadata` field from [`SegmentReadResult`].
 #[cfg(feature = "compression")]
 pub fn vault_read_parallel(handle: &VaultHandle, names: Vec<String>) -> Vec<SegmentResult> {
     if names.is_empty() {
@@ -1568,6 +1586,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 expected_chunks,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         } else {
@@ -1624,6 +1643,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 0,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         }
@@ -1772,7 +1792,7 @@ fn vault_export_write(
     archive_hasher.update(&header_bytes);
     archive_hasher.update(wrapped_key);
 
-    // Clone entry metadata to avoid borrow conflict with handle
+    // Clone entry data to avoid borrow conflict with handle
     let entries: Vec<_> = handle
         .index
         .entries
@@ -1786,13 +1806,14 @@ fn vault_export_write(
                 e.compression,
                 e.checksum,
                 e.chunk_count,
+                e.metadata.clone(),
             )
         })
         .collect();
 
     let vault_capacity = handle.index.capacity;
 
-    for (name, offset, size, generation, compression, checksum, chunk_count) in &entries {
+    for (name, offset, size, generation, compression, checksum, chunk_count, metadata) in &entries {
         // Decrypt the segment plaintext (handles both monolithic and streaming)
         let plaintext: Zeroizing<Vec<u8>> = if *chunk_count > 0 {
             let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
@@ -1867,14 +1888,18 @@ fn vault_export_write(
             compression: compression.to_u8(),
             checksum: record_checksum,
             encrypted_data,
+            metadata: metadata.clone(),
         };
 
         let record_header = record.write_header()?;
+        let record_meta = record.write_metadata()?;
         out.write_all(&record_header)?;
         out.write_all(&record.encrypted_data)?;
+        out.write_all(&record_meta)?;
 
         archive_hasher.update(&record_header);
         archive_hasher.update(&record.encrypted_data);
+        archive_hasher.update(&record_meta);
     }
 
     // Write BLAKE3 trailer + fsync
@@ -1906,6 +1931,9 @@ pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
 }
 
 /// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+///
+/// Archives with version < 2 do not carry per-segment metadata; imported
+/// segments from those archives will have empty metadata.
 #[cfg(feature = "compression")]
 pub fn vault_import(
     archive_path: String,
@@ -1916,8 +1944,8 @@ pub fn vault_import(
     capacity_bytes: u64,
 ) -> Result<VaultHandle, CryptoError> {
     use crate::core::evfs::archive::{
-        ArchiveHeader, ArchiveTrailer, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE, KEY_WRAP_AAD,
-        WRAPPED_KEY_SIZE,
+        ArchiveHeader, ArchiveTrailer, SegmentRecord, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE,
+        KEY_WRAP_AAD, WRAPPED_KEY_SIZE,
     };
 
     // Ensure automatic zeroization on drop
@@ -2023,6 +2051,46 @@ pub fn vault_import(
                 CryptoError::ImportFailed("Truncated segment encrypted data".into())
             })?;
 
+            // v2: read metadata after encrypted_data
+            let seg_metadata = if header.version >= 2 {
+                // Read meta_count first to know how many bytes to expect
+                let mut mc_buf = [0u8; 2];
+                archive.read_exact(&mut mc_buf).map_err(|_| {
+                    CryptoError::ImportFailed("truncated segment metadata count".into())
+                })?;
+                let meta_count = u16::from_le_bytes(mc_buf) as usize;
+                // Read remaining metadata pairs as raw bytes, then parse
+                let mut meta_bytes = Vec::from(mc_buf.as_slice());
+                for _ in 0..meta_count {
+                    let mut klen_buf = [0u8; 2];
+                    archive.read_exact(&mut klen_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata key length".into())
+                    })?;
+                    let klen = u16::from_le_bytes(klen_buf) as usize;
+                    meta_bytes.extend_from_slice(&klen_buf);
+                    let mut key_buf = vec![0u8; klen];
+                    archive.read_exact(&mut key_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata key".into())
+                    })?;
+                    meta_bytes.extend_from_slice(&key_buf);
+                    let mut vlen_buf = [0u8; 2];
+                    archive.read_exact(&mut vlen_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata value length".into())
+                    })?;
+                    let vlen = u16::from_le_bytes(vlen_buf) as usize;
+                    meta_bytes.extend_from_slice(&vlen_buf);
+                    let mut val_buf = vec![0u8; vlen];
+                    archive.read_exact(&mut val_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata value".into())
+                    })?;
+                    meta_bytes.extend_from_slice(&val_buf);
+                }
+                let (map, _) = SegmentRecord::read_metadata(&meta_bytes)?;
+                (map, meta_bytes)
+            } else {
+                (std::collections::HashMap::new(), Vec::new())
+            };
+
             // Feed global trailer hasher
             let mut header_bytes = Vec::new();
             header_bytes.extend_from_slice(&name_len_buf);
@@ -2033,6 +2101,7 @@ pub fn vault_import(
 
             archive_hasher.update(&header_bytes);
             archive_hasher.update(&encrypted_data);
+            archive_hasher.update(&seg_metadata.1);
 
             // 4. Decrypt using export_key
             let mut plaintext = segment::aead_decrypt_with_stored_nonce(
@@ -2066,6 +2135,7 @@ pub fn vault_import(
             };
 
             // vault_write takes ownership of plaintext and handles its zeroization internally
+            let import_meta = if seg_metadata.0.is_empty() { None } else { Some(seg_metadata.0) };
             vault_write(
                 &mut dest_vault,
                 name,
@@ -2074,6 +2144,7 @@ pub fn vault_import(
                     algorithm: comp_algo,
                     level: None,
                 }),
+                import_meta,
             )?;
         }
 

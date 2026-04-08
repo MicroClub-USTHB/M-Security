@@ -1,6 +1,7 @@
 //! `.mvex` portable encrypted archive format — types, constants, and serialization.
 
 use crate::core::error::CryptoError;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -8,7 +9,7 @@ use crate::core::error::CryptoError;
 
 pub const ARCHIVE_MAGIC: &[u8; 4] = b"MVEX";
 pub const REVERSE_MAGIC: &[u8; 4] = b"XEVM";
-pub const ARCHIVE_VERSION: u8 = 1;
+pub const ARCHIVE_VERSION: u8 = 2;
 
 pub const ARCHIVE_HEADER_SIZE: usize = 32;
 pub const WRAPPED_KEY_SIZE: usize = 60; // 12 nonce + 32 ciphertext + 16 tag
@@ -64,7 +65,7 @@ impl ArchiveHeader {
             return Err(CryptoError::ExportFailed("invalid archive magic".into()));
         }
         let version = buf[4];
-        if version != ARCHIVE_VERSION {
+        if version != 1 && version != ARCHIVE_VERSION {
             return Err(CryptoError::ExportFailed(format!(
                 "unsupported archive version: {version}"
             )));
@@ -93,12 +94,14 @@ impl ArchiveHeader {
 /// [checksum: 32 bytes BLAKE3]
 /// [data_len: u64 LE]  (length of encrypted_data: nonce + ciphertext + tag)
 /// [encrypted_data: data_len bytes]
+/// v2: [meta_count: u16] ([key_len: u16][key][val_len: u16][val])*
 /// ```
 pub struct SegmentRecord {
     pub name: String,
     pub compression: u8,
     pub checksum: [u8; 32],
     pub encrypted_data: Vec<u8>,
+    pub metadata: HashMap<String, String>,
 }
 
 impl SegmentRecord {
@@ -111,9 +114,7 @@ impl SegmentRecord {
         })?;
         let data_len = self.encrypted_data.len() as u64;
 
-        // name_len(2) + name + compression(1) + checksum(32) + data_len(8)
-        let header_size = 2 + name_bytes.len() + 1 + 32 + 8;
-        let mut buf = Vec::with_capacity(header_size);
+        let mut buf = Vec::with_capacity(128);
 
         buf.extend_from_slice(&name_len.to_le_bytes());
         buf.extend_from_slice(name_bytes);
@@ -124,7 +125,29 @@ impl SegmentRecord {
         Ok(buf)
     }
 
-    /// Read a segment record header from a byte slice, returning (record_minus_data, bytes_consumed).
+    /// Serialize metadata to bytes (appended after encrypted_data in the archive).
+    pub fn write_metadata(&self) -> Result<Vec<u8>, CryptoError> {
+        let meta_count = u16::try_from(self.metadata.len()).map_err(|_| {
+            CryptoError::ExportFailed("too many metadata pairs for archive".into())
+        })?;
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&meta_count.to_le_bytes());
+        for (key, val) in &self.metadata {
+            let klen = u16::try_from(key.len()).map_err(|_| {
+                CryptoError::ExportFailed("metadata key too long".into())
+            })?;
+            let vlen = u16::try_from(val.len()).map_err(|_| {
+                CryptoError::ExportFailed("metadata value too long".into())
+            })?;
+            buf.extend_from_slice(&klen.to_le_bytes());
+            buf.extend_from_slice(key.as_bytes());
+            buf.extend_from_slice(&vlen.to_le_bytes());
+            buf.extend_from_slice(val.as_bytes());
+        }
+        Ok(buf)
+    }
+
+    /// Read a segment record header from a byte slice, returning (name, compression, checksum, data_len, bytes_consumed).
     /// The caller must then read `data_len` bytes of encrypted_data.
     pub fn read_header(data: &[u8]) -> Result<(String, u8, [u8; 32], u64, usize), CryptoError> {
         if data.len() < 2 {
@@ -157,6 +180,45 @@ impl SegmentRecord {
         pos += 8;
 
         Ok((name, compression, checksum, data_len, pos))
+    }
+
+    /// Read metadata from a byte slice (after encrypted_data in v2 archives).
+    /// Returns the metadata map and the number of bytes consumed.
+    pub fn read_metadata(data: &[u8]) -> Result<(HashMap<String, String>, usize), CryptoError> {
+        if data.len() < 2 {
+            return Err(CryptoError::ExportFailed("truncated metadata".into()));
+        }
+        let meta_count = u16::from_le_bytes([data[0], data[1]]) as usize;
+        let mut pos = 2;
+        let mut metadata = HashMap::with_capacity(meta_count);
+        for _ in 0..meta_count {
+            if pos + 2 > data.len() {
+                return Err(CryptoError::ExportFailed("truncated metadata key length".into()));
+            }
+            let klen = u16::from_le_bytes([data[pos], data[pos + 1]]) as usize;
+            pos += 2;
+            if pos + klen > data.len() {
+                return Err(CryptoError::ExportFailed("truncated metadata key".into()));
+            }
+            let key = std::str::from_utf8(&data[pos..pos + klen])
+                .map_err(|_| CryptoError::ExportFailed("metadata key not valid UTF-8".into()))?
+                .to_string();
+            pos += klen;
+            if pos + 2 > data.len() {
+                return Err(CryptoError::ExportFailed("truncated metadata value length".into()));
+            }
+            let vlen = u16::from_le_bytes([data[pos], data[pos + 1]]) as usize;
+            pos += 2;
+            if pos + vlen > data.len() {
+                return Err(CryptoError::ExportFailed("truncated metadata value".into()));
+            }
+            let val = std::str::from_utf8(&data[pos..pos + vlen])
+                .map_err(|_| CryptoError::ExportFailed("metadata value not valid UTF-8".into()))?
+                .to_string();
+            pos += vlen;
+            metadata.insert(key, val);
+        }
+        Ok((metadata, pos))
     }
 }
 

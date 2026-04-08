@@ -5,6 +5,7 @@ use crate::core::evfs::wal::{VaultLock, WriteAheadLog};
 use crate::core::format::Algorithm;
 use flutter_rust_bridge::frb;
 use memmap2::Mmap;
+use std::collections::HashMap;
 use std::fs::File;
 
 // ---------------------------------------------------------------------------
@@ -142,6 +143,14 @@ pub struct SegmentResult {
     pub name: String,
     pub data: Vec<u8>,
     pub error: Option<String>,
+}
+
+/// Result of reading a segment — includes decrypted data and metadata.
+#[frb(non_opaque)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SegmentReadResult {
+    pub data: Vec<u8>,
+    pub metadata: HashMap<String, String>,
 }
 
 /// Vault health and diagnostic info returned to callers.
