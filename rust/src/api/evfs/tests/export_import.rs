@@ -46,11 +46,19 @@ fn parse_archive(
         pos += hdr_size;
         let enc_data = data[pos..pos + data_len as usize].to_vec();
         pos += data_len as usize;
+        // v2: read metadata after encrypted_data
+        let (seg_meta, meta_consumed) = if header.version >= 2 {
+            SegmentRecord::read_metadata(&data[pos..]).expect("parse metadata")
+        } else {
+            (std::collections::HashMap::new(), 0)
+        };
+        pos += meta_consumed;
         records.push(SegmentRecord {
             name,
             compression,
             checksum,
             encrypted_data: enc_data,
+            metadata: seg_meta,
         });
     }
 
@@ -154,6 +162,7 @@ fn test_segment_record_header_roundtrip() {
         compression: 0x01,
         checksum: [0xDD; 32],
         encrypted_data: vec![0xFF; 100],
+        metadata: std::collections::HashMap::new(),
     };
     let header = record.write_header().expect("write header");
     let (name, comp, cksum, data_len, consumed) =
@@ -194,7 +203,7 @@ fn test_export_produces_valid_archive() {
 
     let (header, wrapped_key, records, _) = parse_archive(&epath);
     assert_eq!(header.segment_count, 2);
-    assert_eq!(header.version, 1);
+    assert_eq!(header.version, 2);
     assert_eq!(records.len(), 2);
 
     // Decrypt and verify contents
@@ -671,6 +680,50 @@ fn test_import_chacha20() {
         vault_read(&mut imported, "c.txt".into()).expect("read c").data,
         b"chacha"
     );
+
+    vault_close(imported).expect("close");
+}
+
+#[test]
+fn test_export_import_preserves_metadata() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut handle = create_test_vault(&dir, 1_048_576);
+
+    let mut meta = std::collections::HashMap::new();
+    meta.insert("mime".to_string(), "text/plain".to_string());
+    meta.insert("author".to_string(), "test".to_string());
+
+    vault_write(
+        &mut handle,
+        "doc.txt".into(),
+        b"hello".to_vec(),
+        None,
+        Some(meta.clone()),
+    )
+    .expect("write");
+    vault_write(&mut handle, "bare.txt".into(), b"no meta".to_vec(), None, None).expect("write");
+
+    let epath = export_path(&dir);
+    vault_export(&mut handle, wrapping_key(), epath.clone()).expect("export");
+    vault_close(handle).expect("close");
+
+    let dest = dir
+        .path()
+        .join("imported.vault")
+        .to_str()
+        .expect("path")
+        .to_string();
+
+    vault_import(epath, wrapping_key(), dest.clone(), test_key2(), "aes-256-gcm".into(), 1_048_576).expect("import");
+
+    let mut imported = vault_open(dest, test_key2()).expect("open");
+
+    let result = vault_read(&mut imported, "doc.txt".into()).expect("read doc");
+    assert_eq!(result.data, b"hello");
+    assert_eq!(result.metadata, meta);
+
+    let bare = vault_read(&mut imported, "bare.txt".into()).expect("read bare");
+    assert!(bare.metadata.is_empty());
 
     vault_close(imported).expect("close");
 }
