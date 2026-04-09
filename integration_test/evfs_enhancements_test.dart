@@ -210,8 +210,8 @@ void main() {
         data: Uint8List(10),
       );
 
-      expect(
-        () async => await VaultService.renameSegment(
+      await expectLater(
+        () => VaultService.renameSegment(
           handle: handle,
           oldName: 'a.bin',
           newName: 'b.bin',
@@ -235,8 +235,8 @@ void main() {
         capacityBytes: 1024 * 1024,
       );
 
-      expect(
-        () async => await VaultService.renameSegment(
+      await expectLater(
+        () => VaultService.renameSegment(
           handle: handle,
           oldName: 'ghost.bin',
           newName: 'new.bin',
