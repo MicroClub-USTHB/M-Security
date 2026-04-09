@@ -86,6 +86,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
+
+  @protected
   CipherHandle
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     dynamic raw,
@@ -154,6 +157,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<SegmentResult> dco_decode_list_segment_result(dynamic raw);
+
+  @protected
+  Map<String, String>? dco_decode_opt_Map_String_String_None(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
   CompressionConfig? dco_decode_opt_box_autoadd_compression_config(dynamic raw);
 
   @protected
@@ -161,6 +176,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
+  SegmentReadResult dco_decode_segment_read_result(dynamic raw);
+
+  @protected
+  SegmentResult dco_decode_segment_result(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -225,6 +249,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   VaultHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(
     SseDeserializer deserializer,
   );
 
@@ -303,6 +332,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SegmentResult> sse_decode_list_segment_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<String, String>? sse_decode_opt_Map_String_String_None(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
   CompressionConfig? sse_decode_opt_box_autoadd_compression_config(
     SseDeserializer deserializer,
   );
@@ -312,6 +359,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SegmentReadResult sse_decode_segment_read_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SegmentResult sse_decode_segment_result(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -342,6 +402,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     throw UnimplementedError();
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_record_string_string>
+  cst_encode_Map_String_String_None(Map<String, String> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_list_record_string_string(
+      raw.entries.map((e) => (e.key, e.value)).toList(),
+    );
   }
 
   @protected
@@ -424,6 +493,44 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     final ans = wire.cst_new_list_prim_u_8_strict(raw.length);
     ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
     return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_record_string_string>
+  cst_encode_list_record_string_string(List<(String, String)> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_record_string_string(raw.length);
+    for (var i = 0; i < raw.length; ++i) {
+      cst_api_fill_to_wire_record_string_string(raw[i], ans.ref.ptr[i]);
+    }
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_segment_result> cst_encode_list_segment_result(
+    List<SegmentResult> raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    final ans = wire.cst_new_list_segment_result(raw.length);
+    for (var i = 0; i < raw.length; ++i) {
+      cst_api_fill_to_wire_segment_result(raw[i], ans.ref.ptr[i]);
+    }
+    return ans;
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_record_string_string>
+  cst_encode_opt_Map_String_String_None(Map<String, String>? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? ffi.nullptr : cst_encode_Map_String_String_None(raw);
+  }
+
+  @protected
+  ffi.Pointer<wire_cst_list_prim_u_8_strict> cst_encode_opt_String(
+    String? raw,
+  ) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? ffi.nullptr : cst_encode_String(raw);
   }
 
   @protected
@@ -556,27 +663,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       wireObj.kind.SegmentNotFound.field0 = pre_field0;
       return;
     }
-    if (apiObj is CryptoError_VaultCorrupted) {
+    if (apiObj is CryptoError_DuplicateSegment) {
       var pre_field0 = cst_encode_String(apiObj.field0);
       wireObj.tag = 13;
+      wireObj.kind.DuplicateSegment.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_VaultCorrupted) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 14;
       wireObj.kind.VaultCorrupted.field0 = pre_field0;
       return;
     }
     if (apiObj is CryptoError_KeyRotationFailed) {
       var pre_field0 = cst_encode_String(apiObj.field0);
-      wireObj.tag = 14;
+      wireObj.tag = 15;
       wireObj.kind.KeyRotationFailed.field0 = pre_field0;
       return;
     }
     if (apiObj is CryptoError_ExportFailed) {
       var pre_field0 = cst_encode_String(apiObj.field0);
-      wireObj.tag = 15;
+      wireObj.tag = 16;
       wireObj.kind.ExportFailed.field0 = pre_field0;
       return;
     }
     if (apiObj is CryptoError_ImportFailed) {
       var pre_field0 = cst_encode_String(apiObj.field0);
-      wireObj.tag = 16;
+      wireObj.tag = 17;
       wireObj.kind.ImportFailed.field0 = pre_field0;
       return;
     }
@@ -590,6 +703,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     wireObj.segments_moved = cst_encode_u_32(apiObj.segmentsMoved);
     wireObj.bytes_reclaimed = cst_encode_u_64(apiObj.bytesReclaimed);
     wireObj.free_regions_before = cst_encode_u_32(apiObj.freeRegionsBefore);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_record_string_string(
+    (String, String) apiObj,
+    wire_cst_record_string_string wireObj,
+  ) {
+    wireObj.field0 = cst_encode_String(apiObj.$1);
+    wireObj.field1 = cst_encode_String(apiObj.$2);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_segment_read_result(
+    SegmentReadResult apiObj,
+    wire_cst_segment_read_result wireObj,
+  ) {
+    wireObj.data = cst_encode_list_prim_u_8_strict(apiObj.data);
+    wireObj.metadata = cst_encode_Map_String_String_None(apiObj.metadata);
+  }
+
+  @protected
+  void cst_api_fill_to_wire_segment_result(
+    SegmentResult apiObj,
+    wire_cst_segment_result wireObj,
+  ) {
+    wireObj.name = cst_encode_String(apiObj.name);
+    wireObj.data = cst_encode_list_prim_u_8_strict(apiObj.data);
+    wireObj.error = cst_encode_opt_String(apiObj.error);
   }
 
   @protected
@@ -760,6 +901,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     CipherHandle self,
@@ -847,6 +994,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_segment_result(
+    List<SegmentResult> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_Map_String_String_None(
+    Map<String, String>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_compression_config(
     CompressionConfig? self,
     SseSerializer serializer,
@@ -860,6 +1028,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     Uint8List? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_segment_read_result(
+    SegmentReadResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_segment_result(SegmentResult self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -1912,6 +2095,18 @@ class RustLibWire implements BaseWire {
             )
           >();
 
+  void wire__crate__api__evfs__vault_flush(int port_, int handle) {
+    return _wire__crate__api__evfs__vault_flush(port_, handle);
+  }
+
+  late final _wire__crate__api__evfs__vault_flushPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64, ffi.UintPtr)>>(
+        'frbgen_m_security_wire__crate__api__evfs__vault_flush',
+      );
+  late final _wire__crate__api__evfs__vault_flush =
+      _wire__crate__api__evfs__vault_flushPtr
+          .asFunction<void Function(int, int)>();
+
   void wire__crate__api__evfs__vault_health(int port_, int handle) {
     return _wire__crate__api__evfs__vault_health(port_, handle);
   }
@@ -2036,6 +2231,30 @@ class RustLibWire implements BaseWire {
             void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
           >();
 
+  void wire__crate__api__evfs__vault_read_parallel(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_String> names,
+  ) {
+    return _wire__crate__api__evfs__vault_read_parallel(port_, handle, names);
+  }
+
+  late final _wire__crate__api__evfs__vault_read_parallelPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_String>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_read_parallel');
+  late final _wire__crate__api__evfs__vault_read_parallel =
+      _wire__crate__api__evfs__vault_read_parallelPtr
+          .asFunction<
+            void Function(int, int, ffi.Pointer<wire_cst_list_String>)
+          >();
+
   void wire__crate__api__evfs__vault_read_stream(
     int port_,
     int handle,
@@ -2075,6 +2294,42 @@ class RustLibWire implements BaseWire {
               int,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               bool,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            )
+          >();
+
+  void wire__crate__api__evfs__vault_rename_segment(
+    int port_,
+    int handle,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> old_name,
+    ffi.Pointer<wire_cst_list_prim_u_8_strict> new_name,
+  ) {
+    return _wire__crate__api__evfs__vault_rename_segment(
+      port_,
+      handle,
+      old_name,
+      new_name,
+    );
+  }
+
+  late final _wire__crate__api__evfs__vault_rename_segmentPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Int64,
+            ffi.UintPtr,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+          )
+        >
+      >('frbgen_m_security_wire__crate__api__evfs__vault_rename_segment');
+  late final _wire__crate__api__evfs__vault_rename_segment =
+      _wire__crate__api__evfs__vault_rename_segmentPtr
+          .asFunction<
+            void Function(
+              int,
+              int,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             )
@@ -2128,6 +2383,7 @@ class RustLibWire implements BaseWire {
     ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
     ffi.Pointer<wire_cst_list_prim_u_8_loose> data,
     ffi.Pointer<wire_cst_compression_config> compression,
+    ffi.Pointer<wire_cst_list_record_string_string> metadata,
   ) {
     return _wire__crate__api__evfs__vault_write(
       port_,
@@ -2135,6 +2391,7 @@ class RustLibWire implements BaseWire {
       name,
       data,
       compression,
+      metadata,
     );
   }
 
@@ -2147,6 +2404,7 @@ class RustLibWire implements BaseWire {
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             ffi.Pointer<wire_cst_list_prim_u_8_loose>,
             ffi.Pointer<wire_cst_compression_config>,
+            ffi.Pointer<wire_cst_list_record_string_string>,
           )
         >
       >('frbgen_m_security_wire__crate__api__evfs__vault_write');
@@ -2159,6 +2417,7 @@ class RustLibWire implements BaseWire {
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_loose>,
               ffi.Pointer<wire_cst_compression_config>,
+              ffi.Pointer<wire_cst_list_record_string_string>,
             )
           >();
 
@@ -2371,6 +2630,38 @@ class RustLibWire implements BaseWire {
   late final _cst_new_list_prim_u_8_strict = _cst_new_list_prim_u_8_strictPtr
       .asFunction<ffi.Pointer<wire_cst_list_prim_u_8_strict> Function(int)>();
 
+  ffi.Pointer<wire_cst_list_record_string_string>
+  cst_new_list_record_string_string(int len) {
+    return _cst_new_list_record_string_string(len);
+  }
+
+  late final _cst_new_list_record_string_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<wire_cst_list_record_string_string> Function(ffi.Int32)
+        >
+      >('frbgen_m_security_cst_new_list_record_string_string');
+  late final _cst_new_list_record_string_string =
+      _cst_new_list_record_string_stringPtr
+          .asFunction<
+            ffi.Pointer<wire_cst_list_record_string_string> Function(int)
+          >();
+
+  ffi.Pointer<wire_cst_list_segment_result> cst_new_list_segment_result(
+    int len,
+  ) {
+    return _cst_new_list_segment_result(len);
+  }
+
+  late final _cst_new_list_segment_resultPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<wire_cst_list_segment_result> Function(ffi.Int32)
+        >
+      >('frbgen_m_security_cst_new_list_segment_result');
+  late final _cst_new_list_segment_result = _cst_new_list_segment_resultPtr
+      .asFunction<ffi.Pointer<wire_cst_list_segment_result> Function(int)>();
+
   int dummy_method_to_enforce_bundling() {
     return _dummy_method_to_enforce_bundling();
   }
@@ -2420,6 +2711,34 @@ final class wire_cst_list_String extends ffi.Struct {
   external int len;
 }
 
+final class wire_cst_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field1;
+}
+
+final class wire_cst_list_record_string_string extends ffi.Struct {
+  external ffi.Pointer<wire_cst_record_string_string> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_cst_segment_result extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> name;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> data;
+
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> error;
+}
+
+final class wire_cst_list_segment_result extends ffi.Struct {
+  external ffi.Pointer<wire_cst_segment_result> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
 final class wire_cst_CryptoError_InvalidKeyLength extends ffi.Struct {
   @ffi.UintPtr()
   external int expected;
@@ -2464,6 +2783,10 @@ final class wire_cst_CryptoError_SegmentNotFound extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
 }
 
+final class wire_cst_CryptoError_DuplicateSegment extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
 final class wire_cst_CryptoError_VaultCorrupted extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
 }
@@ -2499,6 +2822,8 @@ final class CryptoErrorKind extends ffi.Union {
 
   external wire_cst_CryptoError_SegmentNotFound SegmentNotFound;
 
+  external wire_cst_CryptoError_DuplicateSegment DuplicateSegment;
+
   external wire_cst_CryptoError_VaultCorrupted VaultCorrupted;
 
   external wire_cst_CryptoError_KeyRotationFailed KeyRotationFailed;
@@ -2524,6 +2849,12 @@ final class wire_cst_defrag_result extends ffi.Struct {
 
   @ffi.Uint32()
   external int free_regions_before;
+}
+
+final class wire_cst_segment_read_result extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> data;
+
+  external ffi.Pointer<wire_cst_list_record_string_string> metadata;
 }
 
 final class wire_cst_vault_capacity_info extends ffi.Struct {
@@ -2578,7 +2909,7 @@ const int MIN_LEVEL = 1;
 
 const int MAX_LEVEL = 22;
 
-const int ARCHIVE_VERSION = 1;
+const int ARCHIVE_VERSION = 2;
 
 const int ARCHIVE_HEADER_SIZE = 32;
 
@@ -2586,7 +2917,7 @@ const int WRAPPED_KEY_SIZE = 60;
 
 const int ARCHIVE_TRAILER_SIZE = 36;
 
-const int VAULT_VERSION = 1;
+const int VAULT_VERSION = 2;
 
 const int VAULT_HEADER_SIZE = 32;
 
