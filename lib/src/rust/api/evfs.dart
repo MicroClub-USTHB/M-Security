@@ -9,7 +9,7 @@ import 'compression.dart';
 import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `vault_export_write`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
+// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `read_segment_from_mmap_inner`, `read_segment_from_mmap`, `read_segment_with_file_inner`, `read_segment_with_file`, `vault_export_write`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
 // These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `vault_write_stream`
 
 /// Create a new vault file at `path` with the given capacity.
@@ -41,16 +41,18 @@ Future<void> vaultWrite({
   required String name,
   required List<int> data,
   CompressionConfig? compression,
+  Map<String, String>? metadata,
 }) => RustLib.instance.api.crateApiEvfsVaultWrite(
   handle: handle,
   name: name,
   data: data,
   compression: compression,
+  metadata: metadata,
 );
 
 /// Read a named segment. Handles both monolithic and streaming segments.
 /// Decompression is automatic for monolithic segments.
-Future<Uint8List> vaultRead({
+Future<SegmentReadResult> vaultRead({
   required VaultHandle handle,
   required String name,
 }) => RustLib.instance.api.crateApiEvfsVaultRead(handle: handle, name: name);
@@ -78,10 +80,24 @@ Stream<double> vaultWriteFile({
   required VaultHandle handle,
   required String name,
   required String filePath,
+  Map<String, String>? metadata,
 }) => RustLib.instance.api.crateApiEvfsVaultWriteFile(
   handle: handle,
   name: name,
   filePath: filePath,
+  metadata: metadata,
+);
+
+/// Renames an existing segment in the vault index without modifying its encrypted data.
+/// Index-only operation — no data I/O, no re-encryption.
+Future<void> vaultRenameSegment({
+  required VaultHandle handle,
+  required String oldName,
+  required String newName,
+}) => RustLib.instance.api.crateApiEvfsVaultRenameSegment(
+  handle: handle,
+  oldName: oldName,
+  newName: newName,
 );
 
 /// Delete a named segment. The region is secure-erased and returned to the
@@ -113,6 +129,32 @@ Future<VaultCapacityInfo> vaultCapacity({required VaultHandle handle}) =>
 /// Get vault health/diagnostics (read-only).
 Future<VaultHealthInfo> vaultHealth({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultHealth(handle: handle);
+
+/// Read multiple segments concurrently using mmap zero-copy + rayon.
+///
+/// Returns results in the same order as `names`. On success, `data` contains
+/// decrypted plaintext and `error` is `None`. On failure, `data` is empty and
+/// `error` describes the problem (e.g. segment not found).
+///
+/// All segments are decrypted into memory simultaneously — callers should
+/// be mindful of total memory when reading many large segments at once.
+///
+/// Falls back to sequential file-based reads when mmap is unavailable.
+///
+/// **Note:** This API does not return per-segment metadata. Use [`vault_read`]
+/// if you need the `metadata` field from [`SegmentReadResult`].
+Future<List<SegmentResult>> vaultReadParallel({
+  required VaultHandle handle,
+  required List<String> names,
+}) => RustLib.instance.api.crateApiEvfsVaultReadParallel(
+  handle: handle,
+  names: names,
+);
+
+/// Explicitly flush the in-memory index to disk if it has been modified.
+/// No-op if the index is clean (no mutations since last flush).
+Future<void> vaultFlush({required VaultHandle handle}) =>
+    RustLib.instance.api.crateApiEvfsVaultFlush(handle: handle);
 
 /// Defragment the vault: compact all segments toward the data region start,
 /// coalesce free space into a single contiguous block at the end.
@@ -149,11 +191,14 @@ Future<void> vaultExport({
   exportPath: exportPath,
 );
 
-/// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
+/// Close the vault — flush dirty index, checkpoint WAL, release lock, zeroize keys on drop.
 Future<void> vaultClose({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);
 
 /// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+///
+/// Archives with version < 2 do not carry per-segment metadata; imported
+/// segments from those archives will have empty metadata.
 Future<VaultHandle> vaultImport({
   required String archivePath,
   required List<int> wrappingKey,

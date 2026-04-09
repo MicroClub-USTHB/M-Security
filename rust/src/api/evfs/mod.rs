@@ -11,8 +11,10 @@ pub use types::*;
 
 use crate::api::compression::{CompressionAlgorithm, CompressionConfig};
 use crate::core::error::CryptoError;
+use std::collections::HashMap;
 use crate::core::evfs::format::{
-    self, SegmentEntry, SegmentIndex, VaultHeader, PRIMARY_INDEX_OFFSET, VAULT_HEADER_SIZE,
+    self, SegmentEntry, SegmentIndex, VaultHeader, MAX_SEGMENT_NAME_LEN, PRIMARY_INDEX_OFFSET,
+    VAULT_HEADER_SIZE,
 };
 use crate::core::evfs::segment::{self, SegmentCryptoParams};
 use crate::core::evfs::wal::{VaultLock, WalOp, WriteAheadLog};
@@ -86,6 +88,7 @@ pub fn vault_create(
         file,
         wal,
         lock,
+        index_dirty: false,
     })
 }
 
@@ -192,12 +195,12 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     // Decrypt index (try primary, fall back to shadow)
     let mut index = {
         let primary_bytes = read_encrypted_index(&mut file, PRIMARY_INDEX_OFFSET, enc_idx_size)?;
-        match decrypt_index_blob(&primary_bytes, &keys, algorithm) {
+        match decrypt_index_blob(&primary_bytes, &keys, algorithm, header.version) {
             Ok(idx) => idx,
             Err(_) => {
                 let shadow_off = format::shadow_index_offset(capacity, index_pad_size)?;
                 let shadow_bytes = read_encrypted_index(&mut file, shadow_off, enc_idx_size)?;
-                let idx = decrypt_index_blob(&shadow_bytes, &keys, algorithm).map_err(|_| {
+                let idx = decrypt_index_blob(&shadow_bytes, &keys, algorithm, header.version).map_err(|_| {
                     CryptoError::VaultCorrupted(
                         "both primary and shadow index are corrupted".into(),
                     )
@@ -251,6 +254,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         file,
         wal,
         lock,
+        index_dirty: false,
     })
 }
 
@@ -265,6 +269,7 @@ pub fn vault_write(
     name: String,
     data: Vec<u8>,
     compression: Option<CompressionConfig>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     // SAFETY: Zeroizing guarantees plaintext is wiped on all exit paths
     let data = Zeroizing::new(data);
@@ -328,10 +333,12 @@ pub fn vault_write(
         checksum,
         effective_algo,
         0, // monolithic (one-shot) segment
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
     // 8. Flush index (primary + shadow)
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -340,6 +347,7 @@ pub fn vault_write(
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // 9. WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
@@ -351,7 +359,10 @@ pub fn vault_write(
 /// Read a named segment. Handles both monolithic and streaming segments.
 /// Decompression is automatic for monolithic segments.
 #[cfg(feature = "compression")]
-pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, CryptoError> {
+pub fn vault_read(
+    handle: &mut VaultHandle,
+    name: String,
+) -> Result<SegmentReadResult, CryptoError> {
     let entry = handle
         .index
         .find(&name)
@@ -363,6 +374,7 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
     let seg_compression = entry.compression;
     let seg_checksum = entry.checksum;
     let chunk_count = entry.chunk_count;
+    let seg_metadata = entry.metadata.clone();
 
     // INTEROP: If the segment is chunked, reassemble it into a single vector
     if chunk_count > 0 {
@@ -390,7 +402,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
             )));
         }
 
-        return Ok(full_plaintext);
+        return Ok(SegmentReadResult {
+            data: full_plaintext,
+            metadata: seg_metadata,
+        });
     }
 
     // Monolithic read (chunk_count == 0): prefer mmap zero-copy, fall back to heap
@@ -426,7 +441,10 @@ pub fn vault_read(handle: &mut VaultHandle, name: String) -> Result<Vec<u8>, Cry
         )));
     }
 
-    Ok(plaintext)
+    Ok(SegmentReadResult {
+        data: plaintext,
+        metadata: seg_metadata,
+    })
 }
 
 /// Read a named segment sequentially through a stream. Decompression is automatic.
@@ -451,8 +469,8 @@ pub fn vault_read_stream(
 
     // INTEROP: If chunk_count is 0, this is a monolithic segment. Handle with a one-shot read.
     if chunk_count == 0 {
-        let plaintext = vault_read(handle, name)?;
-        let _ = sink.add(plaintext);
+        let result = vault_read(handle, name)?;
+        let _ = sink.add(result.data);
         let _ = on_progress.add(1.0);
         return Ok(());
     }
@@ -491,6 +509,7 @@ pub fn vault_write_stream(
     name: String,
     total_plaintext_size: u64,
     data_stream: impl Iterator<Item = Vec<u8>>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     use crate::core::streaming::{pad_last_chunk, CHUNK_SIZE};
 
@@ -616,9 +635,11 @@ pub fn vault_write_stream(
         checksum,
         CompressionAlgorithm::None,
         expected_chunks,
+        metadata.unwrap_or_default(),
     )?;
     handle.index.add(entry)?;
 
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -627,6 +648,7 @@ pub fn vault_write_stream(
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
@@ -645,6 +667,7 @@ pub fn vault_write_file(
     name: String,
     file_path: String,
     on_progress: StreamSink<f64>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     use crate::core::streaming::CHUNK_SIZE;
 
@@ -678,7 +701,7 @@ pub fn vault_write_file(
         }
     });
 
-    let result = vault_write_stream(handle, name, file_size, data_stream);
+    let result = vault_write_stream(handle, name, file_size, data_stream, metadata);
 
     // Surface the real I/O error instead of a misleading "stream underflow"
     if let Some(io_err) = read_error {
@@ -741,6 +764,63 @@ fn write_encrypted_chunk(
     Ok(())
 }
 
+/// Renames an existing segment in the vault index without modifying its encrypted data.
+/// Index-only operation — no data I/O, no re-encryption.
+#[cfg(feature = "compression")]
+pub fn vault_rename_segment(
+    handle: &mut VaultHandle,
+    old_name: String,
+    new_name: String,
+) -> Result<(), CryptoError> {
+    // No-op when names are identical
+    if old_name == new_name {
+        return Ok(());
+    }
+
+    // Pre-flight read-only checks to avoid unnecessary WAL I/O on failure
+    if new_name.is_empty() || new_name.len() > MAX_SEGMENT_NAME_LEN {
+        return Err(CryptoError::InvalidParameter(format!(
+            "invalid new segment name length: {}",
+            new_name.len()
+        )));
+    }
+    if handle.index.find(&old_name).is_none() {
+        return Err(CryptoError::SegmentNotFound(old_name));
+    }
+    if handle.index.find(&new_name).is_some() {
+        return Err(CryptoError::DuplicateSegment(new_name));
+    }
+
+    // WAL journal old index snapshot
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+
+    // Update entry in memory
+    handle.index.rename(&old_name, &new_name)?;
+
+    // Flush index (primary + shadow) + fsync
+    handle.index_dirty = true;
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+        handle.index_pad_size,
+    )?;
+    handle.index_dirty = false;
+
+    // WAL commit + refresh mmap
+    handle.wal.commit()?;
+    handle.refresh_mmap();
+
+    Ok(())
+}
+
 /// Delete a named segment. The region is secure-erased and returned to the
 /// free list for reuse by future writes.
 #[cfg(feature = "compression")]
@@ -771,6 +851,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
     handle.index.deallocate(entry.offset, entry.size);
 
     // Flush index (primary + shadow)
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -779,6 +860,7 @@ pub fn vault_delete(handle: &mut VaultHandle, name: String) -> Result<(), Crypto
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // WAL commit + refresh mmap (file contents changed)
     handle.wal.commit()?;
@@ -826,6 +908,7 @@ fn vault_resize_grow_impl(
 
     // Update capacity and flush index to primary + shadow at new position
     handle.index.capacity = new_capacity;
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -834,6 +917,7 @@ fn vault_resize_grow_impl(
         new_capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     handle.wal.commit()?;
     handle.wal.checkpoint()?;
@@ -890,6 +974,7 @@ fn vault_resize_shrink_impl(
     });
 
     // Flush index to primary + shadow at new position.
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -898,6 +983,7 @@ fn vault_resize_shrink_impl(
         new_capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // Truncate file to new total size.
     let new_total = format::total_vault_size(new_capacity, handle.index_pad_size)?;
@@ -936,6 +1022,278 @@ pub fn vault_capacity(handle: &VaultHandle) -> VaultCapacityInfo {
 /// Get vault health/diagnostics (read-only).
 pub fn vault_health(handle: &VaultHandle) -> VaultHealthInfo {
     handle.health()
+}
+
+/// Read multiple segments concurrently using mmap zero-copy + rayon.
+///
+/// Returns results in the same order as `names`. On success, `data` contains
+/// decrypted plaintext and `error` is `None`. On failure, `data` is empty and
+/// `error` describes the problem (e.g. segment not found).
+///
+/// All segments are decrypted into memory simultaneously — callers should
+/// be mindful of total memory when reading many large segments at once.
+///
+/// Falls back to sequential file-based reads when mmap is unavailable.
+///
+/// **Note:** This API does not return per-segment metadata. Use [`vault_read`]
+/// if you need the `metadata` field from [`SegmentReadResult`].
+#[cfg(feature = "compression")]
+pub fn vault_read_parallel(handle: &VaultHandle, names: Vec<String>) -> Vec<SegmentResult> {
+    if names.is_empty() {
+        return Vec::new();
+    }
+
+    if let Some(ref mmap) = handle.mmap {
+        use rayon::prelude::*;
+        names
+            .par_iter()
+            .map(|name| {
+                read_segment_from_mmap(
+                    name,
+                    mmap,
+                    &handle.keys,
+                    handle.algorithm,
+                    handle.index_pad_size,
+                    &handle.index,
+                )
+            })
+            .collect()
+    } else {
+        // No mmap — sequential fallback with a single shared read-only fd.
+        // NOTE: this fd is separate from handle.file. A non-cooperating writer
+        // between index lookup and file read will be caught by AEAD authentication,
+        // but the error is indistinguishable from normal corruption.
+        let file_result = File::open(&handle.path)
+            .map_err(|e| CryptoError::IoError(format!("cannot open vault for read: {e}")));
+        let mut file = match file_result {
+            Ok(f) => f,
+            Err(e) => {
+                return names
+                    .iter()
+                    .map(|n| SegmentResult {
+                        name: n.clone(),
+                        data: Vec::new(),
+                        error: Some(e.to_string()),
+                    })
+                    .collect();
+            }
+        };
+        names
+            .iter()
+            .map(|name| {
+                read_segment_with_file(
+                    name,
+                    &mut file,
+                    &handle.keys,
+                    handle.algorithm,
+                    handle.index_pad_size,
+                    &handle.index,
+                )
+            })
+            .collect()
+    }
+}
+
+/// Read a single segment using only the mmap (no file I/O).
+#[cfg(feature = "compression")]
+fn read_segment_from_mmap(
+    name: &str,
+    mmap: &types::VaultMmap,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> SegmentResult {
+    match read_segment_from_mmap_inner(name, mmap, keys, algorithm, index_pad_size, index) {
+        Ok(data) => SegmentResult {
+            name: name.to_string(),
+            data,
+            error: None,
+        },
+        Err(e) => SegmentResult {
+            name: name.to_string(),
+            data: Vec::new(),
+            error: Some(e.to_string()),
+        },
+    }
+}
+
+#[cfg(feature = "compression")]
+fn read_segment_from_mmap_inner(
+    name: &str,
+    mmap: &types::VaultMmap,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> Result<Vec<u8>, CryptoError> {
+    let entry = index
+        .find(name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.to_string()))?;
+
+    if entry.chunk_count > 0 {
+        let (mut plaintext, checksum) = decrypt_streaming_chunks_mmap(
+            mmap,
+            keys.cipher_key.as_bytes(),
+            keys.nonce_key.as_bytes(),
+            algorithm,
+            index_pad_size,
+            entry.offset,
+            entry.generation,
+            entry.compression,
+            entry.chunk_count,
+        )?;
+        if checksum.ct_ne(&entry.checksum).into() {
+            plaintext.zeroize();
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        Ok(plaintext)
+    } else {
+        let abs_offset = format::data_region_offset(index_pad_size)
+            .checked_add(entry.offset)
+            .ok_or_else(|| {
+                CryptoError::VaultCorrupted(format!("segment offset overflow for '{name}'"))
+            })?;
+        let encrypted = mmap.slice(abs_offset, entry.size)?;
+        let params = SegmentCryptoParams {
+            cipher_key: keys.cipher_key.as_bytes(),
+            nonce_key: keys.nonce_key.as_bytes(),
+            algorithm,
+            segment_index: 0,
+            generation: entry.generation,
+        };
+        let mut plaintext = segment::decrypt_segment(&params, encrypted, entry.compression)?;
+        if !segment::verify_checksum(&plaintext, &entry.checksum) {
+            plaintext.zeroize();
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        Ok(plaintext)
+    }
+}
+
+/// Read a single segment via file I/O (no-mmap fallback).
+#[cfg(feature = "compression")]
+fn read_segment_with_file(
+    name: &str,
+    file: &mut File,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> SegmentResult {
+    match read_segment_with_file_inner(name, file, keys, algorithm, index_pad_size, index) {
+        Ok(data) => SegmentResult {
+            name: name.to_string(),
+            data,
+            error: None,
+        },
+        Err(e) => SegmentResult {
+            name: name.to_string(),
+            data: Vec::new(),
+            error: Some(e.to_string()),
+        },
+    }
+}
+
+#[cfg(feature = "compression")]
+fn read_segment_with_file_inner(
+    name: &str,
+    file: &mut File,
+    keys: &segment::VaultKeys,
+    algorithm: Algorithm,
+    index_pad_size: usize,
+    index: &format::SegmentIndex,
+) -> Result<Vec<u8>, CryptoError> {
+    let entry = index
+        .find(name)
+        .ok_or_else(|| CryptoError::SegmentNotFound(name.to_string()))?;
+
+    if entry.chunk_count > 0 {
+        let mut full_plaintext = Vec::new();
+        let checksum = decrypt_streaming_chunks(
+            file,
+            None,
+            keys.cipher_key.as_bytes(),
+            keys.nonce_key.as_bytes(),
+            algorithm,
+            index_pad_size,
+            entry.offset,
+            entry.generation,
+            entry.compression,
+            entry.chunk_count,
+            |chunk_data, _| {
+                full_plaintext.extend_from_slice(&chunk_data);
+                Ok(())
+            },
+        )?;
+        if checksum.ct_ne(&entry.checksum).into() {
+            full_plaintext.zeroize();
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        Ok(full_plaintext)
+    } else {
+        let abs_offset = format::data_region_offset(index_pad_size)
+            .checked_add(entry.offset)
+            .ok_or_else(|| {
+                CryptoError::VaultCorrupted(format!("segment offset overflow for '{name}'"))
+            })?;
+        let read_len = usize::try_from(entry.size).map_err(|_| {
+            CryptoError::VaultCorrupted(format!(
+                "segment size {} exceeds platform address space",
+                entry.size
+            ))
+        })?;
+        file.seek(SeekFrom::Start(abs_offset))?;
+        let mut buf = vec![0u8; read_len];
+        file.read_exact(&mut buf)?;
+        let params = SegmentCryptoParams {
+            cipher_key: keys.cipher_key.as_bytes(),
+            nonce_key: keys.nonce_key.as_bytes(),
+            algorithm,
+            segment_index: 0,
+            generation: entry.generation,
+        };
+        let mut plaintext = segment::decrypt_segment(&params, &buf, entry.compression)?;
+        if !segment::verify_checksum(&plaintext, &entry.checksum) {
+            plaintext.zeroize();
+            return Err(CryptoError::VaultCorrupted(format!(
+                "integrity check failed for segment '{name}'"
+            )));
+        }
+        Ok(plaintext)
+    }
+}
+
+/// Explicitly flush the in-memory index to disk if it has been modified.
+/// No-op if the index is clean (no mutations since last flush).
+#[cfg(feature = "compression")]
+pub fn vault_flush(handle: &mut VaultHandle) -> Result<(), CryptoError> {
+    if !handle.index_dirty {
+        return Ok(());
+    }
+    let old_encrypted_index = read_encrypted_index(
+        &mut handle.file,
+        PRIMARY_INDEX_OFFSET,
+        format::encrypted_index_size(handle.index_pad_size),
+    )?;
+    handle.wal.begin(WalOp::UpdateIndex, &old_encrypted_index)?;
+    flush_index(
+        &mut handle.file,
+        &handle.index,
+        &handle.keys,
+        handle.algorithm,
+        handle.index.capacity,
+        handle.index_pad_size,
+    )?;
+    handle.index_dirty = false;
+    handle.wal.commit()?;
+    Ok(())
 }
 
 /// Defragment the vault: compact all segments toward the data region start,
@@ -1015,6 +1373,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         handle.index.apply_move(m.entry_index, m.new_offset)?;
 
         // Flush index to primary + shadow
+        handle.index_dirty = true;
         flush_index(
             &mut handle.file,
             &handle.index,
@@ -1023,6 +1382,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
             handle.index.capacity,
             handle.index_pad_size,
         )?;
+        handle.index_dirty = false;
 
         // WAL commit — move is now durable
         handle.wal.commit()?;
@@ -1053,6 +1413,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
     handle.index.complete_defrag();
 
     // Flush the cleaned-up index
+    handle.index_dirty = true;
     flush_index(
         &mut handle.file,
         &handle.index,
@@ -1061,6 +1422,7 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
         handle.index.capacity,
         handle.index_pad_size,
     )?;
+    handle.index_dirty = false;
 
     // Secure-erase the free tail (CSPRNG overwrite + fsync)
     if packed_end < handle.index.capacity {
@@ -1225,6 +1587,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 expected_chunks,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         } else {
@@ -1281,6 +1644,7 @@ pub fn vault_rotate_key(
                 old_entry.checksum,
                 CompressionAlgorithm::None,
                 0,
+                old_entry.metadata.clone(),
             )?;
             new_index.add(new_entry)?;
         }
@@ -1342,6 +1706,7 @@ pub fn vault_rotate_key(
         file: new_file,
         wal: new_wal,
         lock: new_lock,
+        index_dirty: false,
     })
 }
 
@@ -1428,7 +1793,7 @@ fn vault_export_write(
     archive_hasher.update(&header_bytes);
     archive_hasher.update(wrapped_key);
 
-    // Clone entry metadata to avoid borrow conflict with handle
+    // Clone entry data to avoid borrow conflict with handle
     let entries: Vec<_> = handle
         .index
         .entries
@@ -1442,13 +1807,14 @@ fn vault_export_write(
                 e.compression,
                 e.checksum,
                 e.chunk_count,
+                e.metadata.clone(),
             )
         })
         .collect();
 
     let vault_capacity = handle.index.capacity;
 
-    for (name, offset, size, generation, compression, checksum, chunk_count) in &entries {
+    for (name, offset, size, generation, compression, checksum, chunk_count, metadata) in &entries {
         // Decrypt the segment plaintext (handles both monolithic and streaming)
         let plaintext: Zeroizing<Vec<u8>> = if *chunk_count > 0 {
             let mut full_plaintext: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::new());
@@ -1523,14 +1889,18 @@ fn vault_export_write(
             compression: compression.to_u8(),
             checksum: record_checksum,
             encrypted_data,
+            metadata: metadata.clone(),
         };
 
         let record_header = record.write_header()?;
+        let record_meta = record.write_metadata()?;
         out.write_all(&record_header)?;
         out.write_all(&record.encrypted_data)?;
+        out.write_all(&record_meta)?;
 
         archive_hasher.update(&record_header);
         archive_hasher.update(&record.encrypted_data);
+        archive_hasher.update(&record_meta);
     }
 
     // Write BLAKE3 trailer + fsync
@@ -1543,16 +1913,28 @@ fn vault_export_write(
     Ok(())
 }
 
-/// Close the vault — checkpoint WAL, release lock, zeroize keys on drop.
+/// Close the vault — flush dirty index, checkpoint WAL, release lock, zeroize keys on drop.
 #[cfg(feature = "compression")]
 pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
-    handle.wal.checkpoint()?;
-    handle.lock.release()?;
+    // NOTE: index_dirty should only be true here if a prior mutation's flush_index
+    // failed and the caller proceeded to close anyway. Normal paths always clear it.
+    let flush_result = if handle.index_dirty {
+        vault_flush(&mut handle)
+    } else {
+        Ok(())
+    };
+    // Best-effort cleanup: checkpoint WAL and release lock even if flush failed,
+    // so the vault file is not left permanently locked.
+    let _ = handle.wal.checkpoint();
+    let _ = handle.lock.release();
     // VaultKeys are zeroized on drop (ZeroizeOnDrop)
-    Ok(())
+    flush_result
 }
 
 /// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
+///
+/// Archives with version < 2 do not carry per-segment metadata; imported
+/// segments from those archives will have empty metadata.
 #[cfg(feature = "compression")]
 pub fn vault_import(
     archive_path: String,
@@ -1563,8 +1945,8 @@ pub fn vault_import(
     capacity_bytes: u64,
 ) -> Result<VaultHandle, CryptoError> {
     use crate::core::evfs::archive::{
-        ArchiveHeader, ArchiveTrailer, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE, KEY_WRAP_AAD,
-        WRAPPED_KEY_SIZE,
+        ArchiveHeader, ArchiveTrailer, SegmentRecord, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE,
+        KEY_WRAP_AAD, WRAPPED_KEY_SIZE,
     };
 
     // Ensure automatic zeroization on drop
@@ -1670,6 +2052,46 @@ pub fn vault_import(
                 CryptoError::ImportFailed("Truncated segment encrypted data".into())
             })?;
 
+            // v2: read metadata after encrypted_data
+            let seg_metadata = if header.version >= 2 {
+                // Read meta_count first to know how many bytes to expect
+                let mut mc_buf = [0u8; 2];
+                archive.read_exact(&mut mc_buf).map_err(|_| {
+                    CryptoError::ImportFailed("truncated segment metadata count".into())
+                })?;
+                let meta_count = u16::from_le_bytes(mc_buf) as usize;
+                // Read remaining metadata pairs as raw bytes, then parse
+                let mut meta_bytes = Vec::from(mc_buf.as_slice());
+                for _ in 0..meta_count {
+                    let mut klen_buf = [0u8; 2];
+                    archive.read_exact(&mut klen_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata key length".into())
+                    })?;
+                    let klen = u16::from_le_bytes(klen_buf) as usize;
+                    meta_bytes.extend_from_slice(&klen_buf);
+                    let mut key_buf = vec![0u8; klen];
+                    archive.read_exact(&mut key_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata key".into())
+                    })?;
+                    meta_bytes.extend_from_slice(&key_buf);
+                    let mut vlen_buf = [0u8; 2];
+                    archive.read_exact(&mut vlen_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata value length".into())
+                    })?;
+                    let vlen = u16::from_le_bytes(vlen_buf) as usize;
+                    meta_bytes.extend_from_slice(&vlen_buf);
+                    let mut val_buf = vec![0u8; vlen];
+                    archive.read_exact(&mut val_buf).map_err(|_| {
+                        CryptoError::ImportFailed("truncated metadata value".into())
+                    })?;
+                    meta_bytes.extend_from_slice(&val_buf);
+                }
+                let (map, _) = SegmentRecord::read_metadata(&meta_bytes)?;
+                (map, meta_bytes)
+            } else {
+                (std::collections::HashMap::new(), Vec::new())
+            };
+
             // Feed global trailer hasher
             let mut header_bytes = Vec::new();
             header_bytes.extend_from_slice(&name_len_buf);
@@ -1680,6 +2102,7 @@ pub fn vault_import(
 
             archive_hasher.update(&header_bytes);
             archive_hasher.update(&encrypted_data);
+            archive_hasher.update(&seg_metadata.1);
 
             // 4. Decrypt using export_key
             let mut plaintext = segment::aead_decrypt_with_stored_nonce(
@@ -1713,6 +2136,7 @@ pub fn vault_import(
             };
 
             // vault_write takes ownership of plaintext and handles its zeroization internally
+            let import_meta = if seg_metadata.0.is_empty() { None } else { Some(seg_metadata.0) };
             vault_write(
                 &mut dest_vault,
                 name,
@@ -1721,6 +2145,7 @@ pub fn vault_import(
                     algorithm: comp_algo,
                     level: None,
                 }),
+                import_meta,
             )?;
         }
 

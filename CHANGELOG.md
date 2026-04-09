@@ -5,14 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [Unreleased] — v0.3.5
 
 ### Added
 
+- Per-segment metadata: `vault_write()` and `vault_write_stream()` accept optional `HashMap<String, String>` metadata, encrypted within the index block. `vault_read()` returns `SegmentReadResult { data, metadata }`.
+- Segment rename: `vault_rename_segment(old_name, new_name)` updates the index without re-encryption. WAL-protected for crash safety. `DuplicateSegment` error variant added.
+- Index caching: in-memory dirty flag tracks index mutations. Read-only operations skip redundant index encryption/flush. New `vault_flush()` API for explicit durability control.
+- Parallel reads: `vault_read_parallel(handle, names)` decrypts multiple segments concurrently via `rayon` + mmap zero-copy. Returns per-segment `SegmentResult { name, data, error }`.
+- Dart `VaultService` wrappers: `renameSegment()`, `flush()`, `readParallel()`. Updated `write()`/`writeStream()` to accept optional `metadata` parameter. Updated `read()` to return `SegmentReadResult`.
+- 15 Dart integration tests covering metadata (4), rename (4), flush (2), parallel read (3), and combined workflows (2).
+- Rust test suite refactored from monolithic `tests.rs` into 13 focused modules. 407 total Rust tests.
+- Example app: metadata input field, rename dialog, flush button, parallel read all button.
+
 ### Changed
+
+- `VAULT_VERSION` bumped 1 → 2 for backward-compatible metadata deserialization (v1 vaults return empty metadata).
+- `ARCHIVE_VERSION` bumped 1 → 2 for metadata preservation in export/import (v1 archives import with empty metadata).
+- `vault_write_file` now passes metadata through to `vault_write_stream` (was hardcoded to `None`).
+- `vault_close()` flushes dirty index before releasing lock, with best-effort WAL checkpoint on error.
+
+### Security
+
+- Metadata encrypted within the index block (AEAD with index key), not in the segment cipher — no plaintext leakage.
+- OOM guards: `MAX_METADATA_PAIRS` (1024) and `MAX_METADATA_BYTES` (64 KB) enforced on both read and write paths.
+- Parallel reads use immutable `&VaultHandle` — no shared mutable state between threads. Compile-time `Sync` assertion.
+- Checked offset arithmetic in parallel mmap slicing (`checked_add` instead of bare `+`).
+- Plaintext zeroized on all checksum failure paths in parallel reads.
 
 ### Fixed
 
+- Async error assertions in Dart rename tests changed from `expect()` to `await expectLater()`.
+- Example app `evfs_test.dart` updated for `SegmentReadResult` return type.
 ## [v0.3.4](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.4) - 2026-04-05
 
 ### Added

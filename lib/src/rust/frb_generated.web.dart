@@ -88,6 +88,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
+
+  @protected
   CipherHandle
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     dynamic raw,
@@ -156,6 +159,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<SegmentResult> dco_decode_list_segment_result(dynamic raw);
+
+  @protected
+  Map<String, String>? dco_decode_opt_Map_String_String_None(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
   CompressionConfig? dco_decode_opt_box_autoadd_compression_config(dynamic raw);
 
   @protected
@@ -163,6 +178,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
+  SegmentReadResult dco_decode_segment_read_result(dynamic raw);
+
+  @protected
+  SegmentResult dco_decode_segment_result(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -227,6 +251,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   VaultHandle
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(
     SseDeserializer deserializer,
   );
 
@@ -305,6 +334,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SegmentResult> sse_decode_list_segment_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<String, String>? sse_decode_opt_Map_String_String_None(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
   CompressionConfig? sse_decode_opt_box_autoadd_compression_config(
     SseDeserializer deserializer,
   );
@@ -314,6 +361,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SegmentReadResult sse_decode_segment_read_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SegmentResult sse_decode_segment_result(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -342,6 +402,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String cst_encode_AnyhowException(AnyhowException raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     throw UnimplementedError();
+  }
+
+  @protected
+  JSAny cst_encode_Map_String_String_None(Map<String, String> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_list_record_string_string(
+      raw.entries.map((e) => (e.key, e.value)).toList(),
+    );
   }
 
   @protected
@@ -449,17 +517,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     if (raw is CryptoError_SegmentNotFound) {
       return [12, cst_encode_String(raw.field0)].jsify()!;
     }
-    if (raw is CryptoError_VaultCorrupted) {
+    if (raw is CryptoError_DuplicateSegment) {
       return [13, cst_encode_String(raw.field0)].jsify()!;
     }
-    if (raw is CryptoError_KeyRotationFailed) {
+    if (raw is CryptoError_VaultCorrupted) {
       return [14, cst_encode_String(raw.field0)].jsify()!;
     }
-    if (raw is CryptoError_ExportFailed) {
+    if (raw is CryptoError_KeyRotationFailed) {
       return [15, cst_encode_String(raw.field0)].jsify()!;
     }
-    if (raw is CryptoError_ImportFailed) {
+    if (raw is CryptoError_ExportFailed) {
       return [16, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_ImportFailed) {
+      return [17, cst_encode_String(raw.field0)].jsify()!;
     }
 
     throw Exception('unreachable');
@@ -494,6 +565,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   }
 
   @protected
+  JSAny cst_encode_list_record_string_string(List<(String, String)> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.map(cst_encode_record_string_string).toList().jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_list_segment_result(List<SegmentResult> raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw.map(cst_encode_segment_result).toList().jsify()!;
+  }
+
+  @protected
+  JSAny? cst_encode_opt_Map_String_String_None(Map<String, String>? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? null : cst_encode_Map_String_String_None(raw);
+  }
+
+  @protected
+  String? cst_encode_opt_String(String? raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return raw == null ? null : cst_encode_String(raw);
+  }
+
+  @protected
   JSAny? cst_encode_opt_box_autoadd_compression_config(CompressionConfig? raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     return raw == null ? null : cst_encode_box_autoadd_compression_config(raw);
@@ -509,6 +604,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   JSAny? cst_encode_opt_list_prim_u_8_strict(Uint8List? raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     return raw == null ? null : cst_encode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  JSAny cst_encode_record_string_string((String, String) raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [cst_encode_String(raw.$1), cst_encode_String(raw.$2)].jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_segment_read_result(SegmentReadResult raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_list_prim_u_8_strict(raw.data),
+      cst_encode_Map_String_String_None(raw.metadata),
+    ].jsify()!;
+  }
+
+  @protected
+  JSAny cst_encode_segment_result(SegmentResult raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return [
+      cst_encode_String(raw.name),
+      cst_encode_list_prim_u_8_strict(raw.data),
+      cst_encode_opt_String(raw.error),
+    ].jsify()!;
   }
 
   @protected
@@ -691,6 +811,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     CipherHandle self,
@@ -778,6 +904,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_segment_result(
+    List<SegmentResult> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_Map_String_String_None(
+    Map<String, String>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_compression_config(
     CompressionConfig? self,
     SseSerializer serializer,
@@ -791,6 +938,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     Uint8List? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_segment_read_result(
+    SegmentReadResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_segment_result(SegmentResult self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -1152,6 +1314,9 @@ class RustLibWire implements BaseWire {
     export_path,
   );
 
+  void wire__crate__api__evfs__vault_flush(NativePortType port_, int handle) =>
+      wasmModule.wire__crate__api__evfs__vault_flush(port_, handle);
+
   void wire__crate__api__evfs__vault_health(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_health(port_, handle);
 
@@ -1188,6 +1353,16 @@ class RustLibWire implements BaseWire {
     String name,
   ) => wasmModule.wire__crate__api__evfs__vault_read(port_, handle, name);
 
+  void wire__crate__api__evfs__vault_read_parallel(
+    NativePortType port_,
+    int handle,
+    JSAny names,
+  ) => wasmModule.wire__crate__api__evfs__vault_read_parallel(
+    port_,
+    handle,
+    names,
+  );
+
   void wire__crate__api__evfs__vault_read_stream(
     NativePortType port_,
     int handle,
@@ -1202,6 +1377,18 @@ class RustLibWire implements BaseWire {
     verify_checksum,
     sink,
     on_progress,
+  );
+
+  void wire__crate__api__evfs__vault_rename_segment(
+    NativePortType port_,
+    int handle,
+    String old_name,
+    String new_name,
+  ) => wasmModule.wire__crate__api__evfs__vault_rename_segment(
+    port_,
+    handle,
+    old_name,
+    new_name,
   );
 
   void wire__crate__api__evfs__vault_resize(
@@ -1230,12 +1417,14 @@ class RustLibWire implements BaseWire {
     String name,
     JSAny data,
     JSAny? compression,
+    JSAny? metadata,
   ) => wasmModule.wire__crate__api__evfs__vault_write(
     port_,
     handle,
     name,
     data,
     compression,
+    metadata,
   );
 
   void wire__crate__api__evfs__vault_write_file(
@@ -1244,12 +1433,14 @@ class RustLibWire implements BaseWire {
     String name,
     String file_path,
     String on_progress,
+    JSAny? metadata,
   ) => wasmModule.wire__crate__api__evfs__vault_write_file(
     port_,
     handle,
     name,
     file_path,
     on_progress,
+    metadata,
   );
 
   void
@@ -1536,6 +1727,11 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String export_path,
   );
 
+  external void wire__crate__api__evfs__vault_flush(
+    NativePortType port_,
+    int handle,
+  );
+
   external void wire__crate__api__evfs__vault_health(
     NativePortType port_,
     int handle,
@@ -1568,6 +1764,12 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
   );
 
+  external void wire__crate__api__evfs__vault_read_parallel(
+    NativePortType port_,
+    int handle,
+    JSAny names,
+  );
+
   external void wire__crate__api__evfs__vault_read_stream(
     NativePortType port_,
     int handle,
@@ -1575,6 +1777,13 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     bool verify_checksum,
     String sink,
     String on_progress,
+  );
+
+  external void wire__crate__api__evfs__vault_rename_segment(
+    NativePortType port_,
+    int handle,
+    String old_name,
+    String new_name,
   );
 
   external void wire__crate__api__evfs__vault_resize(
@@ -1595,6 +1804,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
     JSAny data,
     JSAny? compression,
+    JSAny? metadata,
   );
 
   external void wire__crate__api__evfs__vault_write_file(
@@ -1603,6 +1813,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
     String file_path,
     String on_progress,
+    JSAny? metadata,
   );
 
   external void

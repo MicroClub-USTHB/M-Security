@@ -49,7 +49,7 @@ void main() {
         handle: reopened,
         name: 'test.bin',
       );
-      expect(result, data);
+      expect(result.data, data);
 
       //close vault
       await VaultService.close(handle: reopened);
@@ -92,9 +92,9 @@ void main() {
         name: 'file3.dat',
       );
 
-      expect(result1, data1);
-      expect(result2, data2);
-      expect(result3, data3);
+      expect(result1.data, data1);
+      expect(result2.data, data2);
+      expect(result3.data, data3);
 
       await VaultService.close(handle: handle);
     });
@@ -125,8 +125,8 @@ void main() {
       // Read back
       final result = await VaultService.read(handle: handle, name: 'data.bin');
 
-      expect(result, updated);
-      expect(result, isNot(original));
+      expect(result.data, updated);
+      expect(result.data, isNot(original));
 
       await VaultService.close(handle: handle);
     });
@@ -166,7 +166,7 @@ void main() {
 
       //verify it exists
       final before = await VaultService.read(handle: handle, name: 'temp.dat');
-      expect(before, data);
+      expect(before.data, data);
 
       //delete it
       await VaultService.delete(handle: handle, name: 'temp.dat');
@@ -340,7 +340,7 @@ void main() {
         ),
       );
       final result = await VaultService.read(handle: handle, name: 'notes.txt');
-      expect(result, data);
+      expect(result.data, data);
       await VaultService.close(handle: handle);
     });
 
@@ -364,7 +364,7 @@ void main() {
         ),
       );
       final result = await VaultService.read(handle: handle, name: 'notes.txt');
-      expect(result, data);
+      expect(result.data, data);
       await VaultService.close(handle: handle);
     });
 
@@ -396,7 +396,7 @@ void main() {
 
       // Read back
       final result = await VaultService.read(handle: handle, name: 'photo.jpg');
-      expect(result, jpegData);
+      expect(result.data, jpegData);
 
       // Verify: if compression was applied, capacity used would be less
       // Since it was skipped, capacity used ≈ original size
@@ -469,17 +469,17 @@ void main() {
 
       // Verify all three match original data
       expect(
-        resultA,
+        resultA.data,
         dataA,
         reason: 'Zstd segment should decompress correctly',
       );
       expect(
-        resultB,
+        resultB.data,
         dataB,
         reason: 'Brotli segment should decompress correctly',
       );
       expect(
-        resultC,
+        resultC.data,
         dataC,
         reason: 'Uncompressed segment should read correctly',
       );
@@ -567,7 +567,7 @@ void main() {
         handle: reopened,
         name: 'initial.bin',
       );
-      expect(result, data1);
+      expect(result.data, data1);
 
       // Write more data after recovery
       final data2 = Uint8List.fromList([6, 7, 8, 9]);
@@ -591,8 +591,8 @@ void main() {
         name: 'after_recovery.bin',
       );
 
-      expect(result1, data1);
-      expect(result2, data2);
+      expect(result1.data, data1);
+      expect(result2.data, data2);
 
       await VaultService.close(handle: reopened2);
     });
@@ -646,7 +646,7 @@ void main() {
         name: 'important.bin',
       );
       expect(
-        result,
+        result.data,
         originalData,
         reason: 'Shadow index should have preserved the segment',
       );
@@ -659,7 +659,7 @@ void main() {
         handle: reopened2,
         name: 'important.bin',
       );
-      expect(result2, originalData);
+      expect(result2.data, originalData);
 
       await VaultService.close(handle: reopened2);
     });

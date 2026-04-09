@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1455605677;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 15652661;
 
 // Section: executor
 
@@ -1337,6 +1337,45 @@ fn wire__crate__api__evfs__vault_export_impl(
         },
     )
 }
+fn wire__crate__api__evfs__vault_flush_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    handle: impl CstDecode<
+        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>,
+    >,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_flush",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_handle = handle.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref_mut()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = crate::api::evfs::vault_flush(&mut *api_handle_guard)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__evfs__vault_health_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     handle: impl CstDecode<
@@ -1519,6 +1558,50 @@ fn wire__crate__api__evfs__vault_read_impl(
         },
     )
 }
+fn wire__crate__api__evfs__vault_read_parallel_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    handle: impl CstDecode<
+        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>,
+    >,
+    names: impl CstDecode<Vec<String>>,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_read_parallel",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_handle = handle.cst_decode();
+            let api_names = names.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, ()>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = Result::<_, ()>::Ok(crate::api::evfs::vault_read_parallel(
+                        &*api_handle_guard,
+                        api_names,
+                    ))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__evfs__vault_read_stream_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     handle: impl CstDecode<
@@ -1565,6 +1648,53 @@ fn wire__crate__api__evfs__vault_read_stream_impl(
                         api_verify_checksum,
                         api_sink,
                         api_on_progress,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__evfs__vault_rename_segment_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    handle: impl CstDecode<
+        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>,
+    >,
+    old_name: impl CstDecode<String>,
+    new_name: impl CstDecode<String>,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_rename_segment",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let api_handle = handle.cst_decode();
+            let api_old_name = old_name.cst_decode();
+            let api_new_name = new_name.cst_decode();
+            move |context| {
+                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref_mut()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = crate::api::evfs::vault_rename_segment(
+                        &mut *api_handle_guard,
+                        api_old_name,
+                        api_new_name,
                     )?;
                     Ok(output_ok)
                 })())
@@ -1645,6 +1775,7 @@ fn wire__crate__api__evfs__vault_write_impl(
     name: impl CstDecode<String>,
     data: impl CstDecode<Vec<u8>>,
     compression: impl CstDecode<Option<crate::api::compression::CompressionConfig>>,
+    metadata: impl CstDecode<Option<std::collections::HashMap<String, String>>>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -1657,6 +1788,7 @@ fn wire__crate__api__evfs__vault_write_impl(
             let api_name = name.cst_decode();
             let api_data = data.cst_decode();
             let api_compression = compression.cst_decode();
+            let api_metadata = metadata.cst_decode();
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let mut api_handle_guard = None;
@@ -1680,6 +1812,7 @@ fn wire__crate__api__evfs__vault_write_impl(
                         api_name,
                         api_data,
                         api_compression,
+                        api_metadata,
                     )?;
                     Ok(output_ok)
                 })())
@@ -1695,6 +1828,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
     name: impl CstDecode<String>,
     file_path: impl CstDecode<String>,
     on_progress: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
+    metadata: impl CstDecode<Option<std::collections::HashMap<String, String>>>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -1707,6 +1841,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
             let api_name = name.cst_decode();
             let api_file_path = file_path.cst_decode();
             let api_on_progress = on_progress.cst_decode();
+            let api_metadata = metadata.cst_decode();
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let mut api_handle_guard = None;
@@ -1730,6 +1865,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
                         api_name,
                         api_file_path,
                         api_on_progress,
+                        api_metadata,
                     )?;
                     Ok(output_ok)
                 })())
@@ -1838,6 +1974,14 @@ impl SseDecode for VaultHandle {
             flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>,
         >>::sse_decode(deserializer);
         return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for std::collections::HashMap<String, String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<(String, String)>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
     }
 }
 
@@ -2003,17 +2147,21 @@ impl SseDecode for crate::core::error::CryptoError {
             }
             13 => {
                 let mut var_field0 = <String>::sse_decode(deserializer);
-                return crate::core::error::CryptoError::VaultCorrupted(var_field0);
+                return crate::core::error::CryptoError::DuplicateSegment(var_field0);
             }
             14 => {
                 let mut var_field0 = <String>::sse_decode(deserializer);
-                return crate::core::error::CryptoError::KeyRotationFailed(var_field0);
+                return crate::core::error::CryptoError::VaultCorrupted(var_field0);
             }
             15 => {
                 let mut var_field0 = <String>::sse_decode(deserializer);
-                return crate::core::error::CryptoError::ExportFailed(var_field0);
+                return crate::core::error::CryptoError::KeyRotationFailed(var_field0);
             }
             16 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::ExportFailed(var_field0);
+            }
+            17 => {
                 let mut var_field0 = <String>::sse_decode(deserializer);
                 return crate::core::error::CryptoError::ImportFailed(var_field0);
             }
@@ -2076,6 +2224,56 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::evfs::types::SegmentResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::evfs::types::SegmentResult>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Option<std::collections::HashMap<String, String>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<std::collections::HashMap<String, String>>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::compression::CompressionConfig> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2108,6 +2306,42 @@ impl SseDecode for Option<Vec<u8>> {
         } else {
             return None;
         }
+    }
+}
+
+impl SseDecode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <String>::sse_decode(deserializer);
+        let mut var_field1 = <String>::sse_decode(deserializer);
+        return (var_field0, var_field1);
+    }
+}
+
+impl SseDecode for crate::api::evfs::types::SegmentReadResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_data = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_metadata =
+            <std::collections::HashMap<String, String>>::sse_decode(deserializer);
+        return crate::api::evfs::types::SegmentReadResult {
+            data: var_data,
+            metadata: var_metadata,
+        };
+    }
+}
+
+impl SseDecode for crate::api::evfs::types::SegmentResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_data = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_error = <Option<String>>::sse_decode(deserializer);
+        return crate::api::evfs::types::SegmentResult {
+            name: var_name,
+            data: var_data,
+            error: var_error,
+        };
     }
 }
 
@@ -2365,17 +2599,20 @@ impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
             crate::core::error::CryptoError::SegmentNotFound(field0) => {
                 [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::core::error::CryptoError::VaultCorrupted(field0) => {
+            crate::core::error::CryptoError::DuplicateSegment(field0) => {
                 [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
+            crate::core::error::CryptoError::VaultCorrupted(field0) => {
                 [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::core::error::CryptoError::ExportFailed(field0) => {
+            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
                 [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::core::error::CryptoError::ImportFailed(field0) => {
+            crate::core::error::CryptoError::ExportFailed(field0) => {
                 [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::core::error::CryptoError::ImportFailed(field0) => {
+                [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
             _ => {
                 unimplemented!("");
@@ -2413,6 +2650,49 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::DefragResult>
     for crate::api::evfs::types::DefragResult
 {
     fn into_into_dart(self) -> crate::api::evfs::types::DefragResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::SegmentReadResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.data.into_into_dart().into_dart(),
+            self.metadata.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::evfs::types::SegmentReadResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::SegmentReadResult>
+    for crate::api::evfs::types::SegmentReadResult
+{
+    fn into_into_dart(self) -> crate::api::evfs::types::SegmentReadResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::SegmentResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.data.into_into_dart().into_dart(),
+            self.error.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::evfs::types::SegmentResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::SegmentResult>
+    for crate::api::evfs::types::SegmentResult
+{
+    fn into_into_dart(self) -> crate::api::evfs::types::SegmentResult {
         self
     }
 }
@@ -2494,6 +2774,13 @@ impl SseEncode for VaultHandle {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, StdArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for std::collections::HashMap<String, String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<(String, String)>>::sse_encode(self.into_iter().collect(), serializer);
     }
 }
 
@@ -2653,20 +2940,24 @@ impl SseEncode for crate::core::error::CryptoError {
                 <i32>::sse_encode(12, serializer);
                 <String>::sse_encode(field0, serializer);
             }
-            crate::core::error::CryptoError::VaultCorrupted(field0) => {
+            crate::core::error::CryptoError::DuplicateSegment(field0) => {
                 <i32>::sse_encode(13, serializer);
                 <String>::sse_encode(field0, serializer);
             }
-            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
+            crate::core::error::CryptoError::VaultCorrupted(field0) => {
                 <i32>::sse_encode(14, serializer);
                 <String>::sse_encode(field0, serializer);
             }
-            crate::core::error::CryptoError::ExportFailed(field0) => {
+            crate::core::error::CryptoError::KeyRotationFailed(field0) => {
                 <i32>::sse_encode(15, serializer);
                 <String>::sse_encode(field0, serializer);
             }
-            crate::core::error::CryptoError::ImportFailed(field0) => {
+            crate::core::error::CryptoError::ExportFailed(field0) => {
                 <i32>::sse_encode(16, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::ImportFailed(field0) => {
+                <i32>::sse_encode(17, serializer);
                 <String>::sse_encode(field0, serializer);
             }
             _ => {
@@ -2719,6 +3010,46 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(String, String)>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::evfs::types::SegmentResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::evfs::types::SegmentResult>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<std::collections::HashMap<String, String>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <std::collections::HashMap<String, String>>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::api::compression::CompressionConfig> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2746,6 +3077,31 @@ impl SseEncode for Option<Vec<u8>> {
         if let Some(value) = self {
             <Vec<u8>>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.0, serializer);
+        <String>::sse_encode(self.1, serializer);
+    }
+}
+
+impl SseEncode for crate::api::evfs::types::SegmentReadResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<u8>>::sse_encode(self.data, serializer);
+        <std::collections::HashMap<String, String>>::sse_encode(self.metadata, serializer);
+    }
+}
+
+impl SseEncode for crate::api::evfs::types::SegmentResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <Vec<u8>>::sse_encode(self.data, serializer);
+        <Option<String>>::sse_encode(self.error, serializer);
     }
 }
 
@@ -2874,6 +3230,15 @@ mod io {
             >::cst_decode(
                 self
             ))
+        }
+    }
+    impl CstDecode<std::collections::HashMap<String, String>>
+        for *mut wire_cst_list_record_string_string
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> std::collections::HashMap<String, String> {
+            let vec: Vec<(String, String)> = self.cst_decode();
+            vec.into_iter().collect()
         }
     }
     impl
@@ -3013,18 +3378,22 @@ mod io {
                     crate::core::error::CryptoError::SegmentNotFound(ans.field0.cst_decode())
                 }
                 13 => {
+                    let ans = unsafe { self.kind.DuplicateSegment };
+                    crate::core::error::CryptoError::DuplicateSegment(ans.field0.cst_decode())
+                }
+                14 => {
                     let ans = unsafe { self.kind.VaultCorrupted };
                     crate::core::error::CryptoError::VaultCorrupted(ans.field0.cst_decode())
                 }
-                14 => {
+                15 => {
                     let ans = unsafe { self.kind.KeyRotationFailed };
                     crate::core::error::CryptoError::KeyRotationFailed(ans.field0.cst_decode())
                 }
-                15 => {
+                16 => {
                     let ans = unsafe { self.kind.ExportFailed };
                     crate::core::error::CryptoError::ExportFailed(ans.field0.cst_decode())
                 }
-                16 => {
+                17 => {
                     let ans = unsafe { self.kind.ImportFailed };
                     crate::core::error::CryptoError::ImportFailed(ans.field0.cst_decode())
                 }
@@ -3067,6 +3436,51 @@ mod io {
             unsafe {
                 let wrap = flutter_rust_bridge::for_generated::box_from_leak_ptr(self);
                 flutter_rust_bridge::for_generated::vec_from_leak_ptr(wrap.ptr, wrap.len)
+            }
+        }
+    }
+    impl CstDecode<Vec<(String, String)>> for *mut wire_cst_list_record_string_string {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Vec<(String, String)> {
+            let vec = unsafe {
+                let wrap = flutter_rust_bridge::for_generated::box_from_leak_ptr(self);
+                flutter_rust_bridge::for_generated::vec_from_leak_ptr(wrap.ptr, wrap.len)
+            };
+            vec.into_iter().map(CstDecode::cst_decode).collect()
+        }
+    }
+    impl CstDecode<Vec<crate::api::evfs::types::SegmentResult>> for *mut wire_cst_list_segment_result {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Vec<crate::api::evfs::types::SegmentResult> {
+            let vec = unsafe {
+                let wrap = flutter_rust_bridge::for_generated::box_from_leak_ptr(self);
+                flutter_rust_bridge::for_generated::vec_from_leak_ptr(wrap.ptr, wrap.len)
+            };
+            vec.into_iter().map(CstDecode::cst_decode).collect()
+        }
+    }
+    impl CstDecode<(String, String)> for wire_cst_record_string_string {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> (String, String) {
+            (self.field0.cst_decode(), self.field1.cst_decode())
+        }
+    }
+    impl CstDecode<crate::api::evfs::types::SegmentReadResult> for wire_cst_segment_read_result {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::api::evfs::types::SegmentReadResult {
+            crate::api::evfs::types::SegmentReadResult {
+                data: self.data.cst_decode(),
+                metadata: self.metadata.cst_decode(),
+            }
+        }
+    }
+    impl CstDecode<crate::api::evfs::types::SegmentResult> for wire_cst_segment_result {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::api::evfs::types::SegmentResult {
+            crate::api::evfs::types::SegmentResult {
+                name: self.name.cst_decode(),
+                data: self.data.cst_decode(),
+                error: self.error.cst_decode(),
             }
         }
     }
@@ -3134,6 +3548,46 @@ mod io {
         }
     }
     impl Default for wire_cst_defrag_result {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+    impl NewWithNullPtr for wire_cst_record_string_string {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                field0: core::ptr::null_mut(),
+                field1: core::ptr::null_mut(),
+            }
+        }
+    }
+    impl Default for wire_cst_record_string_string {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+    impl NewWithNullPtr for wire_cst_segment_read_result {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                data: core::ptr::null_mut(),
+                metadata: core::ptr::null_mut(),
+            }
+        }
+    }
+    impl Default for wire_cst_segment_read_result {
+        fn default() -> Self {
+            Self::new_with_null_ptr()
+        }
+    }
+    impl NewWithNullPtr for wire_cst_segment_result {
+        fn new_with_null_ptr() -> Self {
+            Self {
+                name: core::ptr::null_mut(),
+                data: core::ptr::null_mut(),
+                error: core::ptr::null_mut(),
+            }
+        }
+    }
+    impl Default for wire_cst_segment_result {
         fn default() -> Self {
             Self::new_with_null_ptr()
         }
@@ -3556,6 +4010,14 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_flush(
+        port_: i64,
+        handle: usize,
+    ) {
+        wire__crate__api__evfs__vault_flush_impl(port_, handle)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_health(
         port_: i64,
         handle: usize,
@@ -3611,6 +4073,15 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_read_parallel(
+        port_: i64,
+        handle: usize,
+        names: *mut wire_cst_list_String,
+    ) {
+        wire__crate__api__evfs__vault_read_parallel_impl(port_, handle, names)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_read_stream(
         port_: i64,
         handle: usize,
@@ -3627,6 +4098,16 @@ mod io {
             sink,
             on_progress,
         )
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_rename_segment(
+        port_: i64,
+        handle: usize,
+        old_name: *mut wire_cst_list_prim_u_8_strict,
+        new_name: *mut wire_cst_list_prim_u_8_strict,
+    ) {
+        wire__crate__api__evfs__vault_rename_segment_impl(port_, handle, old_name, new_name)
     }
 
     #[unsafe(no_mangle)]
@@ -3654,8 +4135,9 @@ mod io {
         name: *mut wire_cst_list_prim_u_8_strict,
         data: *mut wire_cst_list_prim_u_8_loose,
         compression: *mut wire_cst_compression_config,
+        metadata: *mut wire_cst_list_record_string_string,
     ) {
-        wire__crate__api__evfs__vault_write_impl(port_, handle, name, data, compression)
+        wire__crate__api__evfs__vault_write_impl(port_, handle, name, data, compression, metadata)
     }
 
     #[unsafe(no_mangle)]
@@ -3665,8 +4147,16 @@ mod io {
         name: *mut wire_cst_list_prim_u_8_strict,
         file_path: *mut wire_cst_list_prim_u_8_strict,
         on_progress: *mut wire_cst_list_prim_u_8_strict,
+        metadata: *mut wire_cst_list_record_string_string,
     ) {
-        wire__crate__api__evfs__vault_write_file_impl(port_, handle, name, file_path, on_progress)
+        wire__crate__api__evfs__vault_write_file_impl(
+            port_,
+            handle,
+            name,
+            file_path,
+            on_progress,
+            metadata,
+        )
     }
 
     #[unsafe(no_mangle)]
@@ -3770,6 +4260,34 @@ mod io {
         flutter_rust_bridge::for_generated::new_leak_box_ptr(ans)
     }
 
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_cst_new_list_record_string_string(
+        len: i32,
+    ) -> *mut wire_cst_list_record_string_string {
+        let wrap = wire_cst_list_record_string_string {
+            ptr: flutter_rust_bridge::for_generated::new_leak_vec_ptr(
+                <wire_cst_record_string_string>::new_with_null_ptr(),
+                len,
+            ),
+            len,
+        };
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(wrap)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_m_security_cst_new_list_segment_result(
+        len: i32,
+    ) -> *mut wire_cst_list_segment_result {
+        let wrap = wire_cst_list_segment_result {
+            ptr: flutter_rust_bridge::for_generated::new_leak_vec_ptr(
+                <wire_cst_segment_result>::new_with_null_ptr(),
+                len,
+            ),
+            len,
+        };
+        flutter_rust_bridge::for_generated::new_leak_box_ptr(wrap)
+    }
+
     #[repr(C)]
     #[derive(Clone, Copy)]
     pub struct wire_cst_compression_config {
@@ -3794,6 +4312,7 @@ mod io {
         CompressionFailed: wire_cst_CryptoError_CompressionFailed,
         VaultFull: wire_cst_CryptoError_VaultFull,
         SegmentNotFound: wire_cst_CryptoError_SegmentNotFound,
+        DuplicateSegment: wire_cst_CryptoError_DuplicateSegment,
         VaultCorrupted: wire_cst_CryptoError_VaultCorrupted,
         KeyRotationFailed: wire_cst_CryptoError_KeyRotationFailed,
         ExportFailed: wire_cst_CryptoError_ExportFailed,
@@ -3849,6 +4368,11 @@ mod io {
     }
     #[repr(C)]
     #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_DuplicateSegment {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
     pub struct wire_cst_CryptoError_VaultCorrupted {
         field0: *mut wire_cst_list_prim_u_8_strict,
     }
@@ -3891,6 +4415,37 @@ mod io {
     pub struct wire_cst_list_prim_u_8_strict {
         ptr: *mut u8,
         len: i32,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_list_record_string_string {
+        ptr: *mut wire_cst_record_string_string,
+        len: i32,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_list_segment_result {
+        ptr: *mut wire_cst_segment_result,
+        len: i32,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_record_string_string {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+        field1: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_segment_read_result {
+        data: *mut wire_cst_list_prim_u_8_strict,
+        metadata: *mut wire_cst_list_record_string_string,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_segment_result {
+        name: *mut wire_cst_list_prim_u_8_strict,
+        data: *mut wire_cst_list_prim_u_8_strict,
+        error: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
     #[derive(Clone, Copy)]
@@ -4014,10 +4569,11 @@ mod web {
                 },
                 11 => crate::core::error::CryptoError::VaultLocked,
                 12 => crate::core::error::CryptoError::SegmentNotFound(self_.get(1).cst_decode()),
-                13 => crate::core::error::CryptoError::VaultCorrupted(self_.get(1).cst_decode()),
-                14 => crate::core::error::CryptoError::KeyRotationFailed(self_.get(1).cst_decode()),
-                15 => crate::core::error::CryptoError::ExportFailed(self_.get(1).cst_decode()),
-                16 => crate::core::error::CryptoError::ImportFailed(self_.get(1).cst_decode()),
+                13 => crate::core::error::CryptoError::DuplicateSegment(self_.get(1).cst_decode()),
+                14 => crate::core::error::CryptoError::VaultCorrupted(self_.get(1).cst_decode()),
+                15 => crate::core::error::CryptoError::KeyRotationFailed(self_.get(1).cst_decode()),
+                16 => crate::core::error::CryptoError::ExportFailed(self_.get(1).cst_decode()),
+                17 => crate::core::error::CryptoError::ImportFailed(self_.get(1).cst_decode()),
                 _ => unreachable!(),
             }
         }
@@ -4059,10 +4615,96 @@ mod web {
             self.into_vec()
         }
     }
+    impl CstDecode<Vec<(String, String)>>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Vec<(String, String)> {
+            self.dyn_into::<flutter_rust_bridge::for_generated::js_sys::Array>()
+                .unwrap()
+                .iter()
+                .map(CstDecode::cst_decode)
+                .collect()
+        }
+    }
+    impl CstDecode<Vec<crate::api::evfs::types::SegmentResult>>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Vec<crate::api::evfs::types::SegmentResult> {
+            self.dyn_into::<flutter_rust_bridge::for_generated::js_sys::Array>()
+                .unwrap()
+                .iter()
+                .map(CstDecode::cst_decode)
+                .collect()
+        }
+    }
+    impl CstDecode<Option<String>> for Option<String> {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> Option<String> {
+            self.map(CstDecode::cst_decode)
+        }
+    }
     impl CstDecode<Option<Vec<u8>>> for Option<Box<[u8]>> {
         // Codec=Cst (C-struct based), see doc to use other codecs
         fn cst_decode(self) -> Option<Vec<u8>> {
             self.map(CstDecode::cst_decode)
+        }
+    }
+    impl CstDecode<(String, String)> for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> (String, String) {
+            let self_ = self
+                .dyn_into::<flutter_rust_bridge::for_generated::js_sys::Array>()
+                .unwrap();
+            assert_eq!(
+                self_.length(),
+                2,
+                "Expected 2 elements, got {}",
+                self_.length()
+            );
+            (self_.get(0).cst_decode(), self_.get(1).cst_decode())
+        }
+    }
+    impl CstDecode<crate::api::evfs::types::SegmentReadResult>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::api::evfs::types::SegmentReadResult {
+            let self_ = self
+                .dyn_into::<flutter_rust_bridge::for_generated::js_sys::Array>()
+                .unwrap();
+            assert_eq!(
+                self_.length(),
+                2,
+                "Expected 2 elements, got {}",
+                self_.length()
+            );
+            crate::api::evfs::types::SegmentReadResult {
+                data: self_.get(0).cst_decode(),
+                metadata: self_.get(1).cst_decode(),
+            }
+        }
+    }
+    impl CstDecode<crate::api::evfs::types::SegmentResult>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::api::evfs::types::SegmentResult {
+            let self_ = self
+                .dyn_into::<flutter_rust_bridge::for_generated::js_sys::Array>()
+                .unwrap();
+            assert_eq!(
+                self_.length(),
+                3,
+                "Expected 3 elements, got {}",
+                self_.length()
+            );
+            crate::api::evfs::types::SegmentResult {
+                name: self_.get(0).cst_decode(),
+                data: self_.get(1).cst_decode(),
+                error: self_.get(2).cst_decode(),
+            }
         }
     }
     impl CstDecode<crate::api::evfs::types::VaultCapacityInfo>
@@ -4155,6 +4797,15 @@ mod web {
             >::cst_decode(
                 self
             ))
+        }
+    }
+    impl CstDecode<std::collections::HashMap<String, String>>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> std::collections::HashMap<String, String> {
+            let vec: Vec<(String, String)> = self.cst_decode();
+            vec.into_iter().collect()
         }
     }
     impl
@@ -4682,6 +5333,14 @@ mod web {
     }
 
     #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_flush(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+    ) {
+        wire__crate__api__evfs__vault_flush_impl(port_, handle)
+    }
+
+    #[wasm_bindgen]
     pub fn wire__crate__api__evfs__vault_health(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
@@ -4737,6 +5396,15 @@ mod web {
     }
 
     #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_read_parallel(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        names: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+    ) {
+        wire__crate__api__evfs__vault_read_parallel_impl(port_, handle, names)
+    }
+
+    #[wasm_bindgen]
     pub fn wire__crate__api__evfs__vault_read_stream(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
@@ -4753,6 +5421,16 @@ mod web {
             sink,
             on_progress,
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__evfs__vault_rename_segment(
+        port_: flutter_rust_bridge::for_generated::MessagePort,
+        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        old_name: String,
+        new_name: String,
+    ) {
+        wire__crate__api__evfs__vault_rename_segment_impl(port_, handle, old_name, new_name)
     }
 
     #[wasm_bindgen]
@@ -4780,8 +5458,9 @@ mod web {
         name: String,
         data: Box<[u8]>,
         compression: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        metadata: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
     ) {
-        wire__crate__api__evfs__vault_write_impl(port_, handle, name, data, compression)
+        wire__crate__api__evfs__vault_write_impl(port_, handle, name, data, compression, metadata)
     }
 
     #[wasm_bindgen]
@@ -4791,8 +5470,16 @@ mod web {
         name: String,
         file_path: String,
         on_progress: String,
+        metadata: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
     ) {
-        wire__crate__api__evfs__vault_write_file_impl(port_, handle, name, file_path, on_progress)
+        wire__crate__api__evfs__vault_write_file_impl(
+            port_,
+            handle,
+            name,
+            file_path,
+            on_progress,
+            metadata,
+        )
     }
 
     #[wasm_bindgen]

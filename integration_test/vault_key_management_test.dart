@@ -41,8 +41,8 @@ void main() {
       handle = await VaultService.rotateKey(handle: handle, newKey: newKey);
 
       // All segments readable with new handle
-      expect(await VaultService.read(handle: handle, name: 'a.bin'), dataA);
-      expect(await VaultService.read(handle: handle, name: 'b.bin'), dataB);
+      expect((await VaultService.read(handle: handle, name: 'a.bin')).data, dataA);
+      expect((await VaultService.read(handle: handle, name: 'b.bin')).data, dataB);
 
       await VaultService.close(handle: handle);
     });
@@ -77,7 +77,7 @@ void main() {
       // New key works
       final reopened = await VaultService.open(path: path, key: newKey);
       expect(
-        await VaultService.read(handle: reopened, name: 'secret.bin'),
+        (await VaultService.read(handle: reopened, name: 'secret.bin')).data,
         Uint8List.fromList([1, 2, 3]),
       );
       await VaultService.close(handle: reopened);
@@ -123,8 +123,8 @@ void main() {
         capacityBytes: 2 * 1024 * 1024,
       );
 
-      expect(await VaultService.read(handle: imported, name: 'file1.dat'), data1);
-      expect(await VaultService.read(handle: imported, name: 'file2.dat'), data2);
+      expect((await VaultService.read(handle: imported, name: 'file1.dat')).data, data1);
+      expect((await VaultService.read(handle: imported, name: 'file2.dat')).data, data2);
 
       await VaultService.close(handle: imported);
     });
@@ -202,7 +202,7 @@ void main() {
         capacityBytes: 5 * 1024 * 1024,
       );
 
-      expect(await VaultService.read(handle: imported, name: 'big.bin'), bigData);
+      expect((await VaultService.read(handle: imported, name: 'big.bin')).data, bigData);
       await VaultService.close(handle: imported);
     });
 
@@ -224,16 +224,16 @@ void main() {
 
       // Rotate twice
       handle = await VaultService.rotateKey(handle: handle, newKey: key2);
-      expect(await VaultService.read(handle: handle, name: 'data.bin'), data);
+      expect((await VaultService.read(handle: handle, name: 'data.bin')).data, data);
 
       handle = await VaultService.rotateKey(handle: handle, newKey: key3);
-      expect(await VaultService.read(handle: handle, name: 'data.bin'), data);
+      expect((await VaultService.read(handle: handle, name: 'data.bin')).data, data);
 
       await VaultService.close(handle: handle);
 
       // Only key3 works
       final reopened = await VaultService.open(path: path, key: key3);
-      expect(await VaultService.read(handle: reopened, name: 'data.bin'), data);
+      expect((await VaultService.read(handle: reopened, name: 'data.bin')).data, data);
       await VaultService.close(handle: reopened);
     });
 
@@ -278,7 +278,7 @@ void main() {
       );
 
       expect(
-        await VaultService.read(handle: imported, name: 'payload.bin'),
+        (await VaultService.read(handle: imported, name: 'payload.bin')).data,
         data,
       );
       await VaultService.close(handle: imported);

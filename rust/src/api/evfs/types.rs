@@ -5,6 +5,7 @@ use crate::core::evfs::wal::{VaultLock, WriteAheadLog};
 use crate::core::format::Algorithm;
 use flutter_rust_bridge::frb;
 use memmap2::Mmap;
+use std::collections::HashMap;
 use std::fs::File;
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,8 @@ pub struct VaultHandle {
     pub(crate) file: File,
     pub(crate) wal: WriteAheadLog,
     pub(crate) lock: VaultLock,
+    /// True when the in-memory index has been modified but not yet flushed to disk.
+    pub(crate) index_dirty: bool,
 }
 
 impl VaultHandle {
@@ -129,6 +132,25 @@ pub struct DefragResult {
     pub bytes_reclaimed: u64,
     /// Number of scattered free regions before defragmentation.
     pub free_regions_before: u32,
+}
+
+/// Result of a single segment read from `vault_read_parallel`.
+///
+/// On success, `data` contains the decrypted plaintext and `error` is `None`.
+/// On failure, `data` is empty and `error` contains the error description.
+#[frb(non_opaque)]
+pub struct SegmentResult {
+    pub name: String,
+    pub data: Vec<u8>,
+    pub error: Option<String>,
+}
+
+/// Result of reading a segment — includes decrypted data and metadata.
+#[frb(non_opaque)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SegmentReadResult {
+    pub data: Vec<u8>,
+    pub metadata: HashMap<String, String>,
 }
 
 /// Vault health and diagnostic info returned to callers.

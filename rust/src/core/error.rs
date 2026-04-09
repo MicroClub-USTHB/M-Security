@@ -44,6 +44,9 @@ pub enum CryptoError {
     #[error("Segment not found: {0}")]
     SegmentNotFound(String),
 
+    #[error("Duplicate segment {0}")]
+    DuplicateSegment(String),
+
     #[error("Vault corrupted: {0}")]
     VaultCorrupted(String),
 
