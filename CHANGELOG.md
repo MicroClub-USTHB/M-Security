@@ -37,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Async error assertions in Dart rename tests changed from `expect()` to `await expectLater()`.
 - Example app `evfs_test.dart` updated for `SegmentReadResult` return type.
-
 ## [v0.3.4](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.4) - 2026-04-05
 
 ### Added
