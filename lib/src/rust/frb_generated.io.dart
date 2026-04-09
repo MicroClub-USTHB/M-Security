@@ -2427,6 +2427,7 @@ class RustLibWire implements BaseWire {
     ffi.Pointer<wire_cst_list_prim_u_8_strict> name,
     ffi.Pointer<wire_cst_list_prim_u_8_strict> file_path,
     ffi.Pointer<wire_cst_list_prim_u_8_strict> on_progress,
+    ffi.Pointer<wire_cst_list_record_string_string> metadata,
   ) {
     return _wire__crate__api__evfs__vault_write_file(
       port_,
@@ -2434,6 +2435,7 @@ class RustLibWire implements BaseWire {
       name,
       file_path,
       on_progress,
+      metadata,
     );
   }
 
@@ -2446,6 +2448,7 @@ class RustLibWire implements BaseWire {
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+            ffi.Pointer<wire_cst_list_record_string_string>,
           )
         >
       >('frbgen_m_security_wire__crate__api__evfs__vault_write_file');
@@ -2458,6 +2461,7 @@ class RustLibWire implements BaseWire {
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              ffi.Pointer<wire_cst_list_record_string_string>,
             )
           >();
 

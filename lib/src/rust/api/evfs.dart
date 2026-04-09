@@ -80,10 +80,12 @@ Stream<double> vaultWriteFile({
   required VaultHandle handle,
   required String name,
   required String filePath,
+  Map<String, String>? metadata,
 }) => RustLib.instance.api.crateApiEvfsVaultWriteFile(
   handle: handle,
   name: name,
   filePath: filePath,
+  metadata: metadata,
 );
 
 /// Renames an existing segment in the vault index without modifying its encrypted data.

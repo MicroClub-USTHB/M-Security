@@ -328,6 +328,7 @@ abstract class RustLibApi extends BaseApi {
     required VaultHandle handle,
     required String name,
     required String filePath,
+    Map<String, String>? metadata,
   });
 
   RustArcIncrementStrongCountFnType
@@ -2097,6 +2098,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required VaultHandle handle,
     required String name,
     required String filePath,
+    Map<String, String>? metadata,
   }) {
     final onProgress = RustStreamSink<double>();
     unawaited(
@@ -2110,12 +2112,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             var arg1 = cst_encode_String(name);
             var arg2 = cst_encode_String(filePath);
             var arg3 = cst_encode_StreamSink_f_64_Dco(onProgress);
+            var arg4 = cst_encode_opt_Map_String_String_None(metadata);
             return wire.wire__crate__api__evfs__vault_write_file(
               port_,
               arg0,
               arg1,
               arg2,
               arg3,
+              arg4,
             );
           },
           codec: DcoCodec(
@@ -2123,7 +2127,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiEvfsVaultWriteFileConstMeta,
-          argValues: [handle, name, filePath, onProgress],
+          argValues: [handle, name, filePath, onProgress, metadata],
           apiImpl: this,
         ),
       ),
@@ -2133,7 +2137,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiEvfsVaultWriteFileConstMeta => const TaskConstMeta(
     debugName: "vault_write_file",
-    argNames: ["handle", "name", "filePath", "onProgress"],
+    argNames: ["handle", "name", "filePath", "onProgress", "metadata"],
   );
 
   RustArcIncrementStrongCountFnType

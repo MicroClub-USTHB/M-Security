@@ -1433,12 +1433,14 @@ class RustLibWire implements BaseWire {
     String name,
     String file_path,
     String on_progress,
+    JSAny? metadata,
   ) => wasmModule.wire__crate__api__evfs__vault_write_file(
     port_,
     handle,
     name,
     file_path,
     on_progress,
+    metadata,
   );
 
   void
@@ -1811,6 +1813,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
     String file_path,
     String on_progress,
+    JSAny? metadata,
   );
 
   external void

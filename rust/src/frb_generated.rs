@@ -1828,6 +1828,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
     name: impl CstDecode<String>,
     file_path: impl CstDecode<String>,
     on_progress: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
+    metadata: impl CstDecode<Option<std::collections::HashMap<String, String>>>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -1840,6 +1841,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
             let api_name = name.cst_decode();
             let api_file_path = file_path.cst_decode();
             let api_on_progress = on_progress.cst_decode();
+            let api_metadata = metadata.cst_decode();
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let mut api_handle_guard = None;
@@ -1863,6 +1865,7 @@ fn wire__crate__api__evfs__vault_write_file_impl(
                         api_name,
                         api_file_path,
                         api_on_progress,
+                        api_metadata,
                     )?;
                     Ok(output_ok)
                 })())
@@ -4144,8 +4147,16 @@ mod io {
         name: *mut wire_cst_list_prim_u_8_strict,
         file_path: *mut wire_cst_list_prim_u_8_strict,
         on_progress: *mut wire_cst_list_prim_u_8_strict,
+        metadata: *mut wire_cst_list_record_string_string,
     ) {
-        wire__crate__api__evfs__vault_write_file_impl(port_, handle, name, file_path, on_progress)
+        wire__crate__api__evfs__vault_write_file_impl(
+            port_,
+            handle,
+            name,
+            file_path,
+            on_progress,
+            metadata,
+        )
     }
 
     #[unsafe(no_mangle)]
@@ -5459,8 +5470,16 @@ mod web {
         name: String,
         file_path: String,
         on_progress: String,
+        metadata: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
     ) {
-        wire__crate__api__evfs__vault_write_file_impl(port_, handle, name, file_path, on_progress)
+        wire__crate__api__evfs__vault_write_file_impl(
+            port_,
+            handle,
+            name,
+            file_path,
+            on_progress,
+            metadata,
+        )
     }
 
     #[wasm_bindgen]

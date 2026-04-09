@@ -70,12 +70,15 @@ class VaultService {
   /// is bounded to a single chunk. [totalSize] must equal the exact number
   /// of bytes that [data] will emit.
   ///
+  /// [metadata] is optional key-value tags stored alongside the segment.
+  ///
   /// [onProgress] is called with values in (0.0, 1.0] as chunks are encrypted.
   static Future<void> writeStream({
     required rust_types.VaultHandle handle,
     required String name,
     required int totalSize,
     required Stream<Uint8List> data,
+    Map<String, String>? metadata,
     void Function(double progress)? onProgress,
   }) async {
     final tempDir = await Directory.systemTemp.createTemp('vault_write_stream');
@@ -119,6 +122,7 @@ class VaultService {
           handle: handle,
           name: name,
           filePath: tempFile.path,
+          metadata: metadata,
         ),
       );
 
@@ -348,6 +352,9 @@ class VaultService {
   /// Returns one [SegmentResult] per name in the same order as [names].
   /// On per-segment failure, the result's [error] field describes the problem
   /// (e.g. segment not found) and [data] is empty.
+  ///
+  /// All segments are decrypted into memory simultaneously — callers should
+  /// be mindful of total memory when reading many large segments at once.
   ///
   /// Does not return per-segment metadata. Use [read] if metadata is needed.
   static Future<List<rust_types.SegmentResult>> readParallel({
