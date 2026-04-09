@@ -252,6 +252,7 @@ pub struct SegmentEntry {
 }
 
 impl SegmentEntry {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
         offset: u64,
