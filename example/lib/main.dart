@@ -711,12 +711,12 @@ class _VaultTabState extends State<_VaultTab> {
     if (!_vaultOpen || _handle == null) return;
     setState(() => _loading = true);
     try {
-      final data = await VaultService.read(handle: _handle!, name: name);
+      final result = await VaultService.read(handle: _handle!, name: name);
       // Try decoding as UTF-8, fallback to hex
       try {
-        _readResult = '[$name] ${utf8.decode(data)}';
+        _readResult = '[$name] ${utf8.decode(result.data)}';
       } catch (_) {
-        _readResult = '[$name] ${_hex(data)}';
+        _readResult = '[$name] ${_hex(result.data)}';
       }
     } catch (e) {
       _readResult = 'Error reading "$name": $e';

@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `new`, `refresh_mmap`, `slice`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `VaultMmap`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `drop`, `eq`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `drop`, `eq`, `eq`, `fmt`, `fmt`
 
 // Rust type: RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>
 abstract class VaultHandle implements RustOpaqueInterface {
@@ -47,6 +47,49 @@ class DefragResult {
           segmentsMoved == other.segmentsMoved &&
           bytesReclaimed == other.bytesReclaimed &&
           freeRegionsBefore == other.freeRegionsBefore;
+}
+
+/// Result of reading a segment — includes decrypted data and metadata.
+class SegmentReadResult {
+  final Uint8List data;
+  final Map<String, String> metadata;
+
+  const SegmentReadResult({required this.data, required this.metadata});
+
+  @override
+  int get hashCode => data.hashCode ^ metadata.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SegmentReadResult &&
+          runtimeType == other.runtimeType &&
+          data == other.data &&
+          metadata == other.metadata;
+}
+
+/// Result of a single segment read from `vault_read_parallel`.
+///
+/// On success, `data` contains the decrypted plaintext and `error` is `None`.
+/// On failure, `data` is empty and `error` contains the error description.
+class SegmentResult {
+  final String name;
+  final Uint8List data;
+  final String? error;
+
+  const SegmentResult({required this.name, required this.data, this.error});
+
+  @override
+  int get hashCode => name.hashCode ^ data.hashCode ^ error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SegmentResult &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          data == other.data &&
+          error == other.error;
 }
 
 /// Capacity info returned to callers.

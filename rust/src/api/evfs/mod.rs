@@ -667,6 +667,7 @@ pub fn vault_write_file(
     name: String,
     file_path: String,
     on_progress: StreamSink<f64>,
+    metadata: Option<HashMap<String, String>>,
 ) -> Result<(), CryptoError> {
     use crate::core::streaming::CHUNK_SIZE;
 
@@ -700,7 +701,7 @@ pub fn vault_write_file(
         }
     });
 
-    let result = vault_write_stream(handle, name, file_size, data_stream, None);
+    let result = vault_write_stream(handle, name, file_size, data_stream, metadata);
 
     // Surface the real I/O error instead of a misleading "stream underflow"
     if let Some(io_err) = read_error {

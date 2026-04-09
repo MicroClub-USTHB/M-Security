@@ -55,7 +55,7 @@ extension CryptoErrorPatterns on CryptoError {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult Function( CryptoError_VaultFull value)?  vaultFull,TResult Function( CryptoError_VaultLocked value)?  vaultLocked,TResult Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult Function( CryptoError_ExportFailed value)?  exportFailed,TResult Function( CryptoError_ImportFailed value)?  importFailed,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult Function( CryptoError_VaultFull value)?  vaultFull,TResult Function( CryptoError_VaultLocked value)?  vaultLocked,TResult Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult Function( CryptoError_ExportFailed value)?  exportFailed,TResult Function( CryptoError_ImportFailed value)?  importFailed,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -71,7 +71,8 @@ return compressionFailed(_that);case CryptoError_AuthenticationFailed() when aut
 return authenticationFailed(_that);case CryptoError_VaultFull() when vaultFull != null:
 return vaultFull(_that);case CryptoError_VaultLocked() when vaultLocked != null:
 return vaultLocked(_that);case CryptoError_SegmentNotFound() when segmentNotFound != null:
-return segmentNotFound(_that);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
+return segmentNotFound(_that);case CryptoError_DuplicateSegment() when duplicateSegment != null:
+return duplicateSegment(_that);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
 return vaultCorrupted(_that);case CryptoError_KeyRotationFailed() when keyRotationFailed != null:
 return keyRotationFailed(_that);case CryptoError_ExportFailed() when exportFailed != null:
 return exportFailed(_that);case CryptoError_ImportFailed() when importFailed != null:
@@ -93,7 +94,7 @@ return importFailed(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,required TResult Function( CryptoError_CompressionFailed value)  compressionFailed,required TResult Function( CryptoError_AuthenticationFailed value)  authenticationFailed,required TResult Function( CryptoError_VaultFull value)  vaultFull,required TResult Function( CryptoError_VaultLocked value)  vaultLocked,required TResult Function( CryptoError_SegmentNotFound value)  segmentNotFound,required TResult Function( CryptoError_VaultCorrupted value)  vaultCorrupted,required TResult Function( CryptoError_KeyRotationFailed value)  keyRotationFailed,required TResult Function( CryptoError_ExportFailed value)  exportFailed,required TResult Function( CryptoError_ImportFailed value)  importFailed,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,required TResult Function( CryptoError_CompressionFailed value)  compressionFailed,required TResult Function( CryptoError_AuthenticationFailed value)  authenticationFailed,required TResult Function( CryptoError_VaultFull value)  vaultFull,required TResult Function( CryptoError_VaultLocked value)  vaultLocked,required TResult Function( CryptoError_SegmentNotFound value)  segmentNotFound,required TResult Function( CryptoError_DuplicateSegment value)  duplicateSegment,required TResult Function( CryptoError_VaultCorrupted value)  vaultCorrupted,required TResult Function( CryptoError_KeyRotationFailed value)  keyRotationFailed,required TResult Function( CryptoError_ExportFailed value)  exportFailed,required TResult Function( CryptoError_ImportFailed value)  importFailed,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
@@ -109,7 +110,8 @@ return compressionFailed(_that);case CryptoError_AuthenticationFailed():
 return authenticationFailed(_that);case CryptoError_VaultFull():
 return vaultFull(_that);case CryptoError_VaultLocked():
 return vaultLocked(_that);case CryptoError_SegmentNotFound():
-return segmentNotFound(_that);case CryptoError_VaultCorrupted():
+return segmentNotFound(_that);case CryptoError_DuplicateSegment():
+return duplicateSegment(_that);case CryptoError_VaultCorrupted():
 return vaultCorrupted(_that);case CryptoError_KeyRotationFailed():
 return keyRotationFailed(_that);case CryptoError_ExportFailed():
 return exportFailed(_that);case CryptoError_ImportFailed():
@@ -127,7 +129,7 @@ return importFailed(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult? Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult? Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult? Function( CryptoError_VaultFull value)?  vaultFull,TResult? Function( CryptoError_VaultLocked value)?  vaultLocked,TResult? Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult? Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult? Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult? Function( CryptoError_ExportFailed value)?  exportFailed,TResult? Function( CryptoError_ImportFailed value)?  importFailed,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult? Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult? Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult? Function( CryptoError_VaultFull value)?  vaultFull,TResult? Function( CryptoError_VaultLocked value)?  vaultLocked,TResult? Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult? Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult? Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult? Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult? Function( CryptoError_ExportFailed value)?  exportFailed,TResult? Function( CryptoError_ImportFailed value)?  importFailed,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -143,7 +145,8 @@ return compressionFailed(_that);case CryptoError_AuthenticationFailed() when aut
 return authenticationFailed(_that);case CryptoError_VaultFull() when vaultFull != null:
 return vaultFull(_that);case CryptoError_VaultLocked() when vaultLocked != null:
 return vaultLocked(_that);case CryptoError_SegmentNotFound() when segmentNotFound != null:
-return segmentNotFound(_that);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
+return segmentNotFound(_that);case CryptoError_DuplicateSegment() when duplicateSegment != null:
+return duplicateSegment(_that);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
 return vaultCorrupted(_that);case CryptoError_KeyRotationFailed() when keyRotationFailed != null:
 return keyRotationFailed(_that);case CryptoError_ExportFailed() when exportFailed != null:
 return exportFailed(_that);case CryptoError_ImportFailed() when importFailed != null:
@@ -164,7 +167,7 @@ return importFailed(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,TResult Function( String field0)?  compressionFailed,TResult Function()?  authenticationFailed,TResult Function( BigInt needed,  BigInt available)?  vaultFull,TResult Function()?  vaultLocked,TResult Function( String field0)?  segmentNotFound,TResult Function( String field0)?  vaultCorrupted,TResult Function( String field0)?  keyRotationFailed,TResult Function( String field0)?  exportFailed,TResult Function( String field0)?  importFailed,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,TResult Function( String field0)?  compressionFailed,TResult Function()?  authenticationFailed,TResult Function( BigInt needed,  BigInt available)?  vaultFull,TResult Function()?  vaultLocked,TResult Function( String field0)?  segmentNotFound,TResult Function( String field0)?  duplicateSegment,TResult Function( String field0)?  vaultCorrupted,TResult Function( String field0)?  keyRotationFailed,TResult Function( String field0)?  exportFailed,TResult Function( String field0)?  importFailed,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -179,7 +182,8 @@ return compressionFailed(_that.field0);case CryptoError_AuthenticationFailed() w
 return authenticationFailed();case CryptoError_VaultFull() when vaultFull != null:
 return vaultFull(_that.needed,_that.available);case CryptoError_VaultLocked() when vaultLocked != null:
 return vaultLocked();case CryptoError_SegmentNotFound() when segmentNotFound != null:
-return segmentNotFound(_that.field0);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
+return segmentNotFound(_that.field0);case CryptoError_DuplicateSegment() when duplicateSegment != null:
+return duplicateSegment(_that.field0);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
 return vaultCorrupted(_that.field0);case CryptoError_KeyRotationFailed() when keyRotationFailed != null:
 return keyRotationFailed(_that.field0);case CryptoError_ExportFailed() when exportFailed != null:
 return exportFailed(_that.field0);case CryptoError_ImportFailed() when importFailed != null:
@@ -201,7 +205,7 @@ return importFailed(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,required TResult Function( String field0)  compressionFailed,required TResult Function()  authenticationFailed,required TResult Function( BigInt needed,  BigInt available)  vaultFull,required TResult Function()  vaultLocked,required TResult Function( String field0)  segmentNotFound,required TResult Function( String field0)  vaultCorrupted,required TResult Function( String field0)  keyRotationFailed,required TResult Function( String field0)  exportFailed,required TResult Function( String field0)  importFailed,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,required TResult Function( String field0)  compressionFailed,required TResult Function()  authenticationFailed,required TResult Function( BigInt needed,  BigInt available)  vaultFull,required TResult Function()  vaultLocked,required TResult Function( String field0)  segmentNotFound,required TResult Function( String field0)  duplicateSegment,required TResult Function( String field0)  vaultCorrupted,required TResult Function( String field0)  keyRotationFailed,required TResult Function( String field0)  exportFailed,required TResult Function( String field0)  importFailed,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce():
@@ -216,7 +220,8 @@ return compressionFailed(_that.field0);case CryptoError_AuthenticationFailed():
 return authenticationFailed();case CryptoError_VaultFull():
 return vaultFull(_that.needed,_that.available);case CryptoError_VaultLocked():
 return vaultLocked();case CryptoError_SegmentNotFound():
-return segmentNotFound(_that.field0);case CryptoError_VaultCorrupted():
+return segmentNotFound(_that.field0);case CryptoError_DuplicateSegment():
+return duplicateSegment(_that.field0);case CryptoError_VaultCorrupted():
 return vaultCorrupted(_that.field0);case CryptoError_KeyRotationFailed():
 return keyRotationFailed(_that.field0);case CryptoError_ExportFailed():
 return exportFailed(_that.field0);case CryptoError_ImportFailed():
@@ -234,7 +239,7 @@ return importFailed(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,TResult? Function( String field0)?  compressionFailed,TResult? Function()?  authenticationFailed,TResult? Function( BigInt needed,  BigInt available)?  vaultFull,TResult? Function()?  vaultLocked,TResult? Function( String field0)?  segmentNotFound,TResult? Function( String field0)?  vaultCorrupted,TResult? Function( String field0)?  keyRotationFailed,TResult? Function( String field0)?  exportFailed,TResult? Function( String field0)?  importFailed,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,TResult? Function( String field0)?  compressionFailed,TResult? Function()?  authenticationFailed,TResult? Function( BigInt needed,  BigInt available)?  vaultFull,TResult? Function()?  vaultLocked,TResult? Function( String field0)?  segmentNotFound,TResult? Function( String field0)?  duplicateSegment,TResult? Function( String field0)?  vaultCorrupted,TResult? Function( String field0)?  keyRotationFailed,TResult? Function( String field0)?  exportFailed,TResult? Function( String field0)?  importFailed,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -249,7 +254,8 @@ return compressionFailed(_that.field0);case CryptoError_AuthenticationFailed() w
 return authenticationFailed();case CryptoError_VaultFull() when vaultFull != null:
 return vaultFull(_that.needed,_that.available);case CryptoError_VaultLocked() when vaultLocked != null:
 return vaultLocked();case CryptoError_SegmentNotFound() when segmentNotFound != null:
-return segmentNotFound(_that.field0);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
+return segmentNotFound(_that.field0);case CryptoError_DuplicateSegment() when duplicateSegment != null:
+return duplicateSegment(_that.field0);case CryptoError_VaultCorrupted() when vaultCorrupted != null:
 return vaultCorrupted(_that.field0);case CryptoError_KeyRotationFailed() when keyRotationFailed != null:
 return keyRotationFailed(_that.field0);case CryptoError_ExportFailed() when exportFailed != null:
 return exportFailed(_that.field0);case CryptoError_ImportFailed() when importFailed != null:
@@ -979,6 +985,72 @@ class _$CryptoError_SegmentNotFoundCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
   return _then(CryptoError_SegmentNotFound(
+null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class CryptoError_DuplicateSegment extends CryptoError {
+  const CryptoError_DuplicateSegment(this.field0): super._();
+  
+
+ final  String field0;
+
+/// Create a copy of CryptoError
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CryptoError_DuplicateSegmentCopyWith<CryptoError_DuplicateSegment> get copyWith => _$CryptoError_DuplicateSegmentCopyWithImpl<CryptoError_DuplicateSegment>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CryptoError_DuplicateSegment&&(identical(other.field0, field0) || other.field0 == field0));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,field0);
+
+@override
+String toString() {
+  return 'CryptoError.duplicateSegment(field0: $field0)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CryptoError_DuplicateSegmentCopyWith<$Res> implements $CryptoErrorCopyWith<$Res> {
+  factory $CryptoError_DuplicateSegmentCopyWith(CryptoError_DuplicateSegment value, $Res Function(CryptoError_DuplicateSegment) _then) = _$CryptoError_DuplicateSegmentCopyWithImpl;
+@useResult
+$Res call({
+ String field0
+});
+
+
+
+
+}
+/// @nodoc
+class _$CryptoError_DuplicateSegmentCopyWithImpl<$Res>
+    implements $CryptoError_DuplicateSegmentCopyWith<$Res> {
+  _$CryptoError_DuplicateSegmentCopyWithImpl(this._self, this._then);
+
+  final CryptoError_DuplicateSegment _self;
+  final $Res Function(CryptoError_DuplicateSegment) _then;
+
+/// Create a copy of CryptoError
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
+  return _then(CryptoError_DuplicateSegment(
 null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
 as String,
   ));
