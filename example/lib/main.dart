@@ -18,7 +18,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.4',
+      title: 'M-Security v0.3.5',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -714,7 +714,8 @@ class _VaultTabState extends State<_VaultTab> {
         metadata: meta,
       );
       final metaLabel = meta != null ? ', ${meta.length} tags' : '';
-      _status = 'Wrote "${_segName.text}" (${data.length}B, $_compAlgo$metaLabel)';
+      _status =
+          'Wrote "${_segName.text}" (${data.length}B, $_compAlgo$metaLabel)';
       await _refreshList();
       await _refreshCapacity();
     } catch (e) {
@@ -861,7 +862,10 @@ class _VaultTabState extends State<_VaultTab> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text),
             child: const Text('Rename'),
@@ -908,11 +912,14 @@ class _VaultTabState extends State<_VaultTab> {
       final ok = results.where((r) => r.error == null).length;
       final fail = results.where((r) => r.error != null).length;
       final totalBytes = results.fold<int>(0, (sum, r) => sum + r.data.length);
-      final details = results.map((r) {
-        if (r.error != null) return '  ${r.name}: ERROR ${r.error}';
-        return '  ${r.name}: ${_fmtBytes(BigInt.from(r.data.length))}';
-      }).join('\n');
-      _parallelInfo = '$ok OK, $fail failed — ${_fmtBytes(BigInt.from(totalBytes))} total\n$details';
+      final details = results
+          .map((r) {
+            if (r.error != null) return '  ${r.name}: ERROR ${r.error}';
+            return '  ${r.name}: ${_fmtBytes(BigInt.from(r.data.length))}';
+          })
+          .join('\n');
+      _parallelInfo =
+          '$ok OK, $fail failed — ${_fmtBytes(BigInt.from(totalBytes))} total\n$details';
       _status = 'Parallel read: $ok/${results.length} segments';
     } catch (e) {
       _parallelInfo = 'Error: $e';
@@ -1295,13 +1302,12 @@ class _VaultTabState extends State<_VaultTab> {
           if (_defragInfo.isNotEmpty) _ResultCard('Defrag', _defragInfo),
           const SizedBox(height: 8),
           FilledButton.tonalIcon(
-            onPressed: _loading || _segments.isEmpty
-                ? null
-                : _parallelReadAll,
+            onPressed: _loading || _segments.isEmpty ? null : _parallelReadAll,
             icon: const Icon(Icons.read_more, size: 18),
             label: const Text('Parallel Read All'),
           ),
-          if (_parallelInfo.isNotEmpty) _ResultCard('Parallel Read', _parallelInfo),
+          if (_parallelInfo.isNotEmpty)
+            _ResultCard('Parallel Read', _parallelInfo),
 
           const Divider(height: 24),
 
