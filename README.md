@@ -29,6 +29,7 @@ Built and maintained by the **Dev Department** of [MicroClub](https://github.com
 | **Password Hashing**     | Argon2id               | PHC winner, Mobile and Desktop presets                      |
 | **Key Derivation**       | HKDF-SHA256            | RFC 5869, extract-then-expand with domain separation        |
 | **Encrypted VFS (EVFS)** | `.vault` container     | Named segments, WAL recovery, shadow index, secure deletion |
+| **Segment Enhancements** | Metadata, rename, parallel | Per-segment key-value tags, rename without re-encryption, concurrent reads |
 | **Key Management**       | Rotation, export/import | Atomic re-encryption, `.mvex` portable archives             |
 | **Zero-Copy I/O**        | mmap + DCO codec       | Memory-mapped vault reads, zero-copy Rust-to-Dart transfers |
 
@@ -49,7 +50,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  m_security: ^0.3.4
+  m_security: ^0.3.5
 ```
 
 Then run:
@@ -208,16 +209,19 @@ final handle = await VaultService.create(
   capacityBytes: 10 * 1024 * 1024,
 );
 
-// Write a segment (with optional compression)
+// Write a segment (with optional compression and metadata)
 await VaultService.write(
   handle: handle,
   name: 'secret.txt',
   data: utf8.encode('confidential'),
   compression: CompressionConfig(algorithm: CompressionAlgorithm.zstd),
+  metadata: {'mime': 'text/plain', 'author': 'alice'},
 );
 
-// Read it back (decompression is automatic)
-final data = await VaultService.read(handle: handle, name: 'secret.txt');
+// Read it back (decompression is automatic, metadata included)
+final result = await VaultService.read(handle: handle, name: 'secret.txt');
+print(result.data);       // decrypted bytes
+print(result.metadata);   // {'mime': 'text/plain', 'author': 'alice'}
 
 // List segments, delete, close
 final segments = await VaultService.list(handle: handle);
@@ -248,6 +252,26 @@ final imported = await VaultService.importVault(
   algorithm: 'aes-256-gcm',
   capacityBytes: 10 * 1024 * 1024,
 );
+```
+
+#### Segment Enhancements
+
+```dart
+// Rename a segment (index-only, no re-encryption)
+await VaultService.renameSegment(handle: handle, oldName: 'draft.txt', newName: 'final.txt');
+
+// Explicit flush — persist in-memory index to disk
+await VaultService.flush(handle: handle);
+
+// Parallel read — decrypt multiple segments concurrently
+final results = await VaultService.readParallel(
+  handle: handle,
+  names: ['file1.bin', 'file2.bin', 'file3.bin'],
+);
+for (final r in results) {
+  if (r.error != null) print('${r.name}: failed — ${r.error}');
+  else print('${r.name}: ${r.data.length} bytes');
+}
 ```
 
 #### Vault Maintenance

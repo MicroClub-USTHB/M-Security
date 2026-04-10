@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1455605677;
+  int get rustContentHash => 15652661;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -260,6 +260,8 @@ abstract class RustLibApi extends BaseApi {
     required String exportPath,
   });
 
+  Future<void> crateApiEvfsVaultFlush({required VaultHandle handle});
+
   Future<VaultHealthInfo> crateApiEvfsVaultHealth({
     required VaultHandle handle,
   });
@@ -280,9 +282,14 @@ abstract class RustLibApi extends BaseApi {
     required List<int> key,
   });
 
-  Future<Uint8List> crateApiEvfsVaultRead({
+  Future<SegmentReadResult> crateApiEvfsVaultRead({
     required VaultHandle handle,
     required String name,
+  });
+
+  Future<List<SegmentResult>> crateApiEvfsVaultReadParallel({
+    required VaultHandle handle,
+    required List<String> names,
   });
 
   Future<void> crateApiEvfsVaultReadStream({
@@ -291,6 +298,12 @@ abstract class RustLibApi extends BaseApi {
     required bool verifyChecksum,
     required RustStreamSink<Uint8List> sink,
     required RustStreamSink<double> onProgress,
+  });
+
+  Future<void> crateApiEvfsVaultRenameSegment({
+    required VaultHandle handle,
+    required String oldName,
+    required String newName,
   });
 
   Future<void> crateApiEvfsVaultResize({
@@ -308,12 +321,14 @@ abstract class RustLibApi extends BaseApi {
     required String name,
     required List<int> data,
     CompressionConfig? compression,
+    Map<String, String>? metadata,
   });
 
   Stream<double> crateApiEvfsVaultWriteFile({
     required VaultHandle handle,
     required String name,
     required String filePath,
+    Map<String, String>? metadata,
   });
 
   RustArcIncrementStrongCountFnType
@@ -1654,6 +1669,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiEvfsVaultFlush({required VaultHandle handle}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          return wire.wire__crate__api__evfs__vault_flush(port_, arg0);
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultFlushConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultFlushConstMeta =>
+      const TaskConstMeta(debugName: "vault_flush", argNames: ["handle"]);
+
+  @override
   Future<VaultHealthInfo> crateApiEvfsVaultHealth({
     required VaultHandle handle,
   }) {
@@ -1792,7 +1832,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "vault_open", argNames: ["path", "key"]);
 
   @override
-  Future<Uint8List> crateApiEvfsVaultRead({
+  Future<SegmentReadResult> crateApiEvfsVaultRead({
     required VaultHandle handle,
     required String name,
   }) {
@@ -1807,7 +1847,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           return wire.wire__crate__api__evfs__vault_read(port_, arg0, arg1);
         },
         codec: DcoCodec(
-          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeSuccessData: dco_decode_segment_read_result,
           decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultReadConstMeta,
@@ -1821,6 +1861,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     debugName: "vault_read",
     argNames: ["handle", "name"],
   );
+
+  @override
+  Future<List<SegmentResult>> crateApiEvfsVaultReadParallel({
+    required VaultHandle handle,
+    required List<String> names,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_list_String(names);
+          return wire.wire__crate__api__evfs__vault_read_parallel(
+            port_,
+            arg0,
+            arg1,
+          );
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_segment_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiEvfsVaultReadParallelConstMeta,
+        argValues: [handle, names],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultReadParallelConstMeta =>
+      const TaskConstMeta(
+        debugName: "vault_read_parallel",
+        argNames: ["handle", "names"],
+      );
 
   @override
   Future<void> crateApiEvfsVaultReadStream({
@@ -1865,6 +1941,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "vault_read_stream",
         argNames: ["handle", "name", "verifyChecksum", "sink", "onProgress"],
+      );
+
+  @override
+  Future<void> crateApiEvfsVaultRenameSegment({
+    required VaultHandle handle,
+    required String oldName,
+    required String newName,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          var arg0 =
+              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
+                handle,
+              );
+          var arg1 = cst_encode_String(oldName);
+          var arg2 = cst_encode_String(newName);
+          return wire.wire__crate__api__evfs__vault_rename_segment(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+          );
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_unit,
+          decodeErrorData: dco_decode_crypto_error,
+        ),
+        constMeta: kCrateApiEvfsVaultRenameSegmentConstMeta,
+        argValues: [handle, oldName, newName],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiEvfsVaultRenameSegmentConstMeta =>
+      const TaskConstMeta(
+        debugName: "vault_rename_segment",
+        argNames: ["handle", "oldName", "newName"],
       );
 
   @override
@@ -1940,6 +2055,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String name,
     required List<int> data,
     CompressionConfig? compression,
+    Map<String, String>? metadata,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1951,12 +2067,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           var arg1 = cst_encode_String(name);
           var arg2 = cst_encode_list_prim_u_8_loose(data);
           var arg3 = cst_encode_opt_box_autoadd_compression_config(compression);
+          var arg4 = cst_encode_opt_Map_String_String_None(metadata);
           return wire.wire__crate__api__evfs__vault_write(
             port_,
             arg0,
             arg1,
             arg2,
             arg3,
+            arg4,
           );
         },
         codec: DcoCodec(
@@ -1964,7 +2082,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultWriteConstMeta,
-        argValues: [handle, name, data, compression],
+        argValues: [handle, name, data, compression, metadata],
         apiImpl: this,
       ),
     );
@@ -1972,7 +2090,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiEvfsVaultWriteConstMeta => const TaskConstMeta(
     debugName: "vault_write",
-    argNames: ["handle", "name", "data", "compression"],
+    argNames: ["handle", "name", "data", "compression", "metadata"],
   );
 
   @override
@@ -1980,6 +2098,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required VaultHandle handle,
     required String name,
     required String filePath,
+    Map<String, String>? metadata,
   }) {
     final onProgress = RustStreamSink<double>();
     unawaited(
@@ -1993,12 +2112,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             var arg1 = cst_encode_String(name);
             var arg2 = cst_encode_String(filePath);
             var arg3 = cst_encode_StreamSink_f_64_Dco(onProgress);
+            var arg4 = cst_encode_opt_Map_String_String_None(metadata);
             return wire.wire__crate__api__evfs__vault_write_file(
               port_,
               arg0,
               arg1,
               arg2,
               arg3,
+              arg4,
             );
           },
           codec: DcoCodec(
@@ -2006,7 +2127,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: dco_decode_crypto_error,
           ),
           constMeta: kCrateApiEvfsVaultWriteFileConstMeta,
-          argValues: [handle, name, filePath, onProgress],
+          argValues: [handle, name, filePath, onProgress, metadata],
           apiImpl: this,
         ),
       ),
@@ -2016,7 +2137,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiEvfsVaultWriteFileConstMeta => const TaskConstMeta(
     debugName: "vault_write_file",
-    argNames: ["handle", "name", "filePath", "onProgress"],
+    argNames: ["handle", "name", "filePath", "onProgress", "metadata"],
   );
 
   RustArcIncrementStrongCountFnType
@@ -2110,6 +2231,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return VaultHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+      dco_decode_list_record_string_string(
+        raw,
+      ).map((e) => MapEntry(e.$1, e.$2)),
+    );
   }
 
   @protected
@@ -2238,12 +2369,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 12:
         return CryptoError_SegmentNotFound(dco_decode_String(raw[1]));
       case 13:
-        return CryptoError_VaultCorrupted(dco_decode_String(raw[1]));
+        return CryptoError_DuplicateSegment(dco_decode_String(raw[1]));
       case 14:
-        return CryptoError_KeyRotationFailed(dco_decode_String(raw[1]));
+        return CryptoError_VaultCorrupted(dco_decode_String(raw[1]));
       case 15:
-        return CryptoError_ExportFailed(dco_decode_String(raw[1]));
+        return CryptoError_KeyRotationFailed(dco_decode_String(raw[1]));
       case 16:
+        return CryptoError_ExportFailed(dco_decode_String(raw[1]));
+      case 17:
         return CryptoError_ImportFailed(dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
@@ -2294,6 +2427,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<SegmentResult> dco_decode_list_segment_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_segment_result).toList();
+  }
+
+  @protected
+  Map<String, String>? dco_decode_opt_Map_String_String_None(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_Map_String_String_None(raw);
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
   CompressionConfig? dco_decode_opt_box_autoadd_compression_config(
     dynamic raw,
   ) {
@@ -2311,6 +2468,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
+  SegmentReadResult dco_decode_segment_read_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return SegmentReadResult(
+      data: dco_decode_list_prim_u_8_strict(arr[0]),
+      metadata: dco_decode_Map_String_String_None(arr[1]),
+    );
+  }
+
+  @protected
+  SegmentResult dco_decode_segment_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SegmentResult(
+      name: dco_decode_String(arr[0]),
+      data: dco_decode_list_prim_u_8_strict(arr[1]),
+      error: dco_decode_opt_String(arr[2]),
+    );
   }
 
   @protected
@@ -2469,6 +2661,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<String, String> sse_decode_Map_String_String_None(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_string(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
   CipherHandle
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     SseDeserializer deserializer,
@@ -2624,14 +2825,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_SegmentNotFound(var_field0);
       case 13:
         var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_VaultCorrupted(var_field0);
+        return CryptoError_DuplicateSegment(var_field0);
       case 14:
         var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_KeyRotationFailed(var_field0);
+        return CryptoError_VaultCorrupted(var_field0);
       case 15:
         var var_field0 = sse_decode_String(deserializer);
-        return CryptoError_ExportFailed(var_field0);
+        return CryptoError_KeyRotationFailed(var_field0);
       case 16:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_ExportFailed(var_field0);
+      case 17:
         var var_field0 = sse_decode_String(deserializer);
         return CryptoError_ImportFailed(var_field0);
       default:
@@ -2691,6 +2895,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<SegmentResult> sse_decode_list_segment_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <SegmentResult>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_segment_result(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  Map<String, String>? sse_decode_opt_Map_String_String_None(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_Map_String_String_None(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   CompressionConfig? sse_decode_opt_box_autoadd_compression_config(
     SseDeserializer deserializer,
   ) {
@@ -2723,6 +2979,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  SegmentReadResult sse_decode_segment_read_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_data = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_metadata = sse_decode_Map_String_String_None(deserializer);
+    return SegmentReadResult(data: var_data, metadata: var_metadata);
+  }
+
+  @protected
+  SegmentResult sse_decode_segment_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_data = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_error = sse_decode_opt_String(deserializer);
+    return SegmentResult(name: var_name, data: var_data, error: var_error);
   }
 
   @protected
@@ -3047,6 +3332,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_string(
+      self.entries.map((e) => (e.key, e.value)).toList(),
+      serializer,
+    );
+  }
+
+  @protected
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
     CipherHandle self,
@@ -3218,17 +3515,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case CryptoError_SegmentNotFound(field0: final field0):
         sse_encode_i_32(12, serializer);
         sse_encode_String(field0, serializer);
-      case CryptoError_VaultCorrupted(field0: final field0):
+      case CryptoError_DuplicateSegment(field0: final field0):
         sse_encode_i_32(13, serializer);
         sse_encode_String(field0, serializer);
-      case CryptoError_KeyRotationFailed(field0: final field0):
+      case CryptoError_VaultCorrupted(field0: final field0):
         sse_encode_i_32(14, serializer);
         sse_encode_String(field0, serializer);
-      case CryptoError_ExportFailed(field0: final field0):
+      case CryptoError_KeyRotationFailed(field0: final field0):
         sse_encode_i_32(15, serializer);
         sse_encode_String(field0, serializer);
-      case CryptoError_ImportFailed(field0: final field0):
+      case CryptoError_ExportFailed(field0: final field0):
         sse_encode_i_32(16, serializer);
+        sse_encode_String(field0, serializer);
+      case CryptoError_ImportFailed(field0: final field0):
+        sse_encode_i_32(17, serializer);
         sse_encode_String(field0, serializer);
     }
   }
@@ -3285,6 +3585,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_segment_result(
+    List<SegmentResult> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_segment_result(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_Map_String_String_None(
+    Map<String, String>? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_Map_String_String_None(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_compression_config(
     CompressionConfig? self,
     SseSerializer serializer,
@@ -3318,6 +3665,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_list_prim_u_8_strict(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_segment_read_result(
+    SegmentReadResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.data, serializer);
+    sse_encode_Map_String_String_None(self.metadata, serializer);
+  }
+
+  @protected
+  void sse_encode_segment_result(SegmentResult self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_list_prim_u_8_strict(self.data, serializer);
+    sse_encode_opt_String(self.error, serializer);
   }
 
   @protected

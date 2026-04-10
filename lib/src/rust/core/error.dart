@@ -37,6 +37,8 @@ sealed class CryptoError with _$CryptoError implements FrbException {
   const factory CryptoError.vaultLocked() = CryptoError_VaultLocked;
   const factory CryptoError.segmentNotFound(String field0) =
       CryptoError_SegmentNotFound;
+  const factory CryptoError.duplicateSegment(String field0) =
+      CryptoError_DuplicateSegment;
   const factory CryptoError.vaultCorrupted(String field0) =
       CryptoError_VaultCorrupted;
   const factory CryptoError.keyRotationFailed(String field0) =

@@ -45,17 +45,22 @@ class VaultService {
   /// [compression] is optional — defaults to no compression.
   /// MIME-aware skip: if [name] has an already-compressed extension
   /// (e.g., ".jpg"), compression is bypassed automatically.
+  ///
+  /// [metadata] is optional key-value tags stored alongside the segment
+  /// (encrypted in the index). Retrieved via [read].
   static Future<void> write({
     required rust_types.VaultHandle handle,
     required String name,
     required Uint8List data,
     CompressionConfig? compression,
+    Map<String, String>? metadata,
   }) {
     return rust_evfs.vaultWrite(
       handle: handle,
       name: name,
       data: data,
       compression: compression,
+      metadata: metadata,
     );
   }
 
@@ -65,12 +70,15 @@ class VaultService {
   /// is bounded to a single chunk. [totalSize] must equal the exact number
   /// of bytes that [data] will emit.
   ///
+  /// [metadata] is optional key-value tags stored alongside the segment.
+  ///
   /// [onProgress] is called with values in (0.0, 1.0] as chunks are encrypted.
   static Future<void> writeStream({
     required rust_types.VaultHandle handle,
     required String name,
     required int totalSize,
     required Stream<Uint8List> data,
+    Map<String, String>? metadata,
     void Function(double progress)? onProgress,
   }) async {
     final tempDir = await Directory.systemTemp.createTemp('vault_write_stream');
@@ -114,6 +122,7 @@ class VaultService {
           handle: handle,
           name: name,
           filePath: tempFile.path,
+          metadata: metadata,
         ),
       );
 
@@ -130,7 +139,9 @@ class VaultService {
   }
 
   /// Read a named segment. Decompression is automatic.
-  static Future<Uint8List> read({
+  ///
+  /// Returns [SegmentReadResult] with decrypted data and metadata.
+  static Future<rust_types.SegmentReadResult> read({
     required rust_types.VaultHandle handle,
     required String name,
   }) {
@@ -311,6 +322,46 @@ class VaultService {
       algorithm: algorithm,
       capacityBytes: BigInt.from(capacityBytes),
     );
+  }
+
+  /// Rename a segment without re-encryption (index-only operation).
+  ///
+  /// Throws [DuplicateSegment] if [newName] already exists.
+  /// Throws [SegmentNotFound] if [oldName] does not exist.
+  static Future<void> renameSegment({
+    required rust_types.VaultHandle handle,
+    required String oldName,
+    required String newName,
+  }) {
+    return rust_evfs.vaultRenameSegment(
+      handle: handle,
+      oldName: oldName,
+      newName: newName,
+    );
+  }
+
+  /// Explicitly flush the in-memory index to disk.
+  ///
+  /// No-op if the index has not been modified since the last flush.
+  static Future<void> flush({required rust_types.VaultHandle handle}) {
+    return rust_evfs.vaultFlush(handle: handle);
+  }
+
+  /// Read multiple segments concurrently.
+  ///
+  /// Returns one [SegmentResult] per name in the same order as [names].
+  /// On per-segment failure, the result's [error] field describes the problem
+  /// (e.g. segment not found) and [data] is empty.
+  ///
+  /// All segments are decrypted into memory simultaneously — callers should
+  /// be mindful of total memory when reading many large segments at once.
+  ///
+  /// Does not return per-segment metadata. Use [read] if metadata is needed.
+  static Future<List<rust_types.SegmentResult>> readParallel({
+    required rust_types.VaultHandle handle,
+    required List<String> names,
+  }) {
+    return rust_evfs.vaultReadParallel(handle: handle, names: names);
   }
 
   /// Close the vault (release lock, zeroize keys).

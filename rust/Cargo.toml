@@ -1,6 +1,6 @@
 [package]
 name = "m_security"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 
 [lib]
@@ -47,6 +47,9 @@ fs4 = "0.12"
 # Memory-mapped I/O for zero-copy vault reads
 memmap2 = "0.9"
 libc = "0.2"
+
+# Parallel segment reads
+rayon = "1.10"
 
 # Compression
 zstd = { version = "0.13", optional = true }

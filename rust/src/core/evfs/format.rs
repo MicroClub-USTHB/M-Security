@@ -2,17 +2,24 @@
 
 use crate::api::compression::CompressionAlgorithm;
 use crate::core::error::CryptoError;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 pub const VAULT_MAGIC: &[u8; 4] = b"MVLT";
-pub const VAULT_VERSION: u8 = 1;
+pub const VAULT_VERSION: u8 = 2;
 pub const VAULT_HEADER_SIZE: usize = 32;
 
 /// Max segment name length in bytes (UTF-8).
 pub const MAX_SEGMENT_NAME_LEN: usize = 255;
+
+/// Max number of metadata key-value pairs per segment.
+const MAX_METADATA_PAIRS: u16 = 1024;
+
+/// Max total serialized metadata size per segment (64KB).
+const MAX_METADATA_BYTES: usize = 64 * 1024;
 
 /// Minimum index padding size (64KB). One page supports ~200 segments.
 pub const MIN_INDEX_PAD_SIZE: usize = 64 * 1024;
@@ -181,7 +188,7 @@ impl VaultHeader {
             ));
         }
         let version = data[4];
-        if version != VAULT_VERSION {
+        if version != 1 && version != VAULT_VERSION {
             return Err(CryptoError::VaultCorrupted(format!(
                 "unsupported vault version: {version}"
             )));
@@ -240,9 +247,12 @@ pub struct SegmentEntry {
     /// Number of chunks for streaming segments. 0 = monolithic (one-shot),
     /// >0 = N independently-encrypted chunks within this segment slot.
     pub chunk_count: u32,
+    /// Optional key-value tags. Stored in the encrypted index, not segment data.
+    pub metadata: HashMap<String, String>,
 }
 
 impl SegmentEntry {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
         offset: u64,
@@ -251,6 +261,7 @@ impl SegmentEntry {
         checksum: [u8; 32],
         compression: CompressionAlgorithm,
         chunk_count: u32,
+        metadata: HashMap<String, String>,
     ) -> Result<Self, CryptoError> {
         if name.is_empty() || name.len() > MAX_SEGMENT_NAME_LEN {
             return Err(CryptoError::InvalidParameter(format!(
@@ -266,6 +277,7 @@ impl SegmentEntry {
             checksum,
             compression,
             chunk_count,
+            metadata,
         })
     }
 
@@ -386,6 +398,7 @@ impl SegmentIndex {
     ///   per entry:
     ///     [name_len: u16] [name: UTF-8] [offset: u64] [size: u64]
     ///     [generation: u64] [checksum: 32B] [compression: u8] [chunk_count: u32]
+    ///     [meta_count: u16] ([key_len: u16][key][val_len: u16][val])*
     ///   -- free regions --
     ///   per region:
     ///     [offset: u64] [size: u64]
@@ -418,6 +431,37 @@ impl SegmentIndex {
             buf.extend_from_slice(&entry.checksum);
             buf.push(entry.compression.to_u8());
             put_u32(&mut buf, entry.chunk_count);
+
+            // Metadata: [meta_count: u16] ([key_len: u16][key][val_len: u16][val])*
+            let meta_count = u16::try_from(entry.metadata.len()).map_err(|_| {
+                CryptoError::InvalidParameter("too many metadata pairs for u16".into())
+            })?;
+            if meta_count > MAX_METADATA_PAIRS {
+                return Err(CryptoError::InvalidParameter(format!(
+                    "segment '{}': {} metadata pairs exceeds limit {MAX_METADATA_PAIRS}",
+                    entry.name, meta_count
+                )));
+            }
+            put_u16(&mut buf, meta_count);
+            let meta_start = buf.len();
+            for (key, val) in &entry.metadata {
+                let klen = u16::try_from(key.len()).map_err(|_| {
+                    CryptoError::InvalidParameter("metadata key too long for u16".into())
+                })?;
+                let vlen = u16::try_from(val.len()).map_err(|_| {
+                    CryptoError::InvalidParameter("metadata value too long for u16".into())
+                })?;
+                put_u16(&mut buf, klen);
+                buf.extend_from_slice(key.as_bytes());
+                put_u16(&mut buf, vlen);
+                buf.extend_from_slice(val.as_bytes());
+            }
+            if buf.len() - meta_start > MAX_METADATA_BYTES {
+                return Err(CryptoError::InvalidParameter(format!(
+                    "segment '{}': metadata exceeds {MAX_METADATA_BYTES} byte limit",
+                    entry.name
+                )));
+            }
         }
 
         for region in &self.free_regions {
@@ -437,7 +481,10 @@ impl SegmentIndex {
     }
 
     /// Deserialize index from decrypted bytes.
-    pub fn from_bytes(data: &[u8]) -> Result<Self, CryptoError> {
+    ///
+    /// `vault_version` controls the wire format: v1 entries have no metadata
+    /// field, v2+ entries include `[meta_count: u16]` after `chunk_count`.
+    pub fn from_bytes(data: &[u8], vault_version: u8) -> Result<Self, CryptoError> {
         if data.len() < 32 {
             return Err(CryptoError::VaultCorrupted("index too short".into()));
         }
@@ -504,6 +551,40 @@ impl SegmentIndex {
                 }
             }
 
+            // Metadata: v2+ only. v1 entries have no metadata on disk.
+            let metadata = if vault_version >= 2 {
+                let meta_count = read_u16(data, &mut off)?;
+                if meta_count > MAX_METADATA_PAIRS {
+                    return Err(CryptoError::VaultCorrupted(format!(
+                        "segment '{name}': metadata count {meta_count} exceeds limit {MAX_METADATA_PAIRS}"
+                    )));
+                }
+                let mut map = HashMap::with_capacity(meta_count as usize);
+                let meta_start = off;
+                for _ in 0..meta_count {
+                    // OOM guard: check before allocating the next pair
+                    if off - meta_start > MAX_METADATA_BYTES {
+                        return Err(CryptoError::VaultCorrupted(format!(
+                            "segment '{name}': metadata exceeds {MAX_METADATA_BYTES} byte limit"
+                        )));
+                    }
+                    let klen = read_u16(data, &mut off)? as usize;
+                    let key_bytes = read_bytes(data, &mut off, klen)?;
+                    let key = String::from_utf8(key_bytes).map_err(|_| {
+                        CryptoError::VaultCorrupted("metadata key is not valid UTF-8".into())
+                    })?;
+                    let vlen = read_u16(data, &mut off)? as usize;
+                    let val_bytes = read_bytes(data, &mut off, vlen)?;
+                    let val = String::from_utf8(val_bytes).map_err(|_| {
+                        CryptoError::VaultCorrupted("metadata value is not valid UTF-8".into())
+                    })?;
+                    map.insert(key, val);
+                }
+                map
+            } else {
+                HashMap::new()
+            };
+
             entries.push(SegmentEntry {
                 name,
                 offset,
@@ -512,6 +593,7 @@ impl SegmentIndex {
                 checksum,
                 compression,
                 chunk_count,
+                metadata,
             });
         }
 
@@ -551,6 +633,20 @@ impl SegmentIndex {
 
     pub fn find_mut(&mut self, name: &str) -> Option<&mut SegmentEntry> {
         self.entries.iter_mut().find(|e| e.name == name)
+    }
+
+    /// Renames a segment in the index.
+    /// Caller must validate names and check for duplicates before calling.
+    pub fn rename(&mut self, old_name: &str, new_name: &str) -> Result<(), CryptoError> {
+        let entry = self
+            .entries
+            .iter_mut()
+            .find(|e| e.name == old_name)
+            .ok_or_else(|| CryptoError::SegmentNotFound(old_name.to_string()))?;
+
+        entry.name = new_name.to_string();
+
+        Ok(())
     }
 
     pub fn remove(&mut self, name: &str) -> Option<SegmentEntry> {
@@ -801,6 +897,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         );
         assert!(e.is_ok());
 
@@ -814,6 +911,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         );
         assert!(e.is_ok());
     }
@@ -829,6 +927,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         );
         assert!(e.is_err());
     }
@@ -843,6 +942,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         );
         assert!(e.is_err());
     }
@@ -860,6 +960,7 @@ mod tests {
                 dummy_checksum(0xAA),
                 CompressionAlgorithm::Zstd,
                 0, // monolithic
+                HashMap::new(),
             )
             .expect("entry"),
         )
@@ -873,6 +974,7 @@ mod tests {
                 dummy_checksum(0xBB),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         )
@@ -892,7 +994,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
 
         assert_eq!(parsed.entries.len(), 2);
         assert_eq!(parsed.entries[0].name, "hello.txt");
@@ -917,6 +1019,54 @@ mod tests {
     }
 
     #[test]
+    fn test_metadata_serialization_roundtrip() {
+        let mut idx = SegmentIndex::new(1024 * 1024);
+        let mut meta = HashMap::new();
+        meta.insert("mime".to_string(), "text/plain".to_string());
+        meta.insert("created".to_string(), "2026-04-08".to_string());
+        meta.insert("".to_string(), "empty key".to_string());
+        meta.insert("empty_val".to_string(), "".to_string());
+
+        idx.add(
+            SegmentEntry::new(
+                "with_meta",
+                0,
+                4096,
+                1,
+                dummy_checksum(0),
+                CompressionAlgorithm::None,
+                0,
+                meta.clone(),
+            )
+            .expect("entry"),
+        )
+        .expect("add");
+
+        idx.add(
+            SegmentEntry::new(
+                "no_meta",
+                4096,
+                2048,
+                2,
+                dummy_checksum(1),
+                CompressionAlgorithm::None,
+                0,
+                HashMap::new(),
+            )
+            .expect("entry"),
+        )
+        .expect("add");
+
+        let bytes = idx
+            .to_bytes(compute_index_size(idx.capacity))
+            .expect("serialize");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
+
+        assert_eq!(parsed.entries[0].metadata, meta);
+        assert!(parsed.entries[1].metadata.is_empty());
+    }
+
+    #[test]
     fn test_segment_index_roundtrip_with_generation() {
         let mut idx = SegmentIndex::new(1024);
         idx.next_generation = 42;
@@ -929,13 +1079,14 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.next_generation, 42);
         assert_eq!(parsed.entries[0].generation, 41);
     }
@@ -960,6 +1111,7 @@ mod tests {
                     dummy_checksum(i as u8),
                     *algo,
                     0,
+                    HashMap::new(),
                 )
                 .expect("entry"),
             );
@@ -967,7 +1119,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.entries[0].compression, CompressionAlgorithm::Zstd);
         assert_eq!(parsed.entries[1].compression, CompressionAlgorithm::Brotli);
         assert_eq!(parsed.entries[2].compression, CompressionAlgorithm::None);
@@ -991,7 +1143,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
         assert_eq!(parsed.free_regions.len(), 3);
         assert_eq!(
             parsed.free_regions[0],
@@ -1047,6 +1199,7 @@ mod tests {
                     dummy_checksum(0),
                     CompressionAlgorithm::None,
                     0,
+                    HashMap::new(),
                 )
                 .expect("entry"),
             );
@@ -1342,6 +1495,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         )
         .expect("entry");
         let e2 = SegmentEntry::new(
@@ -1352,6 +1506,7 @@ mod tests {
             dummy_checksum(1),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         )
         .expect("entry");
         idx.add(e1).expect("first add");
@@ -1373,6 +1528,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1385,6 +1541,7 @@ mod tests {
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1407,6 +1564,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1419,6 +1577,7 @@ mod tests {
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1448,6 +1607,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1476,6 +1636,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1488,6 +1649,7 @@ mod tests {
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1500,6 +1662,7 @@ mod tests {
                 dummy_checksum(2),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1546,6 +1709,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1558,6 +1722,7 @@ mod tests {
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1610,6 +1775,7 @@ mod tests {
                 dummy_checksum(0),
                 CompressionAlgorithm::None,
                 0,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1623,6 +1789,7 @@ mod tests {
                 dummy_checksum(1),
                 CompressionAlgorithm::None,
                 5,
+                HashMap::new(),
             )
             .expect("entry"),
         );
@@ -1630,7 +1797,7 @@ mod tests {
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let parsed = SegmentIndex::from_bytes(&bytes).expect("parse");
+        let parsed = SegmentIndex::from_bytes(&bytes, VAULT_VERSION).expect("parse");
 
         assert_eq!(parsed.entries[0].chunk_count, 0);
         assert!(!parsed.entries[0].is_streaming());
@@ -1652,12 +1819,13 @@ mod tests {
             checksum: dummy_checksum(0),
             compression: CompressionAlgorithm::None,
             chunk_count: 5,
+            metadata: HashMap::new(),
         });
 
         let bytes = idx
             .to_bytes(compute_index_size(idx.capacity))
             .expect("serialize");
-        let result = SegmentIndex::from_bytes(&bytes);
+        let result = SegmentIndex::from_bytes(&bytes, VAULT_VERSION);
         assert!(result.is_err());
         let err = result.expect_err("should fail").to_string();
         assert!(err.contains("chunk_count"), "Error: {err}");
@@ -1672,11 +1840,12 @@ mod tests {
             checksum: dummy_checksum(0),
             compression: CompressionAlgorithm::None,
             chunk_count: 5,
+            metadata: HashMap::new(),
         });
         let bytes2 = idx2
             .to_bytes(compute_index_size(idx2.capacity))
             .expect("serialize");
-        assert!(SegmentIndex::from_bytes(&bytes2).is_ok());
+        assert!(SegmentIndex::from_bytes(&bytes2, VAULT_VERSION).is_ok());
     }
 
     #[test]
@@ -1757,6 +1926,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             0,
+            HashMap::new(),
         )
         .expect("entry");
         assert!(!mono.is_streaming());
@@ -1769,6 +1939,7 @@ mod tests {
             dummy_checksum(0),
             CompressionAlgorithm::None,
             1,
+            HashMap::new(),
         )
         .expect("entry");
         assert!(stream.is_streaming());

@@ -18,7 +18,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'M-Security v0.3.4',
+      title: 'M-Security v0.3.5',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const DemoHome(),
     );
@@ -607,12 +607,14 @@ class _VaultTabState extends State<_VaultTab> {
   final _segName = TextEditingController(text: 'secret.txt');
   final _segData = TextEditingController(text: 'Vault data here');
   final _streamSizeKb = TextEditingController(text: '512');
+  final _metadataCtrl = TextEditingController(text: 'mime=text/plain');
   String _status = '';
   List<String> _segments = [];
   String _readResult = '';
   String _capacityInfo = '';
   String _healthInfo = '';
   String _defragInfo = '';
+  String _parallelInfo = '';
   double _streamProgress = 0;
   bool _loading = false;
   bool _vaultOpen = false;
@@ -692,13 +694,28 @@ class _VaultTabState extends State<_VaultTab> {
       } else if (_compAlgo == 'Brotli') {
         comp = const CompressionConfig(algorithm: CompressionAlgorithm.brotli);
       }
+      // Parse "key=value, key2=value2" into metadata map
+      Map<String, String>? meta;
+      if (_metadataCtrl.text.trim().isNotEmpty) {
+        meta = {};
+        for (final pair in _metadataCtrl.text.split(',')) {
+          final kv = pair.split('=');
+          if (kv.length == 2) {
+            meta[kv[0].trim()] = kv[1].trim();
+          }
+        }
+        if (meta.isEmpty) meta = null;
+      }
       await VaultService.write(
         handle: _handle!,
         name: _segName.text,
         data: data,
         compression: comp,
+        metadata: meta,
       );
-      _status = 'Wrote "${_segName.text}" (${data.length}B, $_compAlgo)';
+      final metaLabel = meta != null ? ', ${meta.length} tags' : '';
+      _status =
+          'Wrote "${_segName.text}" (${data.length}B, $_compAlgo$metaLabel)';
       await _refreshList();
       await _refreshCapacity();
     } catch (e) {
@@ -711,13 +728,17 @@ class _VaultTabState extends State<_VaultTab> {
     if (!_vaultOpen || _handle == null) return;
     setState(() => _loading = true);
     try {
-      final data = await VaultService.read(handle: _handle!, name: name);
-      // Try decoding as UTF-8, fallback to hex
+      final result = await VaultService.read(handle: _handle!, name: name);
+      String dataStr;
       try {
-        _readResult = '[$name] ${utf8.decode(data)}';
+        dataStr = utf8.decode(result.data);
       } catch (_) {
-        _readResult = '[$name] ${_hex(data)}';
+        dataStr = _hex(result.data);
       }
+      final metaStr = result.metadata.isNotEmpty
+          ? '\nMetadata: ${result.metadata.entries.map((e) => '${e.key}=${e.value}').join(', ')}'
+          : '';
+      _readResult = '[$name] $dataStr$metaStr';
     } catch (e) {
       _readResult = 'Error reading "$name": $e';
     }
@@ -821,6 +842,87 @@ class _VaultTabState extends State<_VaultTab> {
           'in ${chunks.length} chunks — ${match ? "PASS" : "FAIL"}';
     } catch (e) {
       _status = 'Error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _renameSegment(String oldName) async {
+    if (!_vaultOpen || _handle == null) return;
+    final controller = TextEditingController(text: oldName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename Segment'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'New name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == oldName) return;
+    setState(() => _loading = true);
+    try {
+      await VaultService.renameSegment(
+        handle: _handle!,
+        oldName: oldName,
+        newName: newName,
+      );
+      _status = 'Renamed "$oldName" → "$newName"';
+      await _refreshList();
+    } catch (e) {
+      _status = 'Rename error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _flushIndex() async {
+    if (!_vaultOpen || _handle == null) return;
+    setState(() => _loading = true);
+    try {
+      await VaultService.flush(handle: _handle!);
+      _status = 'Index flushed to disk';
+    } catch (e) {
+      _status = 'Flush error: $e';
+    }
+    setState(() => _loading = false);
+  }
+
+  Future<void> _parallelReadAll() async {
+    if (!_vaultOpen || _handle == null || _segments.isEmpty) return;
+    setState(() => _loading = true);
+    try {
+      final results = await VaultService.readParallel(
+        handle: _handle!,
+        names: _segments,
+      );
+      final ok = results.where((r) => r.error == null).length;
+      final fail = results.where((r) => r.error != null).length;
+      final totalBytes = results.fold<int>(0, (sum, r) => sum + r.data.length);
+      final details = results
+          .map((r) {
+            if (r.error != null) return '  ${r.name}: ERROR ${r.error}';
+            return '  ${r.name}: ${_fmtBytes(BigInt.from(r.data.length))}';
+          })
+          .join('\n');
+      _parallelInfo =
+          '$ok OK, $fail failed — ${_fmtBytes(BigInt.from(totalBytes))} total\n$details';
+      _status = 'Parallel read: $ok/${results.length} segments';
+    } catch (e) {
+      _parallelInfo = 'Error: $e';
     }
     setState(() => _loading = false);
   }
@@ -1089,6 +1191,15 @@ class _VaultTabState extends State<_VaultTab> {
             onSelectionChanged: (s) => setState(() => _compAlgo = s.first),
           ),
           const SizedBox(height: 8),
+          TextField(
+            controller: _metadataCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Metadata (key=val, key2=val2)',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: _loading ? null : _writeSegment,
             icon: const Icon(Icons.save, size: 18),
@@ -1123,6 +1234,11 @@ class _VaultTabState extends State<_VaultTab> {
                     onPressed: () => _readSegment(name),
                   ),
                   IconButton(
+                    icon: const Icon(Icons.drive_file_rename_outline, size: 20),
+                    tooltip: 'Rename',
+                    onPressed: () => _renameSegment(name),
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                     tooltip: 'Delete',
                     onPressed: () => _deleteSegment(name),
@@ -1152,6 +1268,13 @@ class _VaultTabState extends State<_VaultTab> {
                   child: const Text('Defrag'),
                 ),
               ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: _loading ? null : _flushIndex,
+                  child: const Text('Flush'),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1177,6 +1300,14 @@ class _VaultTabState extends State<_VaultTab> {
           ),
           if (_healthInfo.isNotEmpty) _ResultCard('Health', _healthInfo),
           if (_defragInfo.isNotEmpty) _ResultCard('Defrag', _defragInfo),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            onPressed: _loading || _segments.isEmpty ? null : _parallelReadAll,
+            icon: const Icon(Icons.read_more, size: 18),
+            label: const Text('Parallel Read All'),
+          ),
+          if (_parallelInfo.isNotEmpty)
+            _ResultCard('Parallel Read', _parallelInfo),
 
           const Divider(height: 24),
 
