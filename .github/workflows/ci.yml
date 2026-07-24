@@ -69,11 +69,12 @@ jobs:
       - run: cd example && flutter build apk --release
 
   build-ios:
-    name: iOS build
+    name: Apple builds
     needs: [rust, dart]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - run: bash cargokit/test_build_pod_logs.sh static
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -87,7 +88,15 @@ jobs:
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
+      - name: Verify raw Apple build helper logs
+        run: bash cargokit/test_build_pod_logs.sh build "$RUNNER_TEMP/apple-build-logs"
       - run: cd example && flutter build ios --simulator --debug
+      - run: cd example && flutter build macos --debug
+      - name: Retain redacted Apple build logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-build-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/apple-build-logs
 
   build-linux:
     name: Linux build
