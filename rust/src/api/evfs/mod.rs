@@ -1450,7 +1450,7 @@ pub fn vault_rotate_key(
     mut new_key: Vec<u8>,
 ) -> Result<VaultHandle, CryptoError> {
     // We acquire a lock on both the current vault and the new vault that we do the transition with.
-    let temp_path = format!("{}.rotating", &handle.path);
+    let temp_path = format!("{}.rotating", handle.path);
 
     // Clean up a stale .rotating file from a previous failed rotation so that
     // create_new(true) below doesn't fail.
