@@ -11,7 +11,8 @@ NEW_PATH=`echo $PATH | tr ":" "\n" | grep -v "Contents/Developer/" | tr "\n" ":"
 
 export PATH=${NEW_PATH%?} # remove trailing :
 
-env
+printf 'Cargokit Apple build: platform=%s architectures=%s configuration=%s\n' \
+  "$PLATFORM_NAME" "$ARCHS" "$CONFIGURATION"
 
 # Platform name (macosx, iphoneos, iphonesimulator)
 export CARGOKIT_DARWIN_PLATFORM_NAME=$PLATFORM_NAME
