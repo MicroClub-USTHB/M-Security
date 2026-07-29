@@ -7,7 +7,9 @@ import '../../core/error.dart';
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `params`
+// These functions are ignored because they are not marked as `pub`: `as_bytes`, `malformed_error`, `new`, `params`, `parse_within_policy`, `policy_error`, `scan_b64_len`, `scan_decimal`, `scan_phc`, `scan_work_factors`, `try_acquire`, `verify_within_policy`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `PasswordGuard`, `VerificationPermit`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `drop`, `drop`
 
 /// Hash a password using Argon2id with the given preset.
 ///
@@ -36,6 +38,14 @@ Future<String> argon2IdHashWithSalt({
 );
 
 /// Verify a password against an Argon2id PHC hash string.
+///
+/// The hash must be Argon2id version 19 within the published verification
+/// limits, and the password must be at most 1024 UTF-8 bytes. A hash outside
+/// those limits returns `Err(CryptoError::Argon2PolicyViolation)`, and one that
+/// is not a well-formed PHC string returns `Err(CryptoError::InvalidParameter)`.
+/// Both come back before any Argon2 memory is reserved. One verification runs
+/// at a time; a caller arriving during another one gets
+/// `Err(CryptoError::Argon2VerificationBusy)` rather than waiting.
 ///
 /// Returns `Ok(())` if the password matches, or
 /// `Err(CryptoError::AuthenticationFailed)` if it does not.

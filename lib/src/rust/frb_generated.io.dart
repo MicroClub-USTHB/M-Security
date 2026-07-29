@@ -693,6 +693,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       wireObj.kind.ImportFailed.field0 = pre_field0;
       return;
     }
+    if (apiObj is CryptoError_Argon2PolicyViolation) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 18;
+      wireObj.kind.Argon2PolicyViolation.field0 = pre_field0;
+      return;
+    }
+    if (apiObj is CryptoError_Argon2VerificationBusy) {
+      wireObj.tag = 19;
+      return;
+    }
   }
 
   @protected
@@ -2795,6 +2805,10 @@ final class wire_cst_CryptoError_ImportFailed extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
 }
 
+final class wire_cst_CryptoError_Argon2PolicyViolation extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
 final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_InvalidKeyLength InvalidKeyLength;
 
@@ -2823,6 +2837,8 @@ final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_ExportFailed ExportFailed;
 
   external wire_cst_CryptoError_ImportFailed ImportFailed;
+
+  external wire_cst_CryptoError_Argon2PolicyViolation Argon2PolicyViolation;
 }
 
 final class wire_cst_crypto_error extends ffi.Struct {
@@ -2894,6 +2910,24 @@ final class wire_cst_vault_health_info extends ffi.Struct {
   @ffi.Bool()
   external bool is_consistent;
 }
+
+const int MAX_VERIFY_PHC_BYTES = 1024;
+
+const int MAX_VERIFY_PASSWORD_BYTES = 1024;
+
+const int MAX_VERIFY_MEMORY_KIB = 262144;
+
+const int MAX_VERIFY_ITERATIONS = 4;
+
+const int MAX_VERIFY_LANES = 8;
+
+const int MIN_VERIFY_SALT_BYTES = 8;
+
+const int MAX_VERIFY_SALT_BYTES = 64;
+
+const int MIN_VERIFY_OUTPUT_BYTES = 16;
+
+const int MAX_VERIFY_OUTPUT_BYTES = 64;
 
 const int DEFAULT_LEVEL = 3;
 

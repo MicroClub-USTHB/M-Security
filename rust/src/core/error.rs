@@ -58,6 +58,12 @@ pub enum CryptoError {
 
     #[error("Import failed: {0}")]
     ImportFailed(String),
+
+    #[error("Argon2 policy violation: {0}")]
+    Argon2PolicyViolation(String),
+
+    #[error("Another Argon2 verification is already in progress")]
+    Argon2VerificationBusy,
 }
 
 impl From<std::io::Error> for CryptoError {

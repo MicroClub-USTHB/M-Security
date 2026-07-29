@@ -3,6 +3,8 @@
 //! This module contains the foundational types used throughout the crate.
 //! It is not exposed to FRB - only api/ modules are scanned for bindings.
 
+#[cfg(test)]
+pub mod alloc_probe;
 pub mod compression;
 pub mod error;
 pub mod evfs;

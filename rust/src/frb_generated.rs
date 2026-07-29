@@ -2145,6 +2145,13 @@ impl SseDecode for crate::core::error::CryptoError {
                 let mut var_field0 = <String>::sse_decode(deserializer);
                 return crate::core::error::CryptoError::ImportFailed(var_field0);
             }
+            18 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::Argon2PolicyViolation(var_field0);
+            }
+            19 => {
+                return crate::core::error::CryptoError::Argon2VerificationBusy;
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2594,6 +2601,10 @@ impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
             crate::core::error::CryptoError::ImportFailed(field0) => {
                 [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
+            crate::core::error::CryptoError::Argon2PolicyViolation(field0) => {
+                [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::core::error::CryptoError::Argon2VerificationBusy => [19.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -2939,6 +2950,13 @@ impl SseEncode for crate::core::error::CryptoError {
             crate::core::error::CryptoError::ImportFailed(field0) => {
                 <i32>::sse_encode(17, serializer);
                 <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::Argon2PolicyViolation(field0) => {
+                <i32>::sse_encode(18, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::core::error::CryptoError::Argon2VerificationBusy => {
+                <i32>::sse_encode(19, serializer);
             }
             _ => {
                 unimplemented!("");
@@ -3377,6 +3395,11 @@ mod io {
                     let ans = unsafe { self.kind.ImportFailed };
                     crate::core::error::CryptoError::ImportFailed(ans.field0.cst_decode())
                 }
+                18 => {
+                    let ans = unsafe { self.kind.Argon2PolicyViolation };
+                    crate::core::error::CryptoError::Argon2PolicyViolation(ans.field0.cst_decode())
+                }
+                19 => crate::core::error::CryptoError::Argon2VerificationBusy,
                 _ => unreachable!(),
             }
         }
@@ -4290,6 +4313,7 @@ mod io {
         KeyRotationFailed: wire_cst_CryptoError_KeyRotationFailed,
         ExportFailed: wire_cst_CryptoError_ExportFailed,
         ImportFailed: wire_cst_CryptoError_ImportFailed,
+        Argon2PolicyViolation: wire_cst_CryptoError_Argon2PolicyViolation,
         nil__: (),
     }
     #[repr(C)]
@@ -4362,6 +4386,11 @@ mod io {
     #[repr(C)]
     #[derive(Clone, Copy)]
     pub struct wire_cst_CryptoError_ImportFailed {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_Argon2PolicyViolation {
         field0: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
@@ -4547,6 +4576,10 @@ mod web {
                 15 => crate::core::error::CryptoError::KeyRotationFailed(self_.get(1).cst_decode()),
                 16 => crate::core::error::CryptoError::ExportFailed(self_.get(1).cst_decode()),
                 17 => crate::core::error::CryptoError::ImportFailed(self_.get(1).cst_decode()),
+                18 => crate::core::error::CryptoError::Argon2PolicyViolation(
+                    self_.get(1).cst_decode(),
+                ),
+                19 => crate::core::error::CryptoError::Argon2VerificationBusy,
                 _ => unreachable!(),
             }
         }
