@@ -2352,6 +2352,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_ExportFailed(dco_decode_String(raw[1]));
       case 17:
         return CryptoError_ImportFailed(dco_decode_String(raw[1]));
+      case 18:
+        return CryptoError_Argon2PolicyViolation(dco_decode_String(raw[1]));
+      case 19:
+        return CryptoError_Argon2VerificationBusy();
       default:
         throw Exception("unreachable");
     }
@@ -2812,6 +2816,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 17:
         var var_field0 = sse_decode_String(deserializer);
         return CryptoError_ImportFailed(var_field0);
+      case 18:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_Argon2PolicyViolation(var_field0);
+      case 19:
+        return CryptoError_Argon2VerificationBusy();
       default:
         throw UnimplementedError('');
     }
@@ -3504,6 +3513,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case CryptoError_ImportFailed(field0: final field0):
         sse_encode_i_32(17, serializer);
         sse_encode_String(field0, serializer);
+      case CryptoError_Argon2PolicyViolation(field0: final field0):
+        sse_encode_i_32(18, serializer);
+        sse_encode_String(field0, serializer);
+      case CryptoError_Argon2VerificationBusy():
+        sse_encode_i_32(19, serializer);
     }
   }
 

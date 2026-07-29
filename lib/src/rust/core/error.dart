@@ -47,4 +47,8 @@ sealed class CryptoError with _$CryptoError implements FrbException {
       CryptoError_ExportFailed;
   const factory CryptoError.importFailed(String field0) =
       CryptoError_ImportFailed;
+  const factory CryptoError.argon2PolicyViolation(String field0) =
+      CryptoError_Argon2PolicyViolation;
+  const factory CryptoError.argon2VerificationBusy() =
+      CryptoError_Argon2VerificationBusy;
 }

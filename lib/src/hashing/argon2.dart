@@ -1,9 +1,15 @@
 // Public API wrapper for Argon2id hashing with platform-aware defaults.
 // Uses bool.fromEnvironment for compile-time preset selection.
 
+import 'dart:convert';
+
 import '../rust/api/hashing/argon2.dart' as ffi;
+import '../rust/core/error.dart';
 
 export '../rust/api/hashing/argon2.dart' show Argon2Preset;
+
+/// Largest password [argon2IdVerify] accepts, in UTF-8 bytes.
+const int maxArgon2VerifyPasswordBytes = 1024;
 
 // Compile-time flag: pass -DIS_DESKTOP=true for desktop/server builds
 const bool _isDesktop = bool.fromEnvironment('IS_DESKTOP');
@@ -31,7 +37,22 @@ Future<String> argon2IdHashWithSalt({
 }) => ffi.argon2IdHashWithSalt(password: password, salt: salt, preset: preset);
 
 /// Verify a password against an Argon2id PHC hash string.
+///
+/// Throws [CryptoError.argon2PolicyViolation] if the password is longer than
+/// [maxArgon2VerifyPasswordBytes]. The native side applies the same ceiling,
+/// along with the limits on the hash itself.
 Future<void> argon2IdVerify({
   required String phcHash,
   required String password,
-}) => ffi.argon2IdVerify(phcHash: phcHash, password: password);
+}) async {
+  // UTF-8 never spends fewer bytes than the string has UTF-16 code units, so
+  // the cheap length test runs first and keeps the encoding below it bounded.
+  if (password.length > maxArgon2VerifyPasswordBytes ||
+      utf8.encode(password).length > maxArgon2VerifyPasswordBytes) {
+    throw CryptoError.argon2PolicyViolation(
+      'password is longer than $maxArgon2VerifyPasswordBytes UTF-8 bytes',
+    );
+  }
+
+  return ffi.argon2IdVerify(phcHash: phcHash, password: password);
+}

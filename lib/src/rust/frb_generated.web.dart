@@ -532,6 +532,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     if (raw is CryptoError_ImportFailed) {
       return [17, cst_encode_String(raw.field0)].jsify()!;
     }
+    if (raw is CryptoError_Argon2PolicyViolation) {
+      return [18, cst_encode_String(raw.field0)].jsify()!;
+    }
+    if (raw is CryptoError_Argon2VerificationBusy) {
+      return [19].jsify()!;
+    }
 
     throw Exception('unreachable');
   }
