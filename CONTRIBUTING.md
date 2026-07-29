@@ -115,8 +115,7 @@ M-Security/
 │       │   ├── encryption/
 │       │   │   ├── mod.rs         # CipherHandle, encrypt/decrypt, key gen
 │       │   │   ├── aes_gcm.rs     # AES-256-GCM implementation
-│       │   │   ├── chacha20.rs    # ChaCha20-Poly1305 implementation
-│       │   │   └── noop.rs        # Testing-only cipher (behind `testing` feature)
+│       │   │   └── chacha20.rs    # ChaCha20-Poly1305 implementation
 │       │   ├── hashing/
 │       │   │   ├── mod.rs         # HasherHandle, blake3_hash, sha3_hash
 │       │   │   ├── argon2.rs      # Argon2id with presets
