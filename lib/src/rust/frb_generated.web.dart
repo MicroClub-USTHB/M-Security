@@ -1068,10 +1068,6 @@ class RustLibWire implements BaseWire {
     key,
   );
 
-  void wire__crate__api__encryption__create_noop_encryption(
-    NativePortType port_,
-  ) => wasmModule.wire__crate__api__encryption__create_noop_encryption(port_);
-
   void wire__crate__api__hashing__create_sha3(NativePortType port_) =>
       wasmModule.wire__crate__api__hashing__create_sha3(port_);
 
@@ -1553,10 +1549,6 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
   external void wire__crate__api__encryption__create_chacha20_poly1305(
     NativePortType port_,
     JSAny key,
-  );
-
-  external void wire__crate__api__encryption__create_noop_encryption(
-    NativePortType port_,
   );
 
   external void wire__crate__api__hashing__create_sha3(NativePortType port_);

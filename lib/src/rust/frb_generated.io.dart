@@ -1363,18 +1363,6 @@ class RustLibWire implements BaseWire {
             void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_loose>)
           >();
 
-  void wire__crate__api__encryption__create_noop_encryption(int port_) {
-    return _wire__crate__api__encryption__create_noop_encryption(port_);
-  }
-
-  late final _wire__crate__api__encryption__create_noop_encryptionPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-        'frbgen_m_security_wire__crate__api__encryption__create_noop_encryption',
-      );
-  late final _wire__crate__api__encryption__create_noop_encryption =
-      _wire__crate__api__encryption__create_noop_encryptionPtr
-          .asFunction<void Function(int)>();
-
   void wire__crate__api__hashing__create_sha3(int port_) {
     return _wire__crate__api__hashing__create_sha3(port_);
   }

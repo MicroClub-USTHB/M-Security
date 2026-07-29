@@ -2,7 +2,9 @@
 
 pub mod aes_gcm;
 pub mod chacha20;
-pub mod noop;
+
+#[cfg(test)]
+mod tests;
 
 use crate::core::error::CryptoError;
 use crate::core::traits::Encryption;
@@ -36,22 +38,6 @@ impl CipherHandle {
     /// Get the algorithm_id for internal use (streaming header).
     pub(crate) fn algorithm_id(&self) -> &'static str {
         self.inner.algorithm_id()
-    }
-}
-
-/// Create a noop encryption handle (for testing FRB opaque pattern).
-///
-/// # Panics
-/// Panics at runtime unless the `testing` feature is enabled.
-/// **Never** enable the `testing` feature in production builds.
-pub fn create_noop_encryption() -> CipherHandle {
-    #[cfg(feature = "testing")]
-    {
-        CipherHandle::new(Box::new(noop::NoopEncryption {}))
-    }
-    #[cfg(not(feature = "testing"))]
-    {
-        panic!("noop cipher is disabled — enable the `testing` feature to use it")
     }
 }
 

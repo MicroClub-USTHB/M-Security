@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 15652661;
+  int get rustContentHash => 1392838074;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -129,8 +129,6 @@ abstract class RustLibApi extends BaseApi {
   Future<CipherHandle> crateApiEncryptionCreateChacha20Poly1305({
     required List<int> key,
   });
-
-  Future<CipherHandle> crateApiEncryptionCreateNoopEncryption();
 
   Future<HasherHandle> crateApiHashingCreateSha3();
 
@@ -691,30 +689,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         debugName: "create_chacha20_poly1305",
         argNames: ["key"],
       );
-
-  @override
-  Future<CipherHandle> crateApiEncryptionCreateNoopEncryption() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          return wire.wire__crate__api__encryption__create_noop_encryption(
-            port_,
-          );
-        },
-        codec: DcoCodec(
-          decodeSuccessData:
-              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiEncryptionCreateNoopEncryptionConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionCreateNoopEncryptionConstMeta =>
-      const TaskConstMeta(debugName: "create_noop_encryption", argNames: []);
 
   @override
   Future<HasherHandle> crateApiHashingCreateSha3() {

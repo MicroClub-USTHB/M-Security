@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 15652661;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1392838074;
 
 // Section: executor
 
@@ -309,26 +309,6 @@ fn wire__crate__api__encryption__create_chacha20_poly1305_impl(
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let output_ok = crate::api::encryption::create_chacha20_poly1305(api_key)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__create_noop_encryption_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "create_noop_encryption",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            move |context| {
-                transform_result_dco::<_, _, ()>((move || {
-                    let output_ok =
-                        Result::<_, ()>::Ok(crate::api::encryption::create_noop_encryption())?;
                     Ok(output_ok)
                 })())
             }
@@ -3722,13 +3702,6 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__encryption__create_noop_encryption(
-        port_: i64,
-    ) {
-        wire__crate__api__encryption__create_noop_encryption_impl(port_)
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__hashing__create_sha3(port_: i64) {
         wire__crate__api__hashing__create_sha3_impl(port_)
     }
@@ -5040,13 +5013,6 @@ mod web {
         key: Box<[u8]>,
     ) {
         wire__crate__api__encryption__create_chacha20_poly1305_impl(port_, key)
-    }
-
-    #[wasm_bindgen]
-    pub fn wire__crate__api__encryption__create_noop_encryption(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-    ) {
-        wire__crate__api__encryption__create_noop_encryption_impl(port_)
     }
 
     #[wasm_bindgen]
