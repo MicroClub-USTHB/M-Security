@@ -171,7 +171,7 @@ fn test_parallel_read_chacha20() {
     let path = vault_path(&dir);
 
     let mut handle =
-        vault_create(path, test_key(), "chacha20-poly1305".into(), 4_194_304).expect("create");
+        optin_create(path, test_key(), "chacha20-poly1305".into(), 4_194_304).expect("create");
 
     vault_write(&mut handle, "x".into(), b"chacha-data".to_vec(), None, None).expect("write");
     vault_write(&mut handle, "y".into(), b"poly1305-data".to_vec(), None, None).expect("write");

@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `new`, `refresh_mmap`, `slice`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `VaultMmap`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `drop`, `eq`, `eq`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `drop`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
 
 // Rust type: RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>
 abstract class VaultHandle implements RustOpaqueInterface {
@@ -90,6 +90,24 @@ class SegmentResult {
           name == other.name &&
           data == other.data &&
           error == other.error;
+}
+
+/// What a caller wants done about the unauthenticated v1/v2 vault format.
+///
+/// Vaults written by this and every earlier release derive their keys without a
+/// per-vault salt, repeat encryption nonces across vaults and copied files, do
+/// not authenticate their structural metadata and are not crash-atomic. Every
+/// entry point that takes a vault path therefore refuses by default, and a
+/// caller has to name the risk to reach one.
+///
+/// Opting in does not make an existing vault safe and does not change its bytes.
+enum UnsafeLegacyEvfsPolicy {
+  /// Refuse before the path is opened, created, locked or recovered. Every
+  /// wrapper defaults to this, and it is what a zeroed wire value decodes to.
+  deny,
+
+  /// Work against the unauthenticated v1/v2 format anyway.
+  allowUnauthenticatedV1V2,
 }
 
 /// Capacity info returned to callers.

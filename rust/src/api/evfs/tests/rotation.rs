@@ -30,7 +30,7 @@ fn test_rotate_key_old_key_fails() {
     let path = vault_path(&dir);
 
     {
-        let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let mut handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_write(
             &mut handle,
@@ -45,10 +45,10 @@ fn test_rotate_key_old_key_fails() {
     }
 
     // Old key must be rejected
-    assert!(vault_open(path.clone(), test_key()).is_err());
+    assert!(optin_open(path.clone(), test_key()).is_err());
 
     // New key must still work and data must be intact
-    let mut handle = vault_open(path, test_key2()).expect("open with new key");
+    let mut handle = optin_open(path, test_key2()).expect("open with new key");
     assert_eq!(
         vault_read(&mut handle, "secret.txt".into()).expect("read").data,
         b"top secret"
@@ -126,7 +126,7 @@ fn test_rotate_key_crash_recovery_rotating_cleaned_up() {
     let path = vault_path(&dir);
 
     {
-        let handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_close(handle).expect("close");
     }
@@ -137,7 +137,7 @@ fn test_rotate_key_crash_recovery_rotating_cleaned_up() {
     assert!(std::path::Path::new(&rotating_path).exists());
 
     // vault_open must silently remove the orphan and succeed normally.
-    let handle = vault_open(path, test_key()).expect("open after simulated crash");
+    let handle = optin_open(path, test_key()).expect("open after simulated crash");
     vault_close(handle).expect("close");
 
     assert!(
@@ -173,7 +173,7 @@ fn test_rotate_key_chacha20() {
         .to_string();
 
     let mut handle =
-        vault_create(path, test_key(), "chacha20-poly1305".into(), 1_048_576).expect("create");
+        optin_create(path, test_key(), "chacha20-poly1305".into(), 1_048_576).expect("create");
     vault_write(
         &mut handle,
         "msg.txt".into(),

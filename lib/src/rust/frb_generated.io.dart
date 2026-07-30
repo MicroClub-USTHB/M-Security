@@ -199,6 +199,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  UnsafeLegacyEvfsPolicy dco_decode_unsafe_legacy_evfs_policy(dynamic raw);
+
+  @protected
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
@@ -384,6 +387,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  UnsafeLegacyEvfsPolicy sse_decode_unsafe_legacy_evfs_policy(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
@@ -703,6 +711,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       wireObj.tag = 19;
       return;
     }
+    if (apiObj is CryptoError_UnsafeLegacyFormatDenied) {
+      wireObj.tag = 20;
+      return;
+    }
+    if (apiObj is CryptoError_DisabledFormat) {
+      var pre_field0 = cst_encode_String(apiObj.field0);
+      wireObj.tag = 21;
+      wireObj.kind.DisabledFormat.field0 = pre_field0;
+      return;
+    }
   }
 
   @protected
@@ -854,6 +872,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void cst_encode_unit(void raw);
+
+  @protected
+  int cst_encode_unsafe_legacy_evfs_policy(UnsafeLegacyEvfsPolicy raw);
 
   @protected
   void sse_encode_AnyhowException(
@@ -1065,6 +1086,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_unsafe_legacy_evfs_policy(
+    UnsafeLegacyEvfsPolicy self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
@@ -1753,174 +1780,6 @@ class RustLibWire implements BaseWire {
             void Function(int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
           >();
 
-  void wire__crate__api__streaming__stream_compress_encrypt_file(
-    int port_,
-    int cipher,
-    ffi.Pointer<wire_cst_compression_config> compression,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
-  ) {
-    return _wire__crate__api__streaming__stream_compress_encrypt_file(
-      port_,
-      cipher,
-      compression,
-      input_path,
-      output_path,
-      progress_sink,
-    );
-  }
-
-  late final _wire__crate__api__streaming__stream_compress_encrypt_filePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.UintPtr,
-            ffi.Pointer<wire_cst_compression_config>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-          )
-        >
-      >(
-        'frbgen_m_security_wire__crate__api__streaming__stream_compress_encrypt_file',
-      );
-  late final _wire__crate__api__streaming__stream_compress_encrypt_file =
-      _wire__crate__api__streaming__stream_compress_encrypt_filePtr
-          .asFunction<
-            void Function(
-              int,
-              int,
-              ffi.Pointer<wire_cst_compression_config>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            )
-          >();
-
-  void wire__crate__api__streaming__stream_decrypt_decompress_file(
-    int port_,
-    int cipher,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
-  ) {
-    return _wire__crate__api__streaming__stream_decrypt_decompress_file(
-      port_,
-      cipher,
-      input_path,
-      output_path,
-      progress_sink,
-    );
-  }
-
-  late final _wire__crate__api__streaming__stream_decrypt_decompress_filePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.UintPtr,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-          )
-        >
-      >(
-        'frbgen_m_security_wire__crate__api__streaming__stream_decrypt_decompress_file',
-      );
-  late final _wire__crate__api__streaming__stream_decrypt_decompress_file =
-      _wire__crate__api__streaming__stream_decrypt_decompress_filePtr
-          .asFunction<
-            void Function(
-              int,
-              int,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            )
-          >();
-
-  void wire__crate__api__streaming__stream_decrypt_file(
-    int port_,
-    int cipher,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
-  ) {
-    return _wire__crate__api__streaming__stream_decrypt_file(
-      port_,
-      cipher,
-      input_path,
-      output_path,
-      progress_sink,
-    );
-  }
-
-  late final _wire__crate__api__streaming__stream_decrypt_filePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.UintPtr,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-          )
-        >
-      >('frbgen_m_security_wire__crate__api__streaming__stream_decrypt_file');
-  late final _wire__crate__api__streaming__stream_decrypt_file =
-      _wire__crate__api__streaming__stream_decrypt_filePtr
-          .asFunction<
-            void Function(
-              int,
-              int,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            )
-          >();
-
-  void wire__crate__api__streaming__stream_encrypt_file(
-    int port_,
-    int cipher,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> input_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> output_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> progress_sink,
-  ) {
-    return _wire__crate__api__streaming__stream_encrypt_file(
-      port_,
-      cipher,
-      input_path,
-      output_path,
-      progress_sink,
-    );
-  }
-
-  late final _wire__crate__api__streaming__stream_encrypt_filePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.UintPtr,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-          )
-        >
-      >('frbgen_m_security_wire__crate__api__streaming__stream_encrypt_file');
-  late final _wire__crate__api__streaming__stream_encrypt_file =
-      _wire__crate__api__streaming__stream_encrypt_filePtr
-          .asFunction<
-            void Function(
-              int,
-              int,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            )
-          >();
-
   void wire__crate__api__streaming__stream_hash_file(
     int port_,
     int hasher,
@@ -1987,6 +1846,7 @@ class RustLibWire implements BaseWire {
     ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
     ffi.Pointer<wire_cst_list_prim_u_8_strict> algorithm,
     int capacity_bytes,
+    int unsafe_legacy_policy,
   ) {
     return _wire__crate__api__evfs__vault_create(
       port_,
@@ -1994,6 +1854,7 @@ class RustLibWire implements BaseWire {
       key,
       algorithm,
       capacity_bytes,
+      unsafe_legacy_policy,
     );
   }
 
@@ -2006,6 +1867,7 @@ class RustLibWire implements BaseWire {
             ffi.Pointer<wire_cst_list_prim_u_8_loose>,
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             ffi.Uint64,
+            ffi.Int32,
           )
         >
       >('frbgen_m_security_wire__crate__api__evfs__vault_create');
@@ -2017,6 +1879,7 @@ class RustLibWire implements BaseWire {
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_loose>,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
+              int,
               int,
             )
           >();
@@ -2057,42 +1920,6 @@ class RustLibWire implements BaseWire {
             void Function(int, int, ffi.Pointer<wire_cst_list_prim_u_8_strict>)
           >();
 
-  void wire__crate__api__evfs__vault_export(
-    int port_,
-    int handle,
-    ffi.Pointer<wire_cst_list_prim_u_8_loose> wrapping_key,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> export_path,
-  ) {
-    return _wire__crate__api__evfs__vault_export(
-      port_,
-      handle,
-      wrapping_key,
-      export_path,
-    );
-  }
-
-  late final _wire__crate__api__evfs__vault_exportPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.UintPtr,
-            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-          )
-        >
-      >('frbgen_m_security_wire__crate__api__evfs__vault_export');
-  late final _wire__crate__api__evfs__vault_export =
-      _wire__crate__api__evfs__vault_exportPtr
-          .asFunction<
-            void Function(
-              int,
-              int,
-              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            )
-          >();
-
   void wire__crate__api__evfs__vault_flush(int port_, int handle) {
     return _wire__crate__api__evfs__vault_flush(port_, handle);
   }
@@ -2117,54 +1944,6 @@ class RustLibWire implements BaseWire {
       _wire__crate__api__evfs__vault_healthPtr
           .asFunction<void Function(int, int)>();
 
-  void wire__crate__api__evfs__vault_import(
-    int port_,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> archive_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_loose> wrapping_key,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> dest_path,
-    ffi.Pointer<wire_cst_list_prim_u_8_loose> new_master_key,
-    ffi.Pointer<wire_cst_list_prim_u_8_strict> algorithm,
-    int capacity_bytes,
-  ) {
-    return _wire__crate__api__evfs__vault_import(
-      port_,
-      archive_path,
-      wrapping_key,
-      dest_path,
-      new_master_key,
-      algorithm,
-      capacity_bytes,
-    );
-  }
-
-  late final _wire__crate__api__evfs__vault_importPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Void Function(
-            ffi.Int64,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-            ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-            ffi.Uint64,
-          )
-        >
-      >('frbgen_m_security_wire__crate__api__evfs__vault_import');
-  late final _wire__crate__api__evfs__vault_import =
-      _wire__crate__api__evfs__vault_importPtr
-          .asFunction<
-            void Function(
-              int,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
-              ffi.Pointer<wire_cst_list_prim_u_8_strict>,
-              int,
-            )
-          >();
-
   void wire__crate__api__evfs__vault_list(int port_, int handle) {
     return _wire__crate__api__evfs__vault_list(port_, handle);
   }
@@ -2181,8 +1960,14 @@ class RustLibWire implements BaseWire {
     int port_,
     ffi.Pointer<wire_cst_list_prim_u_8_strict> path,
     ffi.Pointer<wire_cst_list_prim_u_8_loose> key,
+    int unsafe_legacy_policy,
   ) {
-    return _wire__crate__api__evfs__vault_open(port_, path, key);
+    return _wire__crate__api__evfs__vault_open(
+      port_,
+      path,
+      key,
+      unsafe_legacy_policy,
+    );
   }
 
   late final _wire__crate__api__evfs__vault_openPtr =
@@ -2192,6 +1977,7 @@ class RustLibWire implements BaseWire {
             ffi.Int64,
             ffi.Pointer<wire_cst_list_prim_u_8_strict>,
             ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            ffi.Int32,
           )
         >
       >('frbgen_m_security_wire__crate__api__evfs__vault_open');
@@ -2202,6 +1988,7 @@ class RustLibWire implements BaseWire {
               int,
               ffi.Pointer<wire_cst_list_prim_u_8_strict>,
               ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+              int,
             )
           >();
 
@@ -2809,6 +2596,10 @@ final class wire_cst_CryptoError_Argon2PolicyViolation extends ffi.Struct {
   external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
 }
 
+final class wire_cst_CryptoError_DisabledFormat extends ffi.Struct {
+  external ffi.Pointer<wire_cst_list_prim_u_8_strict> field0;
+}
+
 final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_InvalidKeyLength InvalidKeyLength;
 
@@ -2839,6 +2630,8 @@ final class CryptoErrorKind extends ffi.Union {
   external wire_cst_CryptoError_ImportFailed ImportFailed;
 
   external wire_cst_CryptoError_Argon2PolicyViolation Argon2PolicyViolation;
+
+  external wire_cst_CryptoError_DisabledFormat DisabledFormat;
 }
 
 final class wire_cst_crypto_error extends ffi.Struct {

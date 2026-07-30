@@ -6,6 +6,12 @@ import 'package:integration_test/integration_test.dart';
 import 'package:m_security/src/rust/api/encryption.dart';
 import 'package:m_security/src/rust/frb_generated.dart';
 import 'package:m_security/src/evfs/vault_service.dart';
+import 'package:m_security/src/rust/api/evfs/types.dart';
+import 'package:m_security/src/rust/core/error.dart';
+
+// Every vault here is the unauthenticated v1/v2 format, which VaultService
+// refuses unless the caller says so.
+const _unsafeLegacy = UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +36,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final dataA = Uint8List.fromList(List.generate(500, (i) => i % 256));
@@ -57,6 +64,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await VaultService.write(
@@ -68,14 +76,23 @@ void main() {
       handle = await VaultService.rotateKey(handle: handle, newKey: newKey);
       await VaultService.close(handle: handle);
 
-      // Old key must fail
-      expect(
-        () async => await VaultService.open(path: path, key: key),
+      // Old key must fail. Awaited, because an attempt still in flight holds
+      // the vault lock the next open needs.
+      await expectLater(
+        VaultService.open(
+          path: path,
+          key: key,
+          unsafeLegacyPolicy: _unsafeLegacy,
+        ),
         throwsA(isA<Exception>()),
       );
 
       // New key works
-      final reopened = await VaultService.open(path: path, key: newKey);
+      final reopened = await VaultService.open(
+        path: path,
+        key: newKey,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
       expect(
         (await VaultService.read(handle: reopened, name: 'secret.bin')).data,
         Uint8List.fromList([1, 2, 3]),
@@ -83,127 +100,56 @@ void main() {
       await VaultService.close(handle: reopened);
     });
 
-    test('export-import roundtrip: data matches byte-for-byte', () async {
+    test('export is disabled and writes no archive', () async {
       final vaultPath = '${tempDir.path}/source.vault';
       final archivePath = '${tempDir.path}/export.mvex';
-      final importPath = '${tempDir.path}/imported.vault';
       final key = await generateAes256GcmKey();
       final wrappingKey = await generateAes256GcmKey();
-      final importKey = await generateAes256GcmKey();
 
-      var handle = await VaultService.create(
+      final handle = await VaultService.create(
         path: vaultPath,
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
+      final data = Uint8List.fromList(List.generate(800, (i) => i % 256));
+      await VaultService.write(handle: handle, name: 'file1.dat', data: data);
+
+      await expectLater(
+        VaultService.export(
+          handle: handle,
+          wrappingKey: wrappingKey,
+          exportPath: archivePath,
+        ),
+        throwsA(isA<CryptoError_DisabledFormat>()),
       );
 
-      final data1 = Uint8List.fromList(List.generate(800, (i) => i % 256));
-      final data2 = Uint8List.fromList(List.generate(1200, (i) => (i * 3) % 256));
-      await VaultService.write(handle: handle, name: 'file1.dat', data: data1);
-      await VaultService.write(handle: handle, name: 'file2.dat', data: data2);
-
-      // Export
-      await VaultService.export(
-        handle: handle,
-        wrappingKey: wrappingKey,
-        exportPath: archivePath,
-      );
+      expect(File(archivePath).existsSync(), isFalse);
+      // The vault itself is untouched by the refusal.
+      expect((await VaultService.read(handle: handle, name: 'file1.dat')).data, data);
       await VaultService.close(handle: handle);
-
-      expect(File(archivePath).existsSync(), isTrue);
-
-      // Import into new vault
-      final imported = await VaultService.importVault(
-        archivePath: archivePath,
-        wrappingKey: wrappingKey,
-        destPath: importPath,
-        newMasterKey: importKey,
-        algorithm: 'aes-256-gcm',
-        capacityBytes: 2 * 1024 * 1024,
-      );
-
-      expect((await VaultService.read(handle: imported, name: 'file1.dat')).data, data1);
-      expect((await VaultService.read(handle: imported, name: 'file2.dat')).data, data2);
-
-      await VaultService.close(handle: imported);
     });
 
-    test('import with wrong wrapping key throws', () async {
-      final vaultPath = '${tempDir.path}/wk.vault';
-      final archivePath = '${tempDir.path}/wk.mvex';
-      final key = await generateAes256GcmKey();
-      final wrappingKey = await generateAes256GcmKey();
-      final wrongKey = await generateAes256GcmKey();
+    test('import is disabled and writes no destination vault', () async {
+      final archivePath = '${tempDir.path}/absent.mvex';
+      final importPath = '${tempDir.path}/imported.vault';
 
-      var handle = await VaultService.create(
-        path: vaultPath,
-        key: key,
-        algorithm: 'aes-256-gcm',
-        capacityBytes: 1024 * 1024,
-      );
-      await VaultService.write(
-        handle: handle,
-        name: 'x.bin',
-        data: Uint8List.fromList([42]),
-      );
-      await VaultService.export(
-        handle: handle,
-        wrappingKey: wrappingKey,
-        exportPath: archivePath,
-      );
-      await VaultService.close(handle: handle);
-
-      expect(
-        () async => await VaultService.importVault(
+      await expectLater(
+        VaultService.importVault(
           archivePath: archivePath,
-          wrappingKey: wrongKey,
-          destPath: '${tempDir.path}/bad.vault',
+          wrappingKey: await generateAes256GcmKey(),
+          destPath: importPath,
           newMasterKey: await generateAes256GcmKey(),
           algorithm: 'aes-256-gcm',
-          capacityBytes: 1024 * 1024,
+          capacityBytes: 2 * 1024 * 1024,
         ),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test('large segment (1MB+) survives export-import', () async {
-      final vaultPath = '${tempDir.path}/big.vault';
-      final archivePath = '${tempDir.path}/big.mvex';
-      final importPath = '${tempDir.path}/big_imported.vault';
-      final key = await generateAes256GcmKey();
-      final wrappingKey = await generateAes256GcmKey();
-
-      var handle = await VaultService.create(
-        path: vaultPath,
-        key: key,
-        algorithm: 'aes-256-gcm',
-        capacityBytes: 5 * 1024 * 1024,
+        throwsA(isA<CryptoError_DisabledFormat>()),
       );
 
-      final bigData = Uint8List.fromList(
-        List.generate(1024 * 1024 + 37, (i) => (i * 13) % 256),
-      );
-      await VaultService.write(handle: handle, name: 'big.bin', data: bigData);
-
-      await VaultService.export(
-        handle: handle,
-        wrappingKey: wrappingKey,
-        exportPath: archivePath,
-      );
-      await VaultService.close(handle: handle);
-
-      final imported = await VaultService.importVault(
-        archivePath: archivePath,
-        wrappingKey: wrappingKey,
-        destPath: importPath,
-        newMasterKey: await generateAes256GcmKey(),
-        algorithm: 'aes-256-gcm',
-        capacityBytes: 5 * 1024 * 1024,
-      );
-
-      expect((await VaultService.read(handle: imported, name: 'big.bin')).data, bigData);
-      await VaultService.close(handle: imported);
+      expect(File(importPath).existsSync(), isFalse);
+      expect(File('$importPath.lock').existsSync(), isFalse);
+      expect(File('$importPath.wal').existsSync(), isFalse);
     });
 
     test('multiple sequential rotations', () async {
@@ -217,6 +163,7 @@ void main() {
         key: key1,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([10, 20, 30, 40, 50]);
@@ -232,56 +179,50 @@ void main() {
       await VaultService.close(handle: handle);
 
       // Only key3 works
-      final reopened = await VaultService.open(path: path, key: key3);
+      final reopened = await VaultService.open(
+        path: path,
+        key: key3,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
       expect((await VaultService.read(handle: reopened, name: 'data.bin')).data, data);
       await VaultService.close(handle: reopened);
     });
 
-    test('rotate then export-import the rotated vault', () async {
+    test('a rotated vault stays readable after export is refused', () async {
       final vaultPath = '${tempDir.path}/rot_exp.vault';
       final archivePath = '${tempDir.path}/rot_exp.mvex';
-      final importPath = '${tempDir.path}/rot_exp_imported.vault';
       final key = await generateAes256GcmKey();
       final rotatedKey = await generateAes256GcmKey();
       final wrappingKey = await generateAes256GcmKey();
-      final importKey = await generateAes256GcmKey();
 
       var handle = await VaultService.create(
         path: vaultPath,
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList(List.generate(256, (i) => i));
       await VaultService.write(handle: handle, name: 'payload.bin', data: data);
 
-      // Rotate first
       handle = await VaultService.rotateKey(handle: handle, newKey: rotatedKey);
 
-      // Then export
-      await VaultService.export(
-        handle: handle,
-        wrappingKey: wrappingKey,
-        exportPath: archivePath,
-      );
-      await VaultService.close(handle: handle);
-
-      // Import
-      final imported = await VaultService.importVault(
-        archivePath: archivePath,
-        wrappingKey: wrappingKey,
-        destPath: importPath,
-        newMasterKey: importKey,
-        algorithm: 'aes-256-gcm',
-        capacityBytes: 2 * 1024 * 1024,
+      await expectLater(
+        VaultService.export(
+          handle: handle,
+          wrappingKey: wrappingKey,
+          exportPath: archivePath,
+        ),
+        throwsA(isA<CryptoError_DisabledFormat>()),
       );
 
+      expect(File(archivePath).existsSync(), isFalse);
       expect(
-        (await VaultService.read(handle: imported, name: 'payload.bin')).data,
+        (await VaultService.read(handle: handle, name: 'payload.bin')).data,
         data,
       );
-      await VaultService.close(handle: imported);
+      await VaultService.close(handle: handle);
     });
   });
 }

@@ -639,6 +639,9 @@ class _VaultTabState extends State<_VaultTab> {
         key: _key!,
         algorithm: 'aes-256-gcm',
         capacityBytes: sizeMb * 1024 * 1024,
+        // The demo vault is the unauthenticated v1/v2 format, which the API
+        // refuses unless the caller says so.
+        unsafeLegacyPolicy: UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2,
       );
       _vaultOpen = true;
       _status = 'Vault created (${sizeMb}MB, AES-256-GCM)';
@@ -672,7 +675,11 @@ class _VaultTabState extends State<_VaultTab> {
     if (_vaultPath == null || _key == null) return;
     setState(() => _loading = true);
     try {
-      _handle = await VaultService.open(path: _vaultPath!, key: _key!);
+      _handle = await VaultService.open(
+        path: _vaultPath!,
+        key: _key!,
+        unsafeLegacyPolicy: UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2,
+      );
       _vaultOpen = true;
       _status = 'Vault reopened (WAL recovery ran)';
       await _refreshList();
@@ -1045,10 +1052,8 @@ class _VaultTabState extends State<_VaultTab> {
     }
     setState(() => _loading = true);
     try {
-      if (_vaultOpen && _handle != null) {
-        await VaultService.close(handle: _handle!);
-      }
-
+      // The open vault is left alone: import is disabled, so closing it first
+      // would only strand this screen with a handle it can no longer replace.
       final dir = Directory(_vaultPath!).parent;
       final importPath = '${dir.path}/imported.vault';
       final importKey = await msec.generateAes256GcmKey();

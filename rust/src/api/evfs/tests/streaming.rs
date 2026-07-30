@@ -319,7 +319,7 @@ fn test_stream_write_persist_reopen() {
 
     let data = vec![0xDD; 150_000];
     {
-        let mut handle = vault_create(
+        let mut handle = optin_create(
             path.clone(),
             test_key(),
             "aes-256-gcm".into(),
@@ -331,7 +331,7 @@ fn test_stream_write_persist_reopen() {
     }
 
     // Reopen and verify
-    let mut handle = vault_open(path, test_key()).expect("open");
+    let mut handle = optin_open(path, test_key()).expect("open");
     let readback = vault_read(&mut handle, "persist.bin".into()).expect("read").data;
     assert_eq!(readback, data);
 
@@ -347,7 +347,7 @@ fn test_stream_write_chacha20() {
         .to_str()
         .expect("path")
         .to_string();
-    let mut handle = vault_create(
+    let mut handle = optin_create(
         path,
         test_key(),
         "chacha20-poly1305".into(),
@@ -682,7 +682,7 @@ fn test_stream_read_chacha20() {
         .to_str()
         .expect("path")
         .to_string();
-    let mut handle = vault_create(
+    let mut handle = optin_create(
         path,
         test_key(),
         "chacha20-poly1305".into(),

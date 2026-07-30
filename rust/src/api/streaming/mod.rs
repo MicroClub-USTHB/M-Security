@@ -1,43 +1,57 @@
-//! Streaming file encryption, decryption, compression, and hashing API.
+//! Streaming file hashing API, plus the encrypted-stream code kept for tests.
 //!
 //! Core logic uses a progress callback closure so it's testable without FRB.
-//! The public FRB-visible functions are thin wrappers that forward progress
+//! The public FRB-visible function is a thin wrapper that forwards progress
 //! to a `StreamSink`.
 //!
-//! Both encrypt and decrypt write to a temporary file first, then atomically
-//! rename on success. On any error the partial output is deleted — a failed
-//! decryption never leaves plaintext on disk.
+//! The `MSSE` header is unauthenticated and a chunk carries only its index and
+//! finality, so a chunk from another stream encrypted under the same handle
+//! splices in. This release exports no way to write or read that format: the
+//! encrypt, decrypt and compressed variants below are compiled for the
+//! regression tests only, and the Dart methods that used to call them now
+//! return a disabled-format result. Hashing is unaffected.
+//!
+//! The retained encrypt and decrypt code writes to a temporary file first and
+//! renames atomically on success, deleting the partial output on any error, so a
+//! failed decryption leaves no plaintext on disk. That is a property of the test
+//! path only: nothing in the shipped library reaches it.
 
-#[cfg(feature = "compression")]
+#[cfg(all(test, feature = "compression"))]
 mod compress;
+#[cfg(test)]
 mod decrypt;
+#[cfg(test)]
 mod encrypt;
 pub(crate) mod hash;
 
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
 use std::fs::{self, File};
-use std::io::{BufReader, Read};
+#[cfg(test)]
+use std::io::BufReader;
+use std::io::Read;
 
-#[cfg(feature = "compression")]
-use crate::api::compression::CompressionConfig;
-use crate::api::encryption::CipherHandle;
 use crate::api::hashing::HasherHandle;
 use crate::core::error::CryptoError;
+#[cfg(test)]
 use crate::core::streaming::{
     EncryptedChunk, StreamAlgorithm, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE, NONCE_SIZE,
 };
 
 // Re-export impl functions for internal use and tests
-#[cfg(feature = "compression")]
+#[cfg(all(test, feature = "compression"))]
 pub(crate) use compress::{compress_encrypt_file_impl, decrypt_decompress_file_impl};
+#[cfg(test)]
 pub(crate) use decrypt::decrypt_file_impl;
+#[cfg(test)]
 pub(crate) use encrypt::encrypt_file_impl;
 pub(crate) use hash::hash_file_feed;
 
 // -- Shared helpers -----------------------------------------------------------
 
+#[cfg(test)]
 fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
     match id {
         "aes-256-gcm" => Ok(StreamAlgorithm::AesGcm),
@@ -48,6 +62,7 @@ fn algorithm_from_id(id: &str) -> Result<StreamAlgorithm, CryptoError> {
     }
 }
 
+#[cfg(test)]
 fn parse_encrypted_output(data: &[u8], chunk: &mut EncryptedChunk) -> Result<(), CryptoError> {
     if data.len() != ENCRYPTED_CHUNK_SIZE {
         return Err(CryptoError::InvalidParameter(format!(
@@ -62,6 +77,7 @@ fn parse_encrypted_output(data: &[u8], chunk: &mut EncryptedChunk) -> Result<(),
 }
 
 /// Reassemble nonce || ciphertext || tag into `buf` for decryption.
+#[cfg(test)]
 fn reassemble_into(chunk: &EncryptedChunk, buf: &mut Vec<u8>) {
     buf.clear();
     buf.extend_from_slice(&chunk.nonce);
@@ -88,6 +104,7 @@ fn read_full<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<usize, CryptoErr
 }
 
 /// Open an input file and return a buffered reader + file size.
+#[cfg(test)]
 fn open_input(path: &str) -> Result<(BufReader<File>, u64), CryptoError> {
     let file = File::open(path)
         .map_err(|e| CryptoError::IoError(format!("Cannot open input '{path}': {e}")))?;
@@ -99,11 +116,13 @@ fn open_input(path: &str) -> Result<(BufReader<File>, u64), CryptoError> {
 }
 
 /// Drop guard that removes a temporary file unless `defuse()` is called.
+#[cfg(test)]
 struct TempFileGuard {
     path: String,
     active: bool,
 }
 
+#[cfg(test)]
 impl TempFileGuard {
     fn new(path: String) -> Self {
         Self { path, active: true }
@@ -114,6 +133,7 @@ impl TempFileGuard {
     }
 }
 
+#[cfg(test)]
 impl Drop for TempFileGuard {
     fn drop(&mut self) {
         if self.active {
@@ -125,53 +145,6 @@ impl Drop for TempFileGuard {
 // -- FRB entry points (thin wrappers) ----------------------------------------
 
 use crate::frb_generated::StreamSink;
-
-pub fn stream_encrypt_file(
-    cipher: &CipherHandle,
-    input_path: String,
-    output_path: String,
-    progress_sink: StreamSink<f64>,
-) -> Result<(), CryptoError> {
-    encrypt_file_impl(cipher, &input_path, &output_path, &|p| {
-        let _ = progress_sink.add(p);
-    })
-}
-
-pub fn stream_decrypt_file(
-    cipher: &CipherHandle,
-    input_path: String,
-    output_path: String,
-    progress_sink: StreamSink<f64>,
-) -> Result<(), CryptoError> {
-    decrypt_file_impl(cipher, &input_path, &output_path, &|p| {
-        let _ = progress_sink.add(p);
-    })
-}
-
-#[cfg(feature = "compression")]
-pub fn stream_compress_encrypt_file(
-    cipher: &CipherHandle,
-    compression: CompressionConfig,
-    input_path: String,
-    output_path: String,
-    progress_sink: StreamSink<f64>,
-) -> Result<(), CryptoError> {
-    compress_encrypt_file_impl(cipher, &compression, &input_path, &output_path, &|p| {
-        let _ = progress_sink.add(p);
-    })
-}
-
-#[cfg(feature = "compression")]
-pub fn stream_decrypt_decompress_file(
-    cipher: &CipherHandle,
-    input_path: String,
-    output_path: String,
-    progress_sink: StreamSink<f64>,
-) -> Result<(), CryptoError> {
-    decrypt_decompress_file_impl(cipher, &input_path, &output_path, &|p| {
-        let _ = progress_sink.add(p);
-    })
-}
 
 pub fn stream_hash_file(
     hasher: &HasherHandle,

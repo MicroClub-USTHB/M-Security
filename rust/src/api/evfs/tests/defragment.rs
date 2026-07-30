@@ -164,7 +164,7 @@ fn test_defragment_crash_recovery() {
 
     // Create vault with A, B, C. Delete B to create a gap.
     {
-        let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let mut handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None, None).expect("A");
         vault_write(&mut handle, "b.txt".into(), vec![0xBB; 100], None, None).expect("B");
@@ -193,7 +193,7 @@ fn test_defragment_crash_recovery() {
     }
 
     // Reopen — WAL recovery should restore pre-defrag index
-    let mut handle = vault_open(path, test_key()).expect("open after crash");
+    let mut handle = optin_open(path, test_key()).expect("open after crash");
 
     // C should still be at its original (pre-defrag) offset, readable
     assert_eq!(
@@ -236,7 +236,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
     // so B's move from offset(A.size) to 0 overlaps.
     {
         let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
+            optin_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
         vault_write(&mut handle, "a.txt".into(), vec![0xAA; 100], None, None).expect("A");
         vault_write(&mut handle, "b.txt".into(), vec![0xBB; 10_000], None, None).expect("B");
         vault_delete(&mut handle, "a.txt".into()).expect("del A");
@@ -245,7 +245,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
 
     // Save pre-defrag index and get B's offset/size
     let (pre_defrag_index, b_old_offset, b_size) = {
-        let handle = vault_open(path.clone(), test_key()).expect("open");
+        let handle = optin_open(path.clone(), test_key()).expect("open");
         let mut f = File::open(&path).expect("open file");
         let idx = read_encrypted_index(
             &mut f,
@@ -303,7 +303,7 @@ fn test_defragment_crash_overlapping_move_recovers() {
     }
 
     // Reopen — defrag backup + WAL recovery should restore to consistent state
-    let mut handle = vault_open(path, test_key()).expect("open after crash");
+    let mut handle = optin_open(path, test_key()).expect("open after crash");
 
     // B should be readable at old position (overlap zone restored)
     let b_data = vault_read(&mut handle, "b.txt".into()).expect("read B").data;

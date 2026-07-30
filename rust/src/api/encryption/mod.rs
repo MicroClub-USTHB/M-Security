@@ -20,7 +20,12 @@ impl CipherHandle {
     fn new(cipher: Box<dyn Encryption>) -> Self {
         Self { inner: cipher }
     }
+}
 
+// The chunked encrypted-stream pipeline was the only caller of these, and this
+// release compiles that pipeline for its regression tests only.
+#[cfg(test)]
+impl CipherHandle {
     /// Direct encrypt for internal use (streaming). Not FRB-visible.
     pub(crate) fn encrypt_raw(&self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
         self.inner.encrypt(plaintext, aad)

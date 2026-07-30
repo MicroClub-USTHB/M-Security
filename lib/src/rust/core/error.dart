@@ -51,4 +51,8 @@ sealed class CryptoError with _$CryptoError implements FrbException {
       CryptoError_Argon2PolicyViolation;
   const factory CryptoError.argon2VerificationBusy() =
       CryptoError_Argon2VerificationBusy;
+  const factory CryptoError.unsafeLegacyFormatDenied() =
+      CryptoError_UnsafeLegacyFormatDenied;
+  const factory CryptoError.disabledFormat(String field0) =
+      CryptoError_DisabledFormat;
 }

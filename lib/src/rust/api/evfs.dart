@@ -9,27 +9,46 @@ import 'compression.dart';
 import 'evfs/types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `chunk_abs_offset`, `read_segment_from_mmap_inner`, `read_segment_from_mmap`, `read_segment_with_file_inner`, `read_segment_with_file`, `vault_export_write`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `write_encrypted_chunk`
+// These functions are ignored because they are not marked as `pub`: `as_bytes`, `chunk_abs_offset`, `create_legacy_vault`, `new`, `open_legacy_vault`, `read_segment_from_mmap_inner`, `read_segment_from_mmap`, `read_segment_with_file_inner`, `read_segment_with_file`, `vault_create_guarded`, `vault_open_guarded`, `vault_resize_grow_impl`, `vault_resize_shrink_impl`, `vault_rotate_key_guarded`, `write_encrypted_chunk`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `KeyGuard`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `drop`
 // These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `vault_write_stream`
 
 /// Create a new vault file at `path` with the given capacity.
 ///
 /// The algorithm string must be "aes-256-gcm" or "chacha20-poly1305".
+///
+/// The vault format this writes is the unauthenticated v1/v2 one, so the call
+/// is refused before `path` is touched unless `unsafe_legacy_policy` is
+/// `AllowUnauthenticatedV1V2`.
 Future<VaultHandle> vaultCreate({
   required String path,
   required List<int> key,
   required String algorithm,
   required BigInt capacityBytes,
+  required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
 }) => RustLib.instance.api.crateApiEvfsVaultCreate(
   path: path,
   key: key,
   algorithm: algorithm,
   capacityBytes: capacityBytes,
+  unsafeLegacyPolicy: unsafeLegacyPolicy,
 );
 
 /// Open an existing vault, running WAL recovery if needed.
-Future<VaultHandle> vaultOpen({required String path, required List<int> key}) =>
-    RustLib.instance.api.crateApiEvfsVaultOpen(path: path, key: key);
+///
+/// The stored format is the unauthenticated v1/v2 one, so the call is refused
+/// before `path` is touched unless `unsafe_legacy_policy` is
+/// `AllowUnauthenticatedV1V2`.
+Future<VaultHandle> vaultOpen({
+  required String path,
+  required List<int> key,
+  required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
+}) => RustLib.instance.api.crateApiEvfsVaultOpen(
+  path: path,
+  key: key,
+  unsafeLegacyPolicy: unsafeLegacyPolicy,
+);
 
 /// Write (or overwrite) a named segment.
 ///
@@ -174,43 +193,6 @@ Future<VaultHandle> vaultRotateKey({
   newKey: newKey,
 );
 
-/// Export all vault segments into a self-contained `.mvex` encrypted archive.
-///
-/// Each segment is decrypted from the vault, then re-encrypted under an
-/// ephemeral export key with a random per-segment nonce. The export key is
-/// AEAD-wrapped with the caller's `wrapping_key`.
-///
-/// The vault is not modified by this operation.
-Future<void> vaultExport({
-  required VaultHandle handle,
-  required List<int> wrappingKey,
-  required String exportPath,
-}) => RustLib.instance.api.crateApiEvfsVaultExport(
-  handle: handle,
-  wrappingKey: wrappingKey,
-  exportPath: exportPath,
-);
-
 /// Close the vault — flush dirty index, checkpoint WAL, release lock, zeroize keys on drop.
 Future<void> vaultClose({required VaultHandle handle}) =>
     RustLib.instance.api.crateApiEvfsVaultClose(handle: handle);
-
-/// Unwraps export key, creates new vault at dest_path, writes all segments under new_master_key.
-///
-/// Archives with version < 2 do not carry per-segment metadata; imported
-/// segments from those archives will have empty metadata.
-Future<VaultHandle> vaultImport({
-  required String archivePath,
-  required List<int> wrappingKey,
-  required String destPath,
-  required List<int> newMasterKey,
-  required String algorithm,
-  required BigInt capacityBytes,
-}) => RustLib.instance.api.crateApiEvfsVaultImport(
-  archivePath: archivePath,
-  wrappingKey: wrappingKey,
-  destPath: destPath,
-  newMasterKey: newMasterKey,
-  algorithm: algorithm,
-  capacityBytes: capacityBytes,
-);

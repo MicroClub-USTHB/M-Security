@@ -136,7 +136,7 @@ fn test_metadata_survives_close_reopen() {
 
     {
         let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
+            optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
         vault_write(
             &mut handle,
             "persist.txt".into(),
@@ -148,7 +148,7 @@ fn test_metadata_survives_close_reopen() {
         vault_close(handle).expect("close");
     }
 
-    let mut handle = vault_open(path, test_key()).expect("reopen");
+    let mut handle = optin_open(path, test_key()).expect("reopen");
     let result = vault_read(&mut handle, "persist.txt".into()).expect("read");
     assert_eq!(result.data, b"durable");
     assert_eq!(result.metadata, meta);

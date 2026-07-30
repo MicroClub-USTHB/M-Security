@@ -64,6 +64,14 @@ pub enum CryptoError {
 
     #[error("Another Argon2 verification is already in progress")]
     Argon2VerificationBusy,
+
+    #[error("Unauthenticated v1/v2 vault format denied: explicit opt-in required")]
+    UnsafeLegacyFormatDenied,
+
+    // Carried for the Dart compatibility stubs. Their native entry points are
+    // gone, so nothing in this crate returns it.
+    #[error("Format disabled in this release: {0}")]
+    DisabledFormat(String),
 }
 
 impl From<std::io::Error> for CryptoError {

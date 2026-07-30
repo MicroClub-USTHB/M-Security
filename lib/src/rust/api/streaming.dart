@@ -5,56 +5,10 @@
 
 import '../core/error.dart';
 import '../frb_generated.dart';
-import 'compression.dart';
-import 'encryption.dart';
 import 'hashing.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `algorithm_from_id`, `defuse`, `new`, `open_input`, `parse_encrypted_output`, `read_full`, `reassemble_into`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `TempFileGuard`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `drop`
-
-Stream<double> streamEncryptFile({
-  required CipherHandle cipher,
-  required String inputPath,
-  required String outputPath,
-}) => RustLib.instance.api.crateApiStreamingStreamEncryptFile(
-  cipher: cipher,
-  inputPath: inputPath,
-  outputPath: outputPath,
-);
-
-Stream<double> streamDecryptFile({
-  required CipherHandle cipher,
-  required String inputPath,
-  required String outputPath,
-}) => RustLib.instance.api.crateApiStreamingStreamDecryptFile(
-  cipher: cipher,
-  inputPath: inputPath,
-  outputPath: outputPath,
-);
-
-Stream<double> streamCompressEncryptFile({
-  required CipherHandle cipher,
-  required CompressionConfig compression,
-  required String inputPath,
-  required String outputPath,
-}) => RustLib.instance.api.crateApiStreamingStreamCompressEncryptFile(
-  cipher: cipher,
-  compression: compression,
-  inputPath: inputPath,
-  outputPath: outputPath,
-);
-
-Stream<double> streamDecryptDecompressFile({
-  required CipherHandle cipher,
-  required String inputPath,
-  required String outputPath,
-}) => RustLib.instance.api.crateApiStreamingStreamDecryptDecompressFile(
-  cipher: cipher,
-  inputPath: inputPath,
-  outputPath: outputPath,
-);
+// These functions are ignored because they are not marked as `pub`: `read_full`
 
 Stream<double> streamHashFile({
   required HasherHandle hasher,
