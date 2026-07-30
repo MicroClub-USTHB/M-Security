@@ -2,6 +2,10 @@
 # FRB-generated Dart bindings must be included in the published package
 # so consumers don't need to run codegen themselves.
 
+# This file replaces the root .gitignore for publishing rather than adding to
+# it, so anything the root .gitignore keeps out of the package has to be
+# repeated here or it lands in the payload.
+
 # Exclude development/CI files
 .github/
 .vscode/
@@ -9,9 +13,40 @@
 *.iml
 *.ipr
 *.iws
+tool/
 
 # Exclude Rust source and build artifacts (compiled via cargokit at build time)
 rust/target/
+
+# Exclude local build output. Whatever the last `flutter test` left in build/
+# would otherwise ship, which made the payload a function of the machine.
+build/
+coverage/
+**/Podfile.lock
+**/doc/api/
+migrate_working_dir/
+*.log
+*.class
+*.pyc
+*.swp
+package-lock.json
+
+# Code generation writes these into rust/ and they belong to no consumer.
+rust/android/
+rust/example/
+rust/integration_test/
+rust/lib/
+rust/assets/
+
+# Kotlin DSL duplicates of the tracked Groovy originals, and a local Android
+# SDK install.
+android/build.gradle.kts
+android/settings.gradle.kts
+build-tools/
+ndk/
+platform-tools/
+platforms/
+licenses/
 
 # Exclude example build artifacts
 example/build/
