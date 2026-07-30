@@ -85,6 +85,11 @@ jobs:
 
   build-android:
     name: Android build
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +111,11 @@ jobs:
 
   build-ios:
     name: Apple builds
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: macos-latest
     steps:
@@ -136,6 +146,11 @@ jobs:
 
   build-linux:
     name: Linux build
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: ubuntu-latest
     steps:
