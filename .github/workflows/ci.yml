@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - dev
+      - 'staging/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,14 +42,54 @@ jobs:
         with:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install flutter_rust_bridge_codegen@2.11.1
+      - run: cargo install flutter_rust_bridge_codegen@2.12.0
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: dart analyze lib/ integration_test/
+      - run: dart analyze lib/ integration_test/ test/ tool/ example/
+      - run: flutter test test/ tool/
+
+  packaged-consumer:
+    name: Packaged consumer (Linux)
+    needs: [rust, dart]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev xvfb
+      - run: flutter pub get
+      - name: Assemble the publish payload
+        run: dart run tool/publication.dart --out "$RUNNER_TEMP/payload"
+      - name: Run the containment subset from a clean consumer
+        run: >
+          xvfb-run -a dart run tool/packaged_consumer.dart
+          --payload "$RUNNER_TEMP/payload"
+          --out "$RUNNER_TEMP/consumer"
+          --device linux
+          --min-tests 20
+          --report "$RUNNER_TEMP/payload.consumer.json"
+      - name: Retain the payload and consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-consumer-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/payload.manifest.txt
+            ${{ runner.temp }}/payload.report.json
+            ${{ runner.temp }}/payload.consumer.json
+            ${{ runner.temp }}/payload.tar
+          if-no-files-found: warn
 
   build-android:
     name: Android build
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: ubuntu-latest
     steps:
@@ -62,7 +103,7 @@ jobs:
       - uses: nttld/setup-ndk@v1
         with:
           ndk-version: r27c
-      - run: cargo install flutter_rust_bridge_codegen@2.11.1
+      - run: cargo install flutter_rust_bridge_codegen@2.12.0
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -70,6 +111,11 @@ jobs:
 
   build-ios:
     name: Apple builds
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: macos-latest
     steps:
@@ -84,7 +130,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
-      - run: cargo install flutter_rust_bridge_codegen@2.11.1
+      - run: cargo install flutter_rust_bridge_codegen@2.12.0
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -100,6 +146,11 @@ jobs:
 
   build-linux:
     name: Linux build
+    # The staging lane runs the checks that gate a single item. The platform
+    # builds are the expensive part and wait for the promotion into dev, where
+    # they see every item at once. github.base_ref is empty on push, so this
+    # only ever narrows a pull request.
+    if: ${{ !startsWith(github.base_ref, 'staging/') }}
     needs: [rust, dart]
     runs-on: ubuntu-latest
     steps:
@@ -109,7 +160,7 @@ jobs:
           channel: stable
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-      - run: cargo install flutter_rust_bridge_codegen@2.11.1
+      - run: cargo install flutter_rust_bridge_codegen@2.12.0
       - run: flutter pub get
       - run: flutter_rust_bridge_codegen generate
       - run: dart run build_runner build --delete-conflicting-outputs
