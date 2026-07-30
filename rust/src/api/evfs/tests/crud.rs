@@ -8,7 +8,7 @@ fn test_create_and_open() {
     let path = vault_path(&dir);
 
     {
-        let handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         let names = vault_list(&handle);
         assert!(names.is_empty());
@@ -16,7 +16,7 @@ fn test_create_and_open() {
     }
 
     {
-        let handle = vault_open(path, test_key()).expect("open");
+        let handle = optin_open(path, test_key()).expect("open");
         let names = vault_list(&handle);
         assert!(names.is_empty());
         vault_close(handle).expect("close");
@@ -29,12 +29,12 @@ fn test_open_wrong_key_fails() {
     let path = vault_path(&dir);
 
     {
-        let handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_close(handle).expect("close");
     }
 
-    let result = vault_open(path, wrong_key());
+    let result = optin_open(path, wrong_key());
     assert!(result.is_err());
 }
 
@@ -45,7 +45,7 @@ fn test_open_runs_wal_recovery() {
 
     // Create vault with segment A
     {
-        let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let mut handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_write(&mut handle, "a.txt".into(), b"data-A".to_vec(), None, None).expect("write A");
         vault_close(handle).expect("close");
@@ -64,7 +64,7 @@ fn test_open_runs_wal_recovery() {
 
     // Add segment B normally (both index and data on disk)
     {
-        let mut handle = vault_open(path.clone(), test_key()).expect("open");
+        let mut handle = optin_open(path.clone(), test_key()).expect("open");
         vault_write(&mut handle, "b.txt".into(), b"data-B".to_vec(), None, None).expect("write B");
         vault_close(handle).expect("close");
     }
@@ -78,7 +78,7 @@ fn test_open_runs_wal_recovery() {
     }
 
     // Reopen — WAL recovery should roll back to A-only index
-    let mut handle = vault_open(path, test_key()).expect("open after recovery");
+    let mut handle = optin_open(path, test_key()).expect("open after recovery");
     let data = vault_read(&mut handle, "a.txt".into()).expect("read A").data;
     assert_eq!(data, b"data-A");
 

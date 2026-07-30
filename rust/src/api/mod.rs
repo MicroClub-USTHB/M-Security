@@ -7,3 +7,6 @@ pub mod evfs;
 pub mod hashing;
 pub mod kdf;
 pub mod streaming;
+
+#[cfg(test)]
+mod surface;

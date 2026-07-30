@@ -9,6 +9,54 @@ use std::collections::HashMap;
 use std::fs::File;
 
 // ---------------------------------------------------------------------------
+// Unsafe legacy format policy
+// ---------------------------------------------------------------------------
+
+/// What a caller wants done about the unauthenticated v1/v2 vault format.
+///
+/// Vaults written by this and every earlier release derive their keys without a
+/// per-vault salt, repeat encryption nonces across vaults and copied files, do
+/// not authenticate their structural metadata and are not crash-atomic. Every
+/// entry point that takes a vault path therefore refuses by default, and a
+/// caller has to name the risk to reach one.
+///
+/// Opting in does not make an existing vault safe and does not change its bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnsafeLegacyEvfsPolicy {
+    /// Refuse before the path is opened, created, locked or recovered. Every
+    /// wrapper defaults to this, and it is what a zeroed wire value decodes to.
+    Deny,
+    /// Work against the unauthenticated v1/v2 format anyway.
+    AllowUnauthenticatedV1V2,
+}
+
+mod grant {
+    use super::UnsafeLegacyEvfsPolicy;
+    use crate::core::error::CryptoError;
+
+    /// Evidence that a caller asked for the unauthenticated v1/v2 format.
+    ///
+    /// The field is private to this module and `authorize` is the only thing
+    /// that builds one, so no code anywhere can produce a grant without the
+    /// caller's enum.
+    pub(crate) struct LegacyFormatGrant {
+        _sealed: (),
+    }
+
+    impl UnsafeLegacyEvfsPolicy {
+        /// The one place a policy becomes permission.
+        pub(crate) fn authorize(self) -> Result<LegacyFormatGrant, CryptoError> {
+            match self {
+                Self::AllowUnauthenticatedV1V2 => Ok(LegacyFormatGrant { _sealed: () }),
+                Self::Deny => Err(CryptoError::UnsafeLegacyFormatDenied),
+            }
+        }
+    }
+}
+
+pub(crate) use grant::LegacyFormatGrant;
+
+// ---------------------------------------------------------------------------
 // VaultMmap — read-only memory-mapped view of the vault file
 // ---------------------------------------------------------------------------
 
@@ -104,6 +152,10 @@ pub struct VaultHandle {
     pub(crate) lock: VaultLock,
     /// True when the in-memory index has been modified but not yet flushed to disk.
     pub(crate) index_dirty: bool,
+    /// The caller's opt-in, carried so later access, recovery, reopen and
+    /// rotation stay covered by the decision that opened the vault. Every
+    /// constructor needs one, so a default call cannot produce a handle.
+    pub(crate) grant: LegacyFormatGrant,
 }
 
 impl VaultHandle {

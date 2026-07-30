@@ -410,7 +410,7 @@ fn test_import_full_roundtrip() {
     vault_close(handle).expect("close");
 
     let dest_path = import_dest_path(&dir);
-    let mut imported = vault_import(
+    let mut imported = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -444,7 +444,7 @@ fn test_import_wrong_wrapping_key_fails() {
 
     let dest_path = import_dest_path(&dir);
     let wrong_wk = vec![0xEE; 32];
-    let result = vault_import(
+    let result = optin_import(
         epath,
         wrong_wk,
         dest_path,
@@ -471,7 +471,7 @@ fn test_import_truncated_archive() {
     std::fs::write(&epath, archive).expect("write");
 
     let dest_path = import_dest_path(&dir);
-    let result = vault_import(
+    let result = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -503,7 +503,7 @@ fn test_import_tampered_segment_data() {
     std::fs::write(&epath, archive).expect("write");
 
     let dest_path = import_dest_path(&dir);
-    let result = vault_import(
+    let result = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -531,7 +531,7 @@ fn test_import_tampered_trailer_checksum() {
     std::fs::write(&epath, archive).expect("write");
 
     let dest_path = import_dest_path(&dir);
-    let result = vault_import(
+    let result = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -553,7 +553,7 @@ fn test_import_insufficient_capacity() {
     vault_close(handle).expect("close");
 
     let dest_path = import_dest_path(&dir);
-    let result = vault_import(
+    let result = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -586,7 +586,7 @@ fn test_import_streaming_segment() {
     vault_close(handle).expect("close");
 
     let dest_path = import_dest_path(&dir);
-    let mut imported = vault_import(
+    let mut imported = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -626,7 +626,7 @@ fn test_import_compressed_segment() {
     vault_close(handle).expect("close");
 
     let dest_path = import_dest_path(&dir);
-    let mut imported = vault_import(
+    let mut imported = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -648,7 +648,7 @@ fn test_import_compressed_segment() {
 #[test]
 fn test_import_chacha20() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let mut handle = vault_create(
+    let mut handle = optin_create(
         vault_path(&dir),
         test_key(),
         "chacha20-poly1305".into(),
@@ -662,7 +662,7 @@ fn test_import_chacha20() {
     vault_close(handle).expect("close");
 
     let dest_path = import_dest_path(&dir);
-    let mut imported = vault_import(
+    let mut imported = optin_import(
         epath,
         wrapping_key(),
         dest_path.clone(),
@@ -714,9 +714,9 @@ fn test_export_import_preserves_metadata() {
         .expect("path")
         .to_string();
 
-    vault_import(epath, wrapping_key(), dest.clone(), test_key2(), "aes-256-gcm".into(), 1_048_576).expect("import");
+    optin_import(epath, wrapping_key(), dest.clone(), test_key2(), "aes-256-gcm".into(), 1_048_576).expect("import");
 
-    let mut imported = vault_open(dest, test_key2()).expect("open");
+    let mut imported = optin_open(dest, test_key2()).expect("open");
 
     let result = vault_read(&mut imported, "doc.txt".into()).expect("read doc");
     assert_eq!(result.data, b"hello");

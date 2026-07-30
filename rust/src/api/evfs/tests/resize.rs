@@ -34,7 +34,7 @@ fn test_resize_shrink_after_consolidation() {
 
     // Create a 2MB vault and write ~500KB of data.
     {
-        let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 2 * SIZE_MB)
+        let mut handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 2 * SIZE_MB)
             .expect("create 2MB");
         let data = vec![0xCC; 500_000];
         vault_write(&mut handle, "doc.bin".into(), data, None, None).expect("write 500KB");
@@ -43,7 +43,7 @@ fn test_resize_shrink_after_consolidation() {
 
     // Reopen, shrink to 1MB. Data is at the beginning so it should fit.
     {
-        let mut handle = vault_open(path.clone(), test_key()).expect("reopen");
+        let mut handle = optin_open(path.clone(), test_key()).expect("reopen");
         vault_resize(&mut handle, SIZE_MB).expect("shrink to 1MB");
 
         // Verify all data is still readable.
@@ -59,7 +59,7 @@ fn test_resize_shrink_after_consolidation() {
 
     // Reopen again to confirm persistence across close/open.
     {
-        let mut handle = vault_open(path, test_key()).expect("reopen again");
+        let mut handle = optin_open(path, test_key()).expect("reopen again");
         let data = vault_read(&mut handle, "doc.bin".into()).expect("read persisted").data;
         assert_eq!(data, vec![0xCC; 500_000]);
         vault_close(handle).expect("close");
@@ -95,7 +95,7 @@ fn test_resize_grow_updates_capacity() {
 
     {
         let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
+            optin_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
 
         let cap_before = vault_capacity(&handle);
         assert_eq!(cap_before.total_bytes, SIZE_MB);
@@ -112,7 +112,7 @@ fn test_resize_grow_updates_capacity() {
 
     // Verify persistence: reopen and check capacity.
     {
-        let handle = vault_open(path, test_key()).expect("reopen");
+        let handle = optin_open(path, test_key()).expect("reopen");
         let cap = vault_capacity(&handle);
         assert_eq!(cap.total_bytes, 2 * SIZE_MB);
         vault_close(handle).expect("close");
@@ -127,7 +127,7 @@ fn test_resize_grow_crash_recovery() {
     // Create vault with one segment.
     {
         let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
+            optin_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
         vault_write(&mut handle, "a.txt".into(), b"before grow".to_vec(), None, None).expect("write A");
         vault_close(handle).expect("close");
     }
@@ -145,7 +145,7 @@ fn test_resize_grow_crash_recovery() {
 
     // Perform a real grow to 2MB.
     {
-        let mut handle = vault_open(path.clone(), test_key()).expect("open");
+        let mut handle = optin_open(path.clone(), test_key()).expect("open");
         vault_resize(&mut handle, 2 * SIZE_MB).expect("grow");
         vault_write(&mut handle, "b.txt".into(), b"after grow".to_vec(), None, None).expect("write B");
         vault_close(handle).expect("close");
@@ -162,7 +162,7 @@ fn test_resize_grow_crash_recovery() {
     }
 
     // Reopen — WAL recovery should roll back to the A-only / 1MB index.
-    let mut handle = vault_open(path, test_key()).expect("open after recovery");
+    let mut handle = optin_open(path, test_key()).expect("open after recovery");
 
     // A should be readable.
     let data = vault_read(&mut handle, "a.txt".into()).expect("read A").data;
@@ -245,7 +245,7 @@ fn test_resize_grow_crash_midway_recovers() {
     let good_encrypted;
     {
         let mut handle =
-            vault_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
+            optin_create(path.clone(), test_key(), "aes-256-gcm".into(), SIZE_MB).expect("create");
         vault_write(&mut handle, "a.txt".into(), b"safe data".to_vec(), None, None).expect("write A");
         vault_close(handle).expect("close");
     }
@@ -286,7 +286,7 @@ fn test_resize_grow_crash_midway_recovers() {
     }
 
     // Reopen — recovery should restore 1MB index, fix file size, fix shadow
-    let mut handle = vault_open(path.clone(), test_key()).expect("open after crash");
+    let mut handle = optin_open(path.clone(), test_key()).expect("open after crash");
 
     // Capacity should be restored to 1MB
     assert_eq!(vault_capacity(&handle).total_bytes, SIZE_MB);

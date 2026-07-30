@@ -129,9 +129,9 @@ fn test_concurrent_open_fails() {
     let path = vault_path(&dir);
 
     let _handle =
-        vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
+        optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576).expect("create");
 
-    let result = vault_open(path, test_key());
+    let result = optin_open(path, test_key());
     assert!(matches!(result, Err(CryptoError::VaultLocked)));
 }
 
@@ -143,7 +143,7 @@ fn test_write_close_open_read() {
     let path = vault_path(&dir);
 
     {
-        let mut handle = vault_create(
+        let mut handle = optin_create(
             path.clone(),
             test_key(),
             "chacha20-poly1305".into(),
@@ -162,7 +162,7 @@ fn test_write_close_open_read() {
     }
 
     {
-        let mut handle = vault_open(path, test_key()).expect("open");
+        let mut handle = optin_open(path, test_key()).expect("open");
         let data = vault_read(&mut handle, "persist.txt".into()).expect("read").data;
         assert_eq!(data, b"survives close");
         vault_close(handle).expect("close");
@@ -177,7 +177,7 @@ fn test_corrupted_primary_falls_back_to_shadow() {
     let path = vault_path(&dir);
 
     {
-        let mut handle = vault_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
+        let mut handle = optin_create(path.clone(), test_key(), "aes-256-gcm".into(), 1_048_576)
             .expect("create");
         vault_write(&mut handle, "doc.txt".into(), b"shadow test".to_vec(), None, None).expect("write");
         vault_close(handle).expect("close");
@@ -191,7 +191,7 @@ fn test_corrupted_primary_falls_back_to_shadow() {
     }
 
     // Open should succeed via shadow
-    let mut handle = vault_open(path, test_key()).expect("open via shadow");
+    let mut handle = optin_open(path, test_key()).expect("open via shadow");
     let data = vault_read(&mut handle, "doc.txt".into()).expect("read").data;
     assert_eq!(data, b"shadow test");
 

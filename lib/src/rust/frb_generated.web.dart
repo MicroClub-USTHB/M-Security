@@ -201,6 +201,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  UnsafeLegacyEvfsPolicy dco_decode_unsafe_legacy_evfs_policy(dynamic raw);
+
+  @protected
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
@@ -388,6 +391,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  UnsafeLegacyEvfsPolicy sse_decode_unsafe_legacy_evfs_policy(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
@@ -537,6 +545,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     }
     if (raw is CryptoError_Argon2VerificationBusy) {
       return [19].jsify()!;
+    }
+    if (raw is CryptoError_UnsafeLegacyFormatDenied) {
+      return [20].jsify()!;
+    }
+    if (raw is CryptoError_DisabledFormat) {
+      return [21, cst_encode_String(raw.field0)].jsify()!;
     }
 
     throw Exception('unreachable');
@@ -762,6 +776,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void cst_encode_unit(void raw);
 
   @protected
+  int cst_encode_unsafe_legacy_evfs_policy(UnsafeLegacyEvfsPolicy raw);
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -971,6 +988,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_unsafe_legacy_evfs_policy(
+    UnsafeLegacyEvfsPolicy self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
@@ -1201,64 +1224,6 @@ class RustLibWire implements BaseWire {
     file_path,
   );
 
-  void wire__crate__api__streaming__stream_compress_encrypt_file(
-    NativePortType port_,
-    int cipher,
-    JSAny compression,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  ) => wasmModule.wire__crate__api__streaming__stream_compress_encrypt_file(
-    port_,
-    cipher,
-    compression,
-    input_path,
-    output_path,
-    progress_sink,
-  );
-
-  void wire__crate__api__streaming__stream_decrypt_decompress_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  ) => wasmModule.wire__crate__api__streaming__stream_decrypt_decompress_file(
-    port_,
-    cipher,
-    input_path,
-    output_path,
-    progress_sink,
-  );
-
-  void wire__crate__api__streaming__stream_decrypt_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  ) => wasmModule.wire__crate__api__streaming__stream_decrypt_file(
-    port_,
-    cipher,
-    input_path,
-    output_path,
-    progress_sink,
-  );
-
-  void wire__crate__api__streaming__stream_encrypt_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  ) => wasmModule.wire__crate__api__streaming__stream_encrypt_file(
-    port_,
-    cipher,
-    input_path,
-    output_path,
-    progress_sink,
-  );
-
   void wire__crate__api__streaming__stream_hash_file(
     NativePortType port_,
     int hasher,
@@ -1285,12 +1250,14 @@ class RustLibWire implements BaseWire {
     JSAny key,
     String algorithm,
     JSAny capacity_bytes,
+    int unsafe_legacy_policy,
   ) => wasmModule.wire__crate__api__evfs__vault_create(
     port_,
     path,
     key,
     algorithm,
     capacity_bytes,
+    unsafe_legacy_policy,
   );
 
   void wire__crate__api__evfs__vault_defragment(
@@ -1304,41 +1271,11 @@ class RustLibWire implements BaseWire {
     String name,
   ) => wasmModule.wire__crate__api__evfs__vault_delete(port_, handle, name);
 
-  void wire__crate__api__evfs__vault_export(
-    NativePortType port_,
-    int handle,
-    JSAny wrapping_key,
-    String export_path,
-  ) => wasmModule.wire__crate__api__evfs__vault_export(
-    port_,
-    handle,
-    wrapping_key,
-    export_path,
-  );
-
   void wire__crate__api__evfs__vault_flush(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_flush(port_, handle);
 
   void wire__crate__api__evfs__vault_health(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_health(port_, handle);
-
-  void wire__crate__api__evfs__vault_import(
-    NativePortType port_,
-    String archive_path,
-    JSAny wrapping_key,
-    String dest_path,
-    JSAny new_master_key,
-    String algorithm,
-    JSAny capacity_bytes,
-  ) => wasmModule.wire__crate__api__evfs__vault_import(
-    port_,
-    archive_path,
-    wrapping_key,
-    dest_path,
-    new_master_key,
-    algorithm,
-    capacity_bytes,
-  );
 
   void wire__crate__api__evfs__vault_list(NativePortType port_, int handle) =>
       wasmModule.wire__crate__api__evfs__vault_list(port_, handle);
@@ -1347,7 +1284,13 @@ class RustLibWire implements BaseWire {
     NativePortType port_,
     String path,
     JSAny key,
-  ) => wasmModule.wire__crate__api__evfs__vault_open(port_, path, key);
+    int unsafe_legacy_policy,
+  ) => wasmModule.wire__crate__api__evfs__vault_open(
+    port_,
+    path,
+    key,
+    unsafe_legacy_policy,
+  );
 
   void wire__crate__api__evfs__vault_read(
     NativePortType port_,
@@ -1649,39 +1592,6 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String file_path,
   );
 
-  external void wire__crate__api__streaming__stream_compress_encrypt_file(
-    NativePortType port_,
-    int cipher,
-    JSAny compression,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  );
-
-  external void wire__crate__api__streaming__stream_decrypt_decompress_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  );
-
-  external void wire__crate__api__streaming__stream_decrypt_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  );
-
-  external void wire__crate__api__streaming__stream_encrypt_file(
-    NativePortType port_,
-    int cipher,
-    String input_path,
-    String output_path,
-    String progress_sink,
-  );
-
   external void wire__crate__api__streaming__stream_hash_file(
     NativePortType port_,
     int hasher,
@@ -1705,6 +1615,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     JSAny key,
     String algorithm,
     JSAny capacity_bytes,
+    int unsafe_legacy_policy,
   );
 
   external void wire__crate__api__evfs__vault_defragment(
@@ -1718,13 +1629,6 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     String name,
   );
 
-  external void wire__crate__api__evfs__vault_export(
-    NativePortType port_,
-    int handle,
-    JSAny wrapping_key,
-    String export_path,
-  );
-
   external void wire__crate__api__evfs__vault_flush(
     NativePortType port_,
     int handle,
@@ -1733,16 +1637,6 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
   external void wire__crate__api__evfs__vault_health(
     NativePortType port_,
     int handle,
-  );
-
-  external void wire__crate__api__evfs__vault_import(
-    NativePortType port_,
-    String archive_path,
-    JSAny wrapping_key,
-    String dest_path,
-    JSAny new_master_key,
-    String algorithm,
-    JSAny capacity_bytes,
   );
 
   external void wire__crate__api__evfs__vault_list(
@@ -1754,6 +1648,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     NativePortType port_,
     String path,
     JSAny key,
+    int unsafe_legacy_policy,
   );
 
   external void wire__crate__api__evfs__vault_read(

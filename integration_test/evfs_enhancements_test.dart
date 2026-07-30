@@ -6,6 +6,11 @@ import 'package:integration_test/integration_test.dart';
 import 'package:m_security/src/rust/api/encryption.dart';
 import 'package:m_security/src/rust/frb_generated.dart';
 import 'package:m_security/src/evfs/vault_service.dart';
+import 'package:m_security/src/rust/api/evfs/types.dart';
+
+// Every vault here is the unauthenticated v1/v2 format, which VaultService
+// refuses unless the caller says so.
+const _unsafeLegacy = UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +34,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -57,6 +63,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([10, 20, 30]);
@@ -81,6 +88,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([1, 2, 3]);
@@ -116,6 +124,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([7, 8, 9]);
@@ -128,7 +137,11 @@ void main() {
       await VaultService.close(handle: handle);
 
       // Reopen and verify
-      handle = await VaultService.open(path: path, key: key);
+      handle = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
       final result = await VaultService.read(
         handle: handle,
         name: 'persist.bin',
@@ -158,6 +171,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -197,6 +211,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await VaultService.write(
@@ -233,6 +248,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await expectLater(
@@ -258,6 +274,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList([42]);
@@ -300,6 +317,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await VaultService.write(
@@ -327,6 +345,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // No writes — flush should be a safe no-op
@@ -354,6 +373,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write 5 segments
@@ -391,6 +411,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await VaultService.write(
@@ -426,6 +447,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final results = await VaultService.readParallel(
@@ -457,6 +479,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList(List.generate(500, (i) => i % 256));
@@ -514,6 +537,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 10 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final segments = <String, Uint8List>{};

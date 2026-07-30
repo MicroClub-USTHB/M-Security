@@ -13,6 +13,43 @@ pub(super) fn wrong_key() -> Vec<u8> {
     vec![0xBB; 32]
 }
 
+/// The opt-in every test that wants a working vault has to state.
+pub(super) fn legacy_optin() -> UnsafeLegacyEvfsPolicy {
+    UnsafeLegacyEvfsPolicy::AllowUnauthenticatedV1V2
+}
+
+pub(super) fn optin_create(
+    path: String,
+    key: Vec<u8>,
+    algorithm: String,
+    capacity_bytes: u64,
+) -> Result<VaultHandle, CryptoError> {
+    vault_create(path, key, algorithm, capacity_bytes, legacy_optin())
+}
+
+pub(super) fn optin_open(path: String, key: Vec<u8>) -> Result<VaultHandle, CryptoError> {
+    vault_open(path, key, legacy_optin())
+}
+
+pub(super) fn optin_import(
+    archive_path: String,
+    wrapping_key: Vec<u8>,
+    dest_path: String,
+    new_master_key: Vec<u8>,
+    algorithm: String,
+    capacity_bytes: u64,
+) -> Result<VaultHandle, CryptoError> {
+    vault_import(
+        archive_path,
+        wrapping_key,
+        dest_path,
+        new_master_key,
+        algorithm,
+        capacity_bytes,
+        legacy_optin().authorize().expect("opt-in grant"),
+    )
+}
+
 pub(super) fn create_test_vault(dir: &tempfile::TempDir, capacity: u64) -> VaultHandle {
     let path = dir
         .path()
@@ -20,7 +57,7 @@ pub(super) fn create_test_vault(dir: &tempfile::TempDir, capacity: u64) -> Vault
         .to_str()
         .expect("path")
         .to_string();
-    vault_create(path, test_key(), "aes-256-gcm".into(), capacity).expect("create vault")
+    optin_create(path, test_key(), "aes-256-gcm".into(), capacity).expect("create vault")
 }
 
 pub(super) fn vault_path(dir: &tempfile::TempDir) -> String {
@@ -52,6 +89,7 @@ pub(super) fn stream_write_chunks(
 
 mod crud;
 mod compression;
+mod legacy_policy;
 mod allocator;
 mod delete;
 mod resize;

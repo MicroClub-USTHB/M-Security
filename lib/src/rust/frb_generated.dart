@@ -74,7 +74,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1392838074;
+  int get rustContentHash => -1545310340;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -200,31 +200,6 @@ abstract class RustLibApi extends BaseApi {
     required String filePath,
   });
 
-  Stream<double> crateApiStreamingStreamCompressEncryptFile({
-    required CipherHandle cipher,
-    required CompressionConfig compression,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamDecryptDecompressFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamDecryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
-  Stream<double> crateApiStreamingStreamEncryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  });
-
   Stream<double> crateApiStreamingStreamHashFile({
     required HasherHandle hasher,
     required String filePath,
@@ -241,6 +216,7 @@ abstract class RustLibApi extends BaseApi {
     required List<int> key,
     required String algorithm,
     required BigInt capacityBytes,
+    required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
   });
 
   Future<DefragResult> crateApiEvfsVaultDefragment({
@@ -252,25 +228,10 @@ abstract class RustLibApi extends BaseApi {
     required String name,
   });
 
-  Future<void> crateApiEvfsVaultExport({
-    required VaultHandle handle,
-    required List<int> wrappingKey,
-    required String exportPath,
-  });
-
   Future<void> crateApiEvfsVaultFlush({required VaultHandle handle});
 
   Future<VaultHealthInfo> crateApiEvfsVaultHealth({
     required VaultHandle handle,
-  });
-
-  Future<VaultHandle> crateApiEvfsVaultImport({
-    required String archivePath,
-    required List<int> wrappingKey,
-    required String destPath,
-    required List<int> newMasterKey,
-    required String algorithm,
-    required BigInt capacityBytes,
   });
 
   Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle});
@@ -278,6 +239,7 @@ abstract class RustLibApi extends BaseApi {
   Future<VaultHandle> crateApiEvfsVaultOpen({
     required String path,
     required List<int> key,
+    required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
   });
 
   Future<SegmentReadResult> crateApiEvfsVaultRead({
@@ -1223,197 +1185,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Stream<double> crateApiStreamingStreamCompressEncryptFile({
-    required CipherHandle cipher,
-    required CompressionConfig compression,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            var arg0 =
-                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                  cipher,
-                );
-            var arg1 = cst_encode_box_autoadd_compression_config(compression);
-            var arg2 = cst_encode_String(inputPath);
-            var arg3 = cst_encode_String(outputPath);
-            var arg4 = cst_encode_StreamSink_f_64_Dco(progressSink);
-            return wire
-                .wire__crate__api__streaming__stream_compress_encrypt_file(
-                  port_,
-                  arg0,
-                  arg1,
-                  arg2,
-                  arg3,
-                  arg4,
-                );
-          },
-          codec: DcoCodec(
-            decodeSuccessData: dco_decode_unit,
-            decodeErrorData: dco_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamCompressEncryptFileConstMeta,
-          argValues: [cipher, compression, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
-
-  TaskConstMeta get kCrateApiStreamingStreamCompressEncryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_compress_encrypt_file",
-        argNames: [
-          "cipher",
-          "compression",
-          "inputPath",
-          "outputPath",
-          "progressSink",
-        ],
-      );
-
-  @override
-  Stream<double> crateApiStreamingStreamDecryptDecompressFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            var arg0 =
-                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                  cipher,
-                );
-            var arg1 = cst_encode_String(inputPath);
-            var arg2 = cst_encode_String(outputPath);
-            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
-            return wire
-                .wire__crate__api__streaming__stream_decrypt_decompress_file(
-                  port_,
-                  arg0,
-                  arg1,
-                  arg2,
-                  arg3,
-                );
-          },
-          codec: DcoCodec(
-            decodeSuccessData: dco_decode_unit,
-            decodeErrorData: dco_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamDecryptDecompressFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
-
-  TaskConstMeta get kCrateApiStreamingStreamDecryptDecompressFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_decrypt_decompress_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
-
-  @override
-  Stream<double> crateApiStreamingStreamDecryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            var arg0 =
-                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                  cipher,
-                );
-            var arg1 = cst_encode_String(inputPath);
-            var arg2 = cst_encode_String(outputPath);
-            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
-            return wire.wire__crate__api__streaming__stream_decrypt_file(
-              port_,
-              arg0,
-              arg1,
-              arg2,
-              arg3,
-            );
-          },
-          codec: DcoCodec(
-            decodeSuccessData: dco_decode_unit,
-            decodeErrorData: dco_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamDecryptFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
-
-  TaskConstMeta get kCrateApiStreamingStreamDecryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_decrypt_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
-
-  @override
-  Stream<double> crateApiStreamingStreamEncryptFile({
-    required CipherHandle cipher,
-    required String inputPath,
-    required String outputPath,
-  }) {
-    final progressSink = RustStreamSink<double>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            var arg0 =
-                cst_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCipherHandle(
-                  cipher,
-                );
-            var arg1 = cst_encode_String(inputPath);
-            var arg2 = cst_encode_String(outputPath);
-            var arg3 = cst_encode_StreamSink_f_64_Dco(progressSink);
-            return wire.wire__crate__api__streaming__stream_encrypt_file(
-              port_,
-              arg0,
-              arg1,
-              arg2,
-              arg3,
-            );
-          },
-          codec: DcoCodec(
-            decodeSuccessData: dco_decode_unit,
-            decodeErrorData: dco_decode_crypto_error,
-          ),
-          constMeta: kCrateApiStreamingStreamEncryptFileConstMeta,
-          argValues: [cipher, inputPath, outputPath, progressSink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return progressSink.stream;
-  }
-
-  TaskConstMeta get kCrateApiStreamingStreamEncryptFileConstMeta =>
-      const TaskConstMeta(
-        debugName: "stream_encrypt_file",
-        argNames: ["cipher", "inputPath", "outputPath", "progressSink"],
-      );
-
-  @override
   Stream<double> crateApiStreamingStreamHashFile({
     required HasherHandle hasher,
     required String filePath,
@@ -1513,6 +1284,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required List<int> key,
     required String algorithm,
     required BigInt capacityBytes,
+    required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1521,12 +1293,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           var arg1 = cst_encode_list_prim_u_8_loose(key);
           var arg2 = cst_encode_String(algorithm);
           var arg3 = cst_encode_u_64(capacityBytes);
+          var arg4 = cst_encode_unsafe_legacy_evfs_policy(unsafeLegacyPolicy);
           return wire.wire__crate__api__evfs__vault_create(
             port_,
             arg0,
             arg1,
             arg2,
             arg3,
+            arg4,
           );
         },
         codec: DcoCodec(
@@ -1535,7 +1309,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultCreateConstMeta,
-        argValues: [path, key, algorithm, capacityBytes],
+        argValues: [path, key, algorithm, capacityBytes, unsafeLegacyPolicy],
         apiImpl: this,
       ),
     );
@@ -1543,7 +1317,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiEvfsVaultCreateConstMeta => const TaskConstMeta(
     debugName: "vault_create",
-    argNames: ["path", "key", "algorithm", "capacityBytes"],
+    argNames: [
+      "path",
+      "key",
+      "algorithm",
+      "capacityBytes",
+      "unsafeLegacyPolicy",
+    ],
   );
 
   @override
@@ -1605,44 +1385,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<void> crateApiEvfsVaultExport({
-    required VaultHandle handle,
-    required List<int> wrappingKey,
-    required String exportPath,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          var arg0 =
-              cst_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle(
-                handle,
-              );
-          var arg1 = cst_encode_list_prim_u_8_loose(wrappingKey);
-          var arg2 = cst_encode_String(exportPath);
-          return wire.wire__crate__api__evfs__vault_export(
-            port_,
-            arg0,
-            arg1,
-            arg2,
-          );
-        },
-        codec: DcoCodec(
-          decodeSuccessData: dco_decode_unit,
-          decodeErrorData: dco_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultExportConstMeta,
-        argValues: [handle, wrappingKey, exportPath],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEvfsVaultExportConstMeta => const TaskConstMeta(
-    debugName: "vault_export",
-    argNames: ["handle", "wrappingKey", "exportPath"],
-  );
-
-  @override
   Future<void> crateApiEvfsVaultFlush({required VaultHandle handle}) {
     return handler.executeNormal(
       NormalTask(
@@ -1695,65 +1437,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "vault_health", argNames: ["handle"]);
 
   @override
-  Future<VaultHandle> crateApiEvfsVaultImport({
-    required String archivePath,
-    required List<int> wrappingKey,
-    required String destPath,
-    required List<int> newMasterKey,
-    required String algorithm,
-    required BigInt capacityBytes,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          var arg0 = cst_encode_String(archivePath);
-          var arg1 = cst_encode_list_prim_u_8_loose(wrappingKey);
-          var arg2 = cst_encode_String(destPath);
-          var arg3 = cst_encode_list_prim_u_8_loose(newMasterKey);
-          var arg4 = cst_encode_String(algorithm);
-          var arg5 = cst_encode_u_64(capacityBytes);
-          return wire.wire__crate__api__evfs__vault_import(
-            port_,
-            arg0,
-            arg1,
-            arg2,
-            arg3,
-            arg4,
-            arg5,
-          );
-        },
-        codec: DcoCodec(
-          decodeSuccessData:
-              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVaultHandle,
-          decodeErrorData: dco_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEvfsVaultImportConstMeta,
-        argValues: [
-          archivePath,
-          wrappingKey,
-          destPath,
-          newMasterKey,
-          algorithm,
-          capacityBytes,
-        ],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEvfsVaultImportConstMeta => const TaskConstMeta(
-    debugName: "vault_import",
-    argNames: [
-      "archivePath",
-      "wrappingKey",
-      "destPath",
-      "newMasterKey",
-      "algorithm",
-      "capacityBytes",
-    ],
-  );
-
-  @override
   Future<List<String>> crateApiEvfsVaultList({required VaultHandle handle}) {
     return handler.executeNormal(
       NormalTask(
@@ -1782,13 +1465,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<VaultHandle> crateApiEvfsVaultOpen({
     required String path,
     required List<int> key,
+    required UnsafeLegacyEvfsPolicy unsafeLegacyPolicy,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           var arg0 = cst_encode_String(path);
           var arg1 = cst_encode_list_prim_u_8_loose(key);
-          return wire.wire__crate__api__evfs__vault_open(port_, arg0, arg1);
+          var arg2 = cst_encode_unsafe_legacy_evfs_policy(unsafeLegacyPolicy);
+          return wire.wire__crate__api__evfs__vault_open(
+            port_,
+            arg0,
+            arg1,
+            arg2,
+          );
         },
         codec: DcoCodec(
           decodeSuccessData:
@@ -1796,14 +1486,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: dco_decode_crypto_error,
         ),
         constMeta: kCrateApiEvfsVaultOpenConstMeta,
-        argValues: [path, key],
+        argValues: [path, key, unsafeLegacyPolicy],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiEvfsVaultOpenConstMeta =>
-      const TaskConstMeta(debugName: "vault_open", argNames: ["path", "key"]);
+  TaskConstMeta get kCrateApiEvfsVaultOpenConstMeta => const TaskConstMeta(
+    debugName: "vault_open",
+    argNames: ["path", "key", "unsafeLegacyPolicy"],
+  );
 
   @override
   Future<SegmentReadResult> crateApiEvfsVaultRead({
@@ -2356,6 +2048,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_Argon2PolicyViolation(dco_decode_String(raw[1]));
       case 19:
         return CryptoError_Argon2VerificationBusy();
+      case 20:
+        return CryptoError_UnsafeLegacyFormatDenied();
+      case 21:
+        return CryptoError_DisabledFormat(dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
     }
@@ -2505,6 +2201,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  UnsafeLegacyEvfsPolicy dco_decode_unsafe_legacy_evfs_policy(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return UnsafeLegacyEvfsPolicy.values[raw as int];
   }
 
   @protected
@@ -2821,6 +2523,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return CryptoError_Argon2PolicyViolation(var_field0);
       case 19:
         return CryptoError_Argon2VerificationBusy();
+      case 20:
+        return CryptoError_UnsafeLegacyFormatDenied();
+      case 21:
+        var var_field0 = sse_decode_String(deserializer);
+        return CryptoError_DisabledFormat(var_field0);
       default:
         throw UnimplementedError('');
     }
@@ -3014,6 +2721,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  UnsafeLegacyEvfsPolicy sse_decode_unsafe_legacy_evfs_policy(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return UnsafeLegacyEvfsPolicy.values[inner];
   }
 
   @protected
@@ -3212,6 +2928,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void cst_encode_unit(void raw) {
     // Codec=Cst (C-struct based), see doc to use other codecs
     return raw;
+  }
+
+  @protected
+  int cst_encode_unsafe_legacy_evfs_policy(UnsafeLegacyEvfsPolicy raw) {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    return cst_encode_i_32(raw.index);
   }
 
   @protected
@@ -3518,6 +3240,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_String(field0, serializer);
       case CryptoError_Argon2VerificationBusy():
         sse_encode_i_32(19, serializer);
+      case CryptoError_UnsafeLegacyFormatDenied():
+        sse_encode_i_32(20, serializer);
+      case CryptoError_DisabledFormat(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_String(field0, serializer);
     }
   }
 
@@ -3704,6 +3431,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_unsafe_legacy_evfs_policy(
+    UnsafeLegacyEvfsPolicy self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected

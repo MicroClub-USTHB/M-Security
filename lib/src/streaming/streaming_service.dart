@@ -3,43 +3,46 @@ import 'dart:typed_data';
 import 'package:m_security/src/rust/api/streaming.dart' as rust_streaming;
 import 'package:m_security/src/rust/api/encryption.dart' as rust_encryption;
 import 'package:m_security/src/rust/api/hashing.dart' as rust_hashing;
+import 'package:m_security/src/rust/core/error.dart';
 
-/// Streaming file operations (encrypt, decrypt, hash).
+/// Streaming file operations.
 ///
 /// Processes large files in 64KB chunks to maintain constant RAM usage
 /// regardless of file size.
+///
+/// Only hashing is available in this release. The encrypted stream format
+/// leaves its header unauthenticated and binds a chunk to nothing but its index
+/// and finality, so a chunk from another stream encrypted under the same handle
+/// splices in. Its native entry points are gone and the methods below fail
+/// before touching either path.
 class StreamingService {
   StreamingService._();
 
-  /// Encrypt a file, writing the result to outputPath.
-  /// Returns a Stream of progress (0.0 to 1.0).
+  /// Disabled. Kept so existing code still compiles.
+  ///
+  /// Emits one disabled-format error before reading [inputPath] or creating
+  /// [outputPath].
   static Stream<double> encryptFile({
     required String inputPath,
     required String outputPath,
     required rust_encryption.CipherHandle cipher,
   }) {
-    return _guardedStream(
-      () => rust_streaming.streamEncryptFile(
-        cipher: cipher,
-        inputPath: inputPath,
-        outputPath: outputPath,
-      ),
+    return Stream<double>.error(
+      const CryptoError.disabledFormat('encrypted stream write'),
     );
   }
 
-  /// Decrypt a streaming-encrypted file.
-  /// Returns a Stream of progress (0.0 to 1.0).
+  /// Disabled. Kept so existing code still compiles.
+  ///
+  /// Emits one disabled-format error before reading [inputPath] or creating
+  /// [outputPath].
   static Stream<double> decryptFile({
     required String inputPath,
     required String outputPath,
     required rust_encryption.CipherHandle cipher,
   }) {
-    return _guardedStream(
-      () => rust_streaming.streamDecryptFile(
-        cipher: cipher,
-        inputPath: inputPath,
-        outputPath: outputPath,
-      ),
+    return Stream<double>.error(
+      const CryptoError.disabledFormat('encrypted stream read'),
     );
   }
 

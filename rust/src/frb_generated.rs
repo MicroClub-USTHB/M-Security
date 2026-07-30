@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1392838074;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1545310340;
 
 // Section: executor
 
@@ -846,209 +846,6 @@ fn wire__crate__api__compression__should_skip_compression_impl(
         },
     )
 }
-fn wire__crate__api__streaming__stream_compress_encrypt_file_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    cipher: impl CstDecode<
-        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>,
-    >,
-    compression: impl CstDecode<crate::api::compression::CompressionConfig>,
-    input_path: impl CstDecode<String>,
-    output_path: impl CstDecode<String>,
-    progress_sink: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "stream_compress_encrypt_file",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_cipher = cipher.cst_decode();
-            let api_compression = compression.cst_decode();
-            let api_input_path = input_path.cst_decode();
-            let api_output_path = output_path.cst_decode();
-            let api_progress_sink = progress_sink.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let mut api_cipher_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_cipher,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_cipher_guard = Some(api_cipher.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_cipher_guard = api_cipher_guard.unwrap();
-                    let output_ok = crate::api::streaming::stream_compress_encrypt_file(
-                        &*api_cipher_guard,
-                        api_compression,
-                        api_input_path,
-                        api_output_path,
-                        api_progress_sink,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__streaming__stream_decrypt_decompress_file_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    cipher: impl CstDecode<
-        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>,
-    >,
-    input_path: impl CstDecode<String>,
-    output_path: impl CstDecode<String>,
-    progress_sink: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "stream_decrypt_decompress_file",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_cipher = cipher.cst_decode();
-            let api_input_path = input_path.cst_decode();
-            let api_output_path = output_path.cst_decode();
-            let api_progress_sink = progress_sink.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let mut api_cipher_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_cipher,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_cipher_guard = Some(api_cipher.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_cipher_guard = api_cipher_guard.unwrap();
-                    let output_ok = crate::api::streaming::stream_decrypt_decompress_file(
-                        &*api_cipher_guard,
-                        api_input_path,
-                        api_output_path,
-                        api_progress_sink,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__streaming__stream_decrypt_file_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    cipher: impl CstDecode<
-        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>,
-    >,
-    input_path: impl CstDecode<String>,
-    output_path: impl CstDecode<String>,
-    progress_sink: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "stream_decrypt_file",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_cipher = cipher.cst_decode();
-            let api_input_path = input_path.cst_decode();
-            let api_output_path = output_path.cst_decode();
-            let api_progress_sink = progress_sink.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let mut api_cipher_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_cipher,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_cipher_guard = Some(api_cipher.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_cipher_guard = api_cipher_guard.unwrap();
-                    let output_ok = crate::api::streaming::stream_decrypt_file(
-                        &*api_cipher_guard,
-                        api_input_path,
-                        api_output_path,
-                        api_progress_sink,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__streaming__stream_encrypt_file_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    cipher: impl CstDecode<
-        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CipherHandle>>,
-    >,
-    input_path: impl CstDecode<String>,
-    output_path: impl CstDecode<String>,
-    progress_sink: impl CstDecode<StreamSink<f64, flutter_rust_bridge::for_generated::DcoCodec>>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "stream_encrypt_file",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_cipher = cipher.cst_decode();
-            let api_input_path = input_path.cst_decode();
-            let api_output_path = output_path.cst_decode();
-            let api_progress_sink = progress_sink.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let mut api_cipher_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_cipher,
-                                0,
-                                false,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_cipher_guard = Some(api_cipher.lockable_decode_sync_ref()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let api_cipher_guard = api_cipher_guard.unwrap();
-                    let output_ok = crate::api::streaming::stream_encrypt_file(
-                        &*api_cipher_guard,
-                        api_input_path,
-                        api_output_path,
-                        api_progress_sink,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__streaming__stream_hash_file_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     hasher: impl CstDecode<
@@ -1163,6 +960,7 @@ fn wire__crate__api__evfs__vault_create_impl(
     key: impl CstDecode<Vec<u8>>,
     algorithm: impl CstDecode<String>,
     capacity_bytes: impl CstDecode<u64>,
+    unsafe_legacy_policy: impl CstDecode<crate::api::evfs::types::UnsafeLegacyEvfsPolicy>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -1175,6 +973,7 @@ fn wire__crate__api__evfs__vault_create_impl(
             let api_key = key.cst_decode();
             let api_algorithm = algorithm.cst_decode();
             let api_capacity_bytes = capacity_bytes.cst_decode();
+            let api_unsafe_legacy_policy = unsafe_legacy_policy.cst_decode();
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let output_ok = crate::api::evfs::vault_create(
@@ -1182,6 +981,7 @@ fn wire__crate__api__evfs__vault_create_impl(
                         api_key,
                         api_algorithm,
                         api_capacity_bytes,
+                        api_unsafe_legacy_policy,
                     )?;
                     Ok(output_ok)
                 })())
@@ -1270,53 +1070,6 @@ fn wire__crate__api__evfs__vault_delete_impl(
         },
     )
 }
-fn wire__crate__api__evfs__vault_export_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    handle: impl CstDecode<
-        RustOpaqueNom<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VaultHandle>>,
-    >,
-    wrapping_key: impl CstDecode<Vec<u8>>,
-    export_path: impl CstDecode<String>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "vault_export",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_handle = handle.cst_decode();
-            let api_wrapping_key = wrapping_key.cst_decode();
-            let api_export_path = export_path.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let mut api_handle_guard = None;
-                    let decode_indices_ =
-                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
-                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
-                                &api_handle,
-                                0,
-                                true,
-                            ),
-                        ]);
-                    for i in decode_indices_ {
-                        match i {
-                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref_mut()),
-                            _ => unreachable!(),
-                        }
-                    }
-                    let mut api_handle_guard = api_handle_guard.unwrap();
-                    let output_ok = crate::api::evfs::vault_export(
-                        &mut *api_handle_guard,
-                        api_wrapping_key,
-                        api_export_path,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__evfs__vault_flush_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     handle: impl CstDecode<
@@ -1396,44 +1149,6 @@ fn wire__crate__api__evfs__vault_health_impl(
         },
     )
 }
-fn wire__crate__api__evfs__vault_import_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    archive_path: impl CstDecode<String>,
-    wrapping_key: impl CstDecode<Vec<u8>>,
-    dest_path: impl CstDecode<String>,
-    new_master_key: impl CstDecode<Vec<u8>>,
-    algorithm: impl CstDecode<String>,
-    capacity_bytes: impl CstDecode<u64>,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "vault_import",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let api_archive_path = archive_path.cst_decode();
-            let api_wrapping_key = wrapping_key.cst_decode();
-            let api_dest_path = dest_path.cst_decode();
-            let api_new_master_key = new_master_key.cst_decode();
-            let api_algorithm = algorithm.cst_decode();
-            let api_capacity_bytes = capacity_bytes.cst_decode();
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::vault_import(
-                        api_archive_path,
-                        api_wrapping_key,
-                        api_dest_path,
-                        api_new_master_key,
-                        api_algorithm,
-                        api_capacity_bytes,
-                    )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__evfs__vault_list_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     handle: impl CstDecode<
@@ -1478,6 +1193,7 @@ fn wire__crate__api__evfs__vault_open_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     path: impl CstDecode<String>,
     key: impl CstDecode<Vec<u8>>,
+    unsafe_legacy_policy: impl CstDecode<crate::api::evfs::types::UnsafeLegacyEvfsPolicy>,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
@@ -1488,9 +1204,11 @@ fn wire__crate__api__evfs__vault_open_impl(
         move || {
             let api_path = path.cst_decode();
             let api_key = key.cst_decode();
+            let api_unsafe_legacy_policy = unsafe_legacy_policy.cst_decode();
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::evfs::vault_open(api_path, api_key)?;
+                    let output_ok =
+                        crate::api::evfs::vault_open(api_path, api_key, api_unsafe_legacy_policy)?;
                     Ok(output_ok)
                 })())
             }
@@ -1913,6 +1631,16 @@ impl CstDecode<u8> for u8 {
         self
     }
 }
+impl CstDecode<crate::api::evfs::types::UnsafeLegacyEvfsPolicy> for i32 {
+    // Codec=Cst (C-struct based), see doc to use other codecs
+    fn cst_decode(self) -> crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
+        match self {
+            0 => crate::api::evfs::types::UnsafeLegacyEvfsPolicy::Deny,
+            1 => crate::api::evfs::types::UnsafeLegacyEvfsPolicy::AllowUnauthenticatedV1V2,
+            _ => unreachable!("Invalid variant for UnsafeLegacyEvfsPolicy: {}", self),
+        }
+    }
+}
 impl CstDecode<usize> for usize {
     // Codec=Cst (C-struct based), see doc to use other codecs
     fn cst_decode(self) -> usize {
@@ -2152,6 +1880,13 @@ impl SseDecode for crate::core::error::CryptoError {
             19 => {
                 return crate::core::error::CryptoError::Argon2VerificationBusy;
             }
+            20 => {
+                return crate::core::error::CryptoError::UnsafeLegacyFormatDenied;
+            }
+            21 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::core::error::CryptoError::DisabledFormat(var_field0);
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2356,6 +2091,18 @@ impl SseDecode for u8 {
 impl SseDecode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
+}
+
+impl SseDecode for crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::evfs::types::UnsafeLegacyEvfsPolicy::Deny,
+            1 => crate::api::evfs::types::UnsafeLegacyEvfsPolicy::AllowUnauthenticatedV1V2,
+            _ => unreachable!("Invalid variant for UnsafeLegacyEvfsPolicy: {}", inner),
+        };
+    }
 }
 
 impl SseDecode for usize {
@@ -2605,6 +2352,12 @@ impl flutter_rust_bridge::IntoDart for crate::core::error::CryptoError {
                 [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
             crate::core::error::CryptoError::Argon2VerificationBusy => [19.into_dart()].into_dart(),
+            crate::core::error::CryptoError::UnsafeLegacyFormatDenied => {
+                [20.into_dart()].into_dart()
+            }
+            crate::core::error::CryptoError::DisabledFormat(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2684,6 +2437,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::SegmentResult>
     for crate::api::evfs::types::SegmentResult
 {
     fn into_into_dart(self) -> crate::api::evfs::types::SegmentResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Deny => 0.into_dart(),
+            Self::AllowUnauthenticatedV1V2 => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::evfs::types::UnsafeLegacyEvfsPolicy
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::evfs::types::UnsafeLegacyEvfsPolicy>
+    for crate::api::evfs::types::UnsafeLegacyEvfsPolicy
+{
+    fn into_into_dart(self) -> crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
         self
     }
 }
@@ -2958,6 +2732,13 @@ impl SseEncode for crate::core::error::CryptoError {
             crate::core::error::CryptoError::Argon2VerificationBusy => {
                 <i32>::sse_encode(19, serializer);
             }
+            crate::core::error::CryptoError::UnsafeLegacyFormatDenied => {
+                <i32>::sse_encode(20, serializer);
+            }
+            crate::core::error::CryptoError::DisabledFormat(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
             _ => {
                 unimplemented!("");
             }
@@ -3127,6 +2908,22 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::evfs::types::UnsafeLegacyEvfsPolicy::Deny => 0,
+                crate::api::evfs::types::UnsafeLegacyEvfsPolicy::AllowUnauthenticatedV1V2 => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
 }
 
 impl SseEncode for usize {
@@ -3400,6 +3197,11 @@ mod io {
                     crate::core::error::CryptoError::Argon2PolicyViolation(ans.field0.cst_decode())
                 }
                 19 => crate::core::error::CryptoError::Argon2VerificationBusy,
+                20 => crate::core::error::CryptoError::UnsafeLegacyFormatDenied,
+                21 => {
+                    let ans = unsafe { self.kind.DisabledFormat };
+                    crate::core::error::CryptoError::DisabledFormat(ans.field0.cst_decode())
+                }
                 _ => unreachable!(),
             }
         }
@@ -3872,76 +3674,6 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__streaming__stream_compress_encrypt_file(
-        port_: i64,
-        cipher: usize,
-        compression: *mut wire_cst_compression_config,
-        input_path: *mut wire_cst_list_prim_u_8_strict,
-        output_path: *mut wire_cst_list_prim_u_8_strict,
-        progress_sink: *mut wire_cst_list_prim_u_8_strict,
-    ) {
-        wire__crate__api__streaming__stream_compress_encrypt_file_impl(
-            port_,
-            cipher,
-            compression,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__streaming__stream_decrypt_decompress_file(
-        port_: i64,
-        cipher: usize,
-        input_path: *mut wire_cst_list_prim_u_8_strict,
-        output_path: *mut wire_cst_list_prim_u_8_strict,
-        progress_sink: *mut wire_cst_list_prim_u_8_strict,
-    ) {
-        wire__crate__api__streaming__stream_decrypt_decompress_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__streaming__stream_decrypt_file(
-        port_: i64,
-        cipher: usize,
-        input_path: *mut wire_cst_list_prim_u_8_strict,
-        output_path: *mut wire_cst_list_prim_u_8_strict,
-        progress_sink: *mut wire_cst_list_prim_u_8_strict,
-    ) {
-        wire__crate__api__streaming__stream_decrypt_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__streaming__stream_encrypt_file(
-        port_: i64,
-        cipher: usize,
-        input_path: *mut wire_cst_list_prim_u_8_strict,
-        output_path: *mut wire_cst_list_prim_u_8_strict,
-        progress_sink: *mut wire_cst_list_prim_u_8_strict,
-    ) {
-        wire__crate__api__streaming__stream_encrypt_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__streaming__stream_hash_file(
         port_: i64,
         hasher: usize,
@@ -3974,8 +3706,16 @@ mod io {
         key: *mut wire_cst_list_prim_u_8_loose,
         algorithm: *mut wire_cst_list_prim_u_8_strict,
         capacity_bytes: u64,
+        unsafe_legacy_policy: i32,
     ) {
-        wire__crate__api__evfs__vault_create_impl(port_, path, key, algorithm, capacity_bytes)
+        wire__crate__api__evfs__vault_create_impl(
+            port_,
+            path,
+            key,
+            algorithm,
+            capacity_bytes,
+            unsafe_legacy_policy,
+        )
     }
 
     #[unsafe(no_mangle)]
@@ -3996,16 +3736,6 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_export(
-        port_: i64,
-        handle: usize,
-        wrapping_key: *mut wire_cst_list_prim_u_8_loose,
-        export_path: *mut wire_cst_list_prim_u_8_strict,
-    ) {
-        wire__crate__api__evfs__vault_export_impl(port_, handle, wrapping_key, export_path)
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_flush(
         port_: i64,
         handle: usize,
@@ -4022,27 +3752,6 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_import(
-        port_: i64,
-        archive_path: *mut wire_cst_list_prim_u_8_strict,
-        wrapping_key: *mut wire_cst_list_prim_u_8_loose,
-        dest_path: *mut wire_cst_list_prim_u_8_strict,
-        new_master_key: *mut wire_cst_list_prim_u_8_loose,
-        algorithm: *mut wire_cst_list_prim_u_8_strict,
-        capacity_bytes: u64,
-    ) {
-        wire__crate__api__evfs__vault_import_impl(
-            port_,
-            archive_path,
-            wrapping_key,
-            dest_path,
-            new_master_key,
-            algorithm,
-            capacity_bytes,
-        )
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__evfs__vault_list(
         port_: i64,
         handle: usize,
@@ -4055,8 +3764,9 @@ mod io {
         port_: i64,
         path: *mut wire_cst_list_prim_u_8_strict,
         key: *mut wire_cst_list_prim_u_8_loose,
+        unsafe_legacy_policy: i32,
     ) {
-        wire__crate__api__evfs__vault_open_impl(port_, path, key)
+        wire__crate__api__evfs__vault_open_impl(port_, path, key, unsafe_legacy_policy)
     }
 
     #[unsafe(no_mangle)]
@@ -4314,6 +4024,7 @@ mod io {
         ExportFailed: wire_cst_CryptoError_ExportFailed,
         ImportFailed: wire_cst_CryptoError_ImportFailed,
         Argon2PolicyViolation: wire_cst_CryptoError_Argon2PolicyViolation,
+        DisabledFormat: wire_cst_CryptoError_DisabledFormat,
         nil__: (),
     }
     #[repr(C)]
@@ -4391,6 +4102,11 @@ mod io {
     #[repr(C)]
     #[derive(Clone, Copy)]
     pub struct wire_cst_CryptoError_Argon2PolicyViolation {
+        field0: *mut wire_cst_list_prim_u_8_strict,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct wire_cst_CryptoError_DisabledFormat {
         field0: *mut wire_cst_list_prim_u_8_strict,
     }
     #[repr(C)]
@@ -4580,6 +4296,8 @@ mod web {
                     self_.get(1).cst_decode(),
                 ),
                 19 => crate::core::error::CryptoError::Argon2VerificationBusy,
+                20 => crate::core::error::CryptoError::UnsafeLegacyFormatDenied,
+                21 => crate::core::error::CryptoError::DisabledFormat(self_.get(1).cst_decode()),
                 _ => unreachable!(),
             }
         }
@@ -4947,6 +4665,14 @@ mod web {
             self.unchecked_into_f64() as _
         }
     }
+    impl CstDecode<crate::api::evfs::types::UnsafeLegacyEvfsPolicy>
+        for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue
+    {
+        // Codec=Cst (C-struct based), see doc to use other codecs
+        fn cst_decode(self) -> crate::api::evfs::types::UnsafeLegacyEvfsPolicy {
+            (self.unchecked_into_f64() as i32).cst_decode()
+        }
+    }
     impl CstDecode<usize> for flutter_rust_bridge::for_generated::wasm_bindgen::JsValue {
         // Codec=Cst (C-struct based), see doc to use other codecs
         fn cst_decode(self) -> usize {
@@ -5198,76 +4924,6 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn wire__crate__api__streaming__stream_compress_encrypt_file(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        cipher: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        compression: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        input_path: String,
-        output_path: String,
-        progress_sink: String,
-    ) {
-        wire__crate__api__streaming__stream_compress_encrypt_file_impl(
-            port_,
-            cipher,
-            compression,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn wire__crate__api__streaming__stream_decrypt_decompress_file(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        cipher: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        input_path: String,
-        output_path: String,
-        progress_sink: String,
-    ) {
-        wire__crate__api__streaming__stream_decrypt_decompress_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn wire__crate__api__streaming__stream_decrypt_file(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        cipher: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        input_path: String,
-        output_path: String,
-        progress_sink: String,
-    ) {
-        wire__crate__api__streaming__stream_decrypt_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn wire__crate__api__streaming__stream_encrypt_file(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        cipher: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        input_path: String,
-        output_path: String,
-        progress_sink: String,
-    ) {
-        wire__crate__api__streaming__stream_encrypt_file_impl(
-            port_,
-            cipher,
-            input_path,
-            output_path,
-            progress_sink,
-        )
-    }
-
-    #[wasm_bindgen]
     pub fn wire__crate__api__streaming__stream_hash_file(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         hasher: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
@@ -5300,8 +4956,16 @@ mod web {
         key: Box<[u8]>,
         algorithm: String,
         capacity_bytes: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
+        unsafe_legacy_policy: i32,
     ) {
-        wire__crate__api__evfs__vault_create_impl(port_, path, key, algorithm, capacity_bytes)
+        wire__crate__api__evfs__vault_create_impl(
+            port_,
+            path,
+            key,
+            algorithm,
+            capacity_bytes,
+            unsafe_legacy_policy,
+        )
     }
 
     #[wasm_bindgen]
@@ -5322,16 +4986,6 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn wire__crate__api__evfs__vault_export(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-        wrapping_key: Box<[u8]>,
-        export_path: String,
-    ) {
-        wire__crate__api__evfs__vault_export_impl(port_, handle, wrapping_key, export_path)
-    }
-
-    #[wasm_bindgen]
     pub fn wire__crate__api__evfs__vault_flush(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
@@ -5348,27 +5002,6 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn wire__crate__api__evfs__vault_import(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-        archive_path: String,
-        wrapping_key: Box<[u8]>,
-        dest_path: String,
-        new_master_key: Box<[u8]>,
-        algorithm: String,
-        capacity_bytes: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
-    ) {
-        wire__crate__api__evfs__vault_import_impl(
-            port_,
-            archive_path,
-            wrapping_key,
-            dest_path,
-            new_master_key,
-            algorithm,
-            capacity_bytes,
-        )
-    }
-
-    #[wasm_bindgen]
     pub fn wire__crate__api__evfs__vault_list(
         port_: flutter_rust_bridge::for_generated::MessagePort,
         handle: flutter_rust_bridge::for_generated::wasm_bindgen::JsValue,
@@ -5381,8 +5014,9 @@ mod web {
         port_: flutter_rust_bridge::for_generated::MessagePort,
         path: String,
         key: Box<[u8]>,
+        unsafe_legacy_policy: i32,
     ) {
-        wire__crate__api__evfs__vault_open_impl(port_, path, key)
+        wire__crate__api__evfs__vault_open_impl(port_, path, key, unsafe_legacy_policy)
     }
 
     #[wasm_bindgen]

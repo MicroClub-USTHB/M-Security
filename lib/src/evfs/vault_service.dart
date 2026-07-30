@@ -7,37 +7,58 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge.dart'
 import 'package:m_security/src/rust/api/evfs.dart' as rust_evfs;
 import 'package:m_security/src/rust/api/evfs/types.dart' as rust_types;
 import 'package:m_security/src/rust/api/compression.dart';
+import 'package:m_security/src/rust/core/error.dart';
 
 /// Encrypted Virtual File System — named segment storage in a .vault container.
 ///
 /// Compression is optional on write (pass [CompressionConfig]) and
 /// automatic on read (algorithm stored per-segment in the vault index).
+///
+/// The stored format derives its keys without a per-vault salt, repeats
+/// encryption nonces across vaults and copies, leaves its structural metadata
+/// unauthenticated and is not crash-atomic. [create] and [open] therefore
+/// refuse before they touch the path unless the caller passes
+/// [rust_types.UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2]. Opting in does
+/// not make an existing vault safe.
 class VaultService {
   VaultService._();
 
   /// Create a new vault file.
   ///
   /// [algorithm] must be "aes-256-gcm" or "chacha20-poly1305".
+  ///
+  /// Denied unless [unsafeLegacyPolicy] opts in.
   static Future<rust_types.VaultHandle> create({
     required String path,
     required Uint8List key,
     required String algorithm,
     required int capacityBytes,
+    rust_types.UnsafeLegacyEvfsPolicy unsafeLegacyPolicy =
+        rust_types.UnsafeLegacyEvfsPolicy.deny,
   }) {
     return rust_evfs.vaultCreate(
       path: path,
       key: key,
       algorithm: algorithm,
       capacityBytes: BigInt.from(capacityBytes),
+      unsafeLegacyPolicy: unsafeLegacyPolicy,
     );
   }
 
   /// Open an existing vault (runs WAL recovery if needed).
+  ///
+  /// Denied unless [unsafeLegacyPolicy] opts in.
   static Future<rust_types.VaultHandle> open({
     required String path,
     required Uint8List key,
+    rust_types.UnsafeLegacyEvfsPolicy unsafeLegacyPolicy =
+        rust_types.UnsafeLegacyEvfsPolicy.deny,
   }) {
-    return rust_evfs.vaultOpen(path: path, key: key);
+    return rust_evfs.vaultOpen(
+      path: path,
+      key: key,
+      unsafeLegacyPolicy: unsafeLegacyPolicy,
+    );
   }
 
   /// Write (or overwrite) a named segment.
@@ -287,25 +308,26 @@ class VaultService {
     return rust_evfs.vaultRotateKey(handle: handle, newKey: newKey);
   }
 
-  /// Export the vault to a portable encrypted archive (.mvex).
+  /// Disabled. Kept so existing code still compiles.
   ///
-  /// The archive is encrypted with a random ephemeral key wrapped by
-  /// [wrappingKey]. Share the wrapping key out-of-band for import.
+  /// The .mvex archive stores segment names, user metadata and content
+  /// checksums in the clear and its trailer is unkeyed and recomputable, so the
+  /// native entry point is gone and this fails before reading the vault or
+  /// creating [exportPath].
   static Future<void> export({
     required rust_types.VaultHandle handle,
     required Uint8List wrappingKey,
     required String exportPath,
   }) {
-    return rust_evfs.vaultExport(
-      handle: handle,
-      wrappingKey: wrappingKey,
-      exportPath: exportPath,
+    return Future<void>.error(
+      const CryptoError.disabledFormat('.mvex archive export'),
     );
   }
 
-  /// Import a vault from an encrypted archive (.mvex).
+  /// Disabled. Kept so existing code still compiles.
   ///
-  /// Creates a new vault at [destPath] re-encrypted under [newMasterKey].
+  /// See [export] for why the archive format is unreachable. This fails before
+  /// reading [archivePath] or creating anything at [destPath].
   static Future<rust_types.VaultHandle> importVault({
     required String archivePath,
     required Uint8List wrappingKey,
@@ -314,13 +336,8 @@ class VaultService {
     required String algorithm,
     required int capacityBytes,
   }) {
-    return rust_evfs.vaultImport(
-      archivePath: archivePath,
-      wrappingKey: wrappingKey,
-      destPath: destPath,
-      newMasterKey: newMasterKey,
-      algorithm: algorithm,
-      capacityBytes: BigInt.from(capacityBytes),
+    return Future<rust_types.VaultHandle>.error(
+      const CryptoError.disabledFormat('.mvex archive import'),
     );
   }
 

@@ -25,7 +25,12 @@ export 'src/rust/api/hashing.dart'
 export 'src/rust/api/compression.dart'
     show CompressionConfig, CompressionAlgorithm;
 export 'src/rust/api/evfs/types.dart'
-    show VaultHandle, DefragResult, VaultCapacityInfo, VaultHealthInfo;
+    show
+        VaultHandle,
+        DefragResult,
+        VaultCapacityInfo,
+        VaultHealthInfo,
+        UnsafeLegacyEvfsPolicy;
 export 'src/streaming/streaming_service.dart';
 export 'src/compression/compression_service.dart';
 export 'src/evfs/vault_service.dart';

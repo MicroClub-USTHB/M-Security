@@ -55,7 +55,7 @@ extension CryptoErrorPatterns on CryptoError {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult Function( CryptoError_VaultFull value)?  vaultFull,TResult Function( CryptoError_VaultLocked value)?  vaultLocked,TResult Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult Function( CryptoError_ExportFailed value)?  exportFailed,TResult Function( CryptoError_ImportFailed value)?  importFailed,TResult Function( CryptoError_Argon2PolicyViolation value)?  argon2PolicyViolation,TResult Function( CryptoError_Argon2VerificationBusy value)?  argon2VerificationBusy,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult Function( CryptoError_HashingFailed value)?  hashingFailed,TResult Function( CryptoError_KdfFailed value)?  kdfFailed,TResult Function( CryptoError_IoError value)?  ioError,TResult Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult Function( CryptoError_VaultFull value)?  vaultFull,TResult Function( CryptoError_VaultLocked value)?  vaultLocked,TResult Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult Function( CryptoError_ExportFailed value)?  exportFailed,TResult Function( CryptoError_ImportFailed value)?  importFailed,TResult Function( CryptoError_Argon2PolicyViolation value)?  argon2PolicyViolation,TResult Function( CryptoError_Argon2VerificationBusy value)?  argon2VerificationBusy,TResult Function( CryptoError_UnsafeLegacyFormatDenied value)?  unsafeLegacyFormatDenied,TResult Function( CryptoError_DisabledFormat value)?  disabledFormat,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -78,7 +78,9 @@ return keyRotationFailed(_that);case CryptoError_ExportFailed() when exportFaile
 return exportFailed(_that);case CryptoError_ImportFailed() when importFailed != null:
 return importFailed(_that);case CryptoError_Argon2PolicyViolation() when argon2PolicyViolation != null:
 return argon2PolicyViolation(_that);case CryptoError_Argon2VerificationBusy() when argon2VerificationBusy != null:
-return argon2VerificationBusy(_that);case _:
+return argon2VerificationBusy(_that);case CryptoError_UnsafeLegacyFormatDenied() when unsafeLegacyFormatDenied != null:
+return unsafeLegacyFormatDenied(_that);case CryptoError_DisabledFormat() when disabledFormat != null:
+return disabledFormat(_that);case _:
   return orElse();
 
 }
@@ -96,7 +98,7 @@ return argon2VerificationBusy(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,required TResult Function( CryptoError_CompressionFailed value)  compressionFailed,required TResult Function( CryptoError_AuthenticationFailed value)  authenticationFailed,required TResult Function( CryptoError_VaultFull value)  vaultFull,required TResult Function( CryptoError_VaultLocked value)  vaultLocked,required TResult Function( CryptoError_SegmentNotFound value)  segmentNotFound,required TResult Function( CryptoError_DuplicateSegment value)  duplicateSegment,required TResult Function( CryptoError_VaultCorrupted value)  vaultCorrupted,required TResult Function( CryptoError_KeyRotationFailed value)  keyRotationFailed,required TResult Function( CryptoError_ExportFailed value)  exportFailed,required TResult Function( CryptoError_ImportFailed value)  importFailed,required TResult Function( CryptoError_Argon2PolicyViolation value)  argon2PolicyViolation,required TResult Function( CryptoError_Argon2VerificationBusy value)  argon2VerificationBusy,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( CryptoError_InvalidKeyLength value)  invalidKeyLength,required TResult Function( CryptoError_InvalidNonce value)  invalidNonce,required TResult Function( CryptoError_EncryptionFailed value)  encryptionFailed,required TResult Function( CryptoError_DecryptionFailed value)  decryptionFailed,required TResult Function( CryptoError_HashingFailed value)  hashingFailed,required TResult Function( CryptoError_KdfFailed value)  kdfFailed,required TResult Function( CryptoError_IoError value)  ioError,required TResult Function( CryptoError_InvalidParameter value)  invalidParameter,required TResult Function( CryptoError_CompressionFailed value)  compressionFailed,required TResult Function( CryptoError_AuthenticationFailed value)  authenticationFailed,required TResult Function( CryptoError_VaultFull value)  vaultFull,required TResult Function( CryptoError_VaultLocked value)  vaultLocked,required TResult Function( CryptoError_SegmentNotFound value)  segmentNotFound,required TResult Function( CryptoError_DuplicateSegment value)  duplicateSegment,required TResult Function( CryptoError_VaultCorrupted value)  vaultCorrupted,required TResult Function( CryptoError_KeyRotationFailed value)  keyRotationFailed,required TResult Function( CryptoError_ExportFailed value)  exportFailed,required TResult Function( CryptoError_ImportFailed value)  importFailed,required TResult Function( CryptoError_Argon2PolicyViolation value)  argon2PolicyViolation,required TResult Function( CryptoError_Argon2VerificationBusy value)  argon2VerificationBusy,required TResult Function( CryptoError_UnsafeLegacyFormatDenied value)  unsafeLegacyFormatDenied,required TResult Function( CryptoError_DisabledFormat value)  disabledFormat,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
@@ -119,7 +121,9 @@ return keyRotationFailed(_that);case CryptoError_ExportFailed():
 return exportFailed(_that);case CryptoError_ImportFailed():
 return importFailed(_that);case CryptoError_Argon2PolicyViolation():
 return argon2PolicyViolation(_that);case CryptoError_Argon2VerificationBusy():
-return argon2VerificationBusy(_that);}
+return argon2VerificationBusy(_that);case CryptoError_UnsafeLegacyFormatDenied():
+return unsafeLegacyFormatDenied(_that);case CryptoError_DisabledFormat():
+return disabledFormat(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -133,7 +137,7 @@ return argon2VerificationBusy(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult? Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult? Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult? Function( CryptoError_VaultFull value)?  vaultFull,TResult? Function( CryptoError_VaultLocked value)?  vaultLocked,TResult? Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult? Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult? Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult? Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult? Function( CryptoError_ExportFailed value)?  exportFailed,TResult? Function( CryptoError_ImportFailed value)?  importFailed,TResult? Function( CryptoError_Argon2PolicyViolation value)?  argon2PolicyViolation,TResult? Function( CryptoError_Argon2VerificationBusy value)?  argon2VerificationBusy,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( CryptoError_InvalidKeyLength value)?  invalidKeyLength,TResult? Function( CryptoError_InvalidNonce value)?  invalidNonce,TResult? Function( CryptoError_EncryptionFailed value)?  encryptionFailed,TResult? Function( CryptoError_DecryptionFailed value)?  decryptionFailed,TResult? Function( CryptoError_HashingFailed value)?  hashingFailed,TResult? Function( CryptoError_KdfFailed value)?  kdfFailed,TResult? Function( CryptoError_IoError value)?  ioError,TResult? Function( CryptoError_InvalidParameter value)?  invalidParameter,TResult? Function( CryptoError_CompressionFailed value)?  compressionFailed,TResult? Function( CryptoError_AuthenticationFailed value)?  authenticationFailed,TResult? Function( CryptoError_VaultFull value)?  vaultFull,TResult? Function( CryptoError_VaultLocked value)?  vaultLocked,TResult? Function( CryptoError_SegmentNotFound value)?  segmentNotFound,TResult? Function( CryptoError_DuplicateSegment value)?  duplicateSegment,TResult? Function( CryptoError_VaultCorrupted value)?  vaultCorrupted,TResult? Function( CryptoError_KeyRotationFailed value)?  keyRotationFailed,TResult? Function( CryptoError_ExportFailed value)?  exportFailed,TResult? Function( CryptoError_ImportFailed value)?  importFailed,TResult? Function( CryptoError_Argon2PolicyViolation value)?  argon2PolicyViolation,TResult? Function( CryptoError_Argon2VerificationBusy value)?  argon2VerificationBusy,TResult? Function( CryptoError_UnsafeLegacyFormatDenied value)?  unsafeLegacyFormatDenied,TResult? Function( CryptoError_DisabledFormat value)?  disabledFormat,}){
 final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
@@ -156,7 +160,9 @@ return keyRotationFailed(_that);case CryptoError_ExportFailed() when exportFaile
 return exportFailed(_that);case CryptoError_ImportFailed() when importFailed != null:
 return importFailed(_that);case CryptoError_Argon2PolicyViolation() when argon2PolicyViolation != null:
 return argon2PolicyViolation(_that);case CryptoError_Argon2VerificationBusy() when argon2VerificationBusy != null:
-return argon2VerificationBusy(_that);case _:
+return argon2VerificationBusy(_that);case CryptoError_UnsafeLegacyFormatDenied() when unsafeLegacyFormatDenied != null:
+return unsafeLegacyFormatDenied(_that);case CryptoError_DisabledFormat() when disabledFormat != null:
+return disabledFormat(_that);case _:
   return null;
 
 }
@@ -173,7 +179,7 @@ return argon2VerificationBusy(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,TResult Function( String field0)?  compressionFailed,TResult Function()?  authenticationFailed,TResult Function( BigInt needed,  BigInt available)?  vaultFull,TResult Function()?  vaultLocked,TResult Function( String field0)?  segmentNotFound,TResult Function( String field0)?  duplicateSegment,TResult Function( String field0)?  vaultCorrupted,TResult Function( String field0)?  keyRotationFailed,TResult Function( String field0)?  exportFailed,TResult Function( String field0)?  importFailed,TResult Function( String field0)?  argon2PolicyViolation,TResult Function()?  argon2VerificationBusy,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult Function()?  invalidNonce,TResult Function( String field0)?  encryptionFailed,TResult Function()?  decryptionFailed,TResult Function( String field0)?  hashingFailed,TResult Function( String field0)?  kdfFailed,TResult Function( String field0)?  ioError,TResult Function( String field0)?  invalidParameter,TResult Function( String field0)?  compressionFailed,TResult Function()?  authenticationFailed,TResult Function( BigInt needed,  BigInt available)?  vaultFull,TResult Function()?  vaultLocked,TResult Function( String field0)?  segmentNotFound,TResult Function( String field0)?  duplicateSegment,TResult Function( String field0)?  vaultCorrupted,TResult Function( String field0)?  keyRotationFailed,TResult Function( String field0)?  exportFailed,TResult Function( String field0)?  importFailed,TResult Function( String field0)?  argon2PolicyViolation,TResult Function()?  argon2VerificationBusy,TResult Function()?  unsafeLegacyFormatDenied,TResult Function( String field0)?  disabledFormat,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -195,7 +201,9 @@ return keyRotationFailed(_that.field0);case CryptoError_ExportFailed() when expo
 return exportFailed(_that.field0);case CryptoError_ImportFailed() when importFailed != null:
 return importFailed(_that.field0);case CryptoError_Argon2PolicyViolation() when argon2PolicyViolation != null:
 return argon2PolicyViolation(_that.field0);case CryptoError_Argon2VerificationBusy() when argon2VerificationBusy != null:
-return argon2VerificationBusy();case _:
+return argon2VerificationBusy();case CryptoError_UnsafeLegacyFormatDenied() when unsafeLegacyFormatDenied != null:
+return unsafeLegacyFormatDenied();case CryptoError_DisabledFormat() when disabledFormat != null:
+return disabledFormat(_that.field0);case _:
   return orElse();
 
 }
@@ -213,7 +221,7 @@ return argon2VerificationBusy();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,required TResult Function( String field0)  compressionFailed,required TResult Function()  authenticationFailed,required TResult Function( BigInt needed,  BigInt available)  vaultFull,required TResult Function()  vaultLocked,required TResult Function( String field0)  segmentNotFound,required TResult Function( String field0)  duplicateSegment,required TResult Function( String field0)  vaultCorrupted,required TResult Function( String field0)  keyRotationFailed,required TResult Function( String field0)  exportFailed,required TResult Function( String field0)  importFailed,required TResult Function( String field0)  argon2PolicyViolation,required TResult Function()  argon2VerificationBusy,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt expected,  BigInt actual)  invalidKeyLength,required TResult Function()  invalidNonce,required TResult Function( String field0)  encryptionFailed,required TResult Function()  decryptionFailed,required TResult Function( String field0)  hashingFailed,required TResult Function( String field0)  kdfFailed,required TResult Function( String field0)  ioError,required TResult Function( String field0)  invalidParameter,required TResult Function( String field0)  compressionFailed,required TResult Function()  authenticationFailed,required TResult Function( BigInt needed,  BigInt available)  vaultFull,required TResult Function()  vaultLocked,required TResult Function( String field0)  segmentNotFound,required TResult Function( String field0)  duplicateSegment,required TResult Function( String field0)  vaultCorrupted,required TResult Function( String field0)  keyRotationFailed,required TResult Function( String field0)  exportFailed,required TResult Function( String field0)  importFailed,required TResult Function( String field0)  argon2PolicyViolation,required TResult Function()  argon2VerificationBusy,required TResult Function()  unsafeLegacyFormatDenied,required TResult Function( String field0)  disabledFormat,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength():
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce():
@@ -235,7 +243,9 @@ return keyRotationFailed(_that.field0);case CryptoError_ExportFailed():
 return exportFailed(_that.field0);case CryptoError_ImportFailed():
 return importFailed(_that.field0);case CryptoError_Argon2PolicyViolation():
 return argon2PolicyViolation(_that.field0);case CryptoError_Argon2VerificationBusy():
-return argon2VerificationBusy();}
+return argon2VerificationBusy();case CryptoError_UnsafeLegacyFormatDenied():
+return unsafeLegacyFormatDenied();case CryptoError_DisabledFormat():
+return disabledFormat(_that.field0);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -249,7 +259,7 @@ return argon2VerificationBusy();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,TResult? Function( String field0)?  compressionFailed,TResult? Function()?  authenticationFailed,TResult? Function( BigInt needed,  BigInt available)?  vaultFull,TResult? Function()?  vaultLocked,TResult? Function( String field0)?  segmentNotFound,TResult? Function( String field0)?  duplicateSegment,TResult? Function( String field0)?  vaultCorrupted,TResult? Function( String field0)?  keyRotationFailed,TResult? Function( String field0)?  exportFailed,TResult? Function( String field0)?  importFailed,TResult? Function( String field0)?  argon2PolicyViolation,TResult? Function()?  argon2VerificationBusy,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt expected,  BigInt actual)?  invalidKeyLength,TResult? Function()?  invalidNonce,TResult? Function( String field0)?  encryptionFailed,TResult? Function()?  decryptionFailed,TResult? Function( String field0)?  hashingFailed,TResult? Function( String field0)?  kdfFailed,TResult? Function( String field0)?  ioError,TResult? Function( String field0)?  invalidParameter,TResult? Function( String field0)?  compressionFailed,TResult? Function()?  authenticationFailed,TResult? Function( BigInt needed,  BigInt available)?  vaultFull,TResult? Function()?  vaultLocked,TResult? Function( String field0)?  segmentNotFound,TResult? Function( String field0)?  duplicateSegment,TResult? Function( String field0)?  vaultCorrupted,TResult? Function( String field0)?  keyRotationFailed,TResult? Function( String field0)?  exportFailed,TResult? Function( String field0)?  importFailed,TResult? Function( String field0)?  argon2PolicyViolation,TResult? Function()?  argon2VerificationBusy,TResult? Function()?  unsafeLegacyFormatDenied,TResult? Function( String field0)?  disabledFormat,}) {final _that = this;
 switch (_that) {
 case CryptoError_InvalidKeyLength() when invalidKeyLength != null:
 return invalidKeyLength(_that.expected,_that.actual);case CryptoError_InvalidNonce() when invalidNonce != null:
@@ -271,7 +281,9 @@ return keyRotationFailed(_that.field0);case CryptoError_ExportFailed() when expo
 return exportFailed(_that.field0);case CryptoError_ImportFailed() when importFailed != null:
 return importFailed(_that.field0);case CryptoError_Argon2PolicyViolation() when argon2PolicyViolation != null:
 return argon2PolicyViolation(_that.field0);case CryptoError_Argon2VerificationBusy() when argon2VerificationBusy != null:
-return argon2VerificationBusy();case _:
+return argon2VerificationBusy();case CryptoError_UnsafeLegacyFormatDenied() when unsafeLegacyFormatDenied != null:
+return unsafeLegacyFormatDenied();case CryptoError_DisabledFormat() when disabledFormat != null:
+return disabledFormat(_that.field0);case _:
   return null;
 
 }
@@ -1432,5 +1444,103 @@ String toString() {
 
 
 
+
+/// @nodoc
+
+
+class CryptoError_UnsafeLegacyFormatDenied extends CryptoError {
+  const CryptoError_UnsafeLegacyFormatDenied(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CryptoError_UnsafeLegacyFormatDenied);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CryptoError.unsafeLegacyFormatDenied()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class CryptoError_DisabledFormat extends CryptoError {
+  const CryptoError_DisabledFormat(this.field0): super._();
+  
+
+ final  String field0;
+
+/// Create a copy of CryptoError
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CryptoError_DisabledFormatCopyWith<CryptoError_DisabledFormat> get copyWith => _$CryptoError_DisabledFormatCopyWithImpl<CryptoError_DisabledFormat>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CryptoError_DisabledFormat&&(identical(other.field0, field0) || other.field0 == field0));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,field0);
+
+@override
+String toString() {
+  return 'CryptoError.disabledFormat(field0: $field0)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CryptoError_DisabledFormatCopyWith<$Res> implements $CryptoErrorCopyWith<$Res> {
+  factory $CryptoError_DisabledFormatCopyWith(CryptoError_DisabledFormat value, $Res Function(CryptoError_DisabledFormat) _then) = _$CryptoError_DisabledFormatCopyWithImpl;
+@useResult
+$Res call({
+ String field0
+});
+
+
+
+
+}
+/// @nodoc
+class _$CryptoError_DisabledFormatCopyWithImpl<$Res>
+    implements $CryptoError_DisabledFormatCopyWith<$Res> {
+  _$CryptoError_DisabledFormatCopyWithImpl(this._self, this._then);
+
+  final CryptoError_DisabledFormat _self;
+  final $Res Function(CryptoError_DisabledFormat) _then;
+
+/// Create a copy of CryptoError
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
+  return _then(CryptoError_DisabledFormat(
+null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
 
 // dart format on

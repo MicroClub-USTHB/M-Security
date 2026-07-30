@@ -138,7 +138,7 @@ fn test_rename_chacha20() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = vault_path(&dir);
     let mut handle =
-        vault_create(path, test_key(), "chacha20-poly1305".into(), 1_048_576).expect("create");
+        optin_create(path, test_key(), "chacha20-poly1305".into(), 1_048_576).expect("create");
 
     vault_write(
         &mut handle,

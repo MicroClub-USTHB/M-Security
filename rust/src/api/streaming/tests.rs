@@ -3,7 +3,7 @@
 use super::*;
 #[cfg(feature = "compression")]
 use crate::api::compression::CompressionAlgorithm;
-use crate::api::encryption::{create_aes256_gcm, generate_aes256_gcm_key};
+use crate::api::encryption::{create_aes256_gcm, generate_aes256_gcm_key, CipherHandle};
 use crate::api::encryption::{create_chacha20_poly1305, generate_chacha20_poly1305_key};
 use crate::core::streaming::{
     ChunkReader, EncryptedChunk, CHUNK_SIZE, ENCRYPTED_CHUNK_SIZE, STREAM_HEADER_SIZE,

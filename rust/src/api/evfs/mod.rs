@@ -26,6 +26,30 @@ use zeroize::{Zeroize, Zeroizing};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 
+/// Wipes the Rust-owned copy of a vault key when it goes out of scope.
+///
+/// It borrows rather than owns so a test can keep the allocation alive and read
+/// it back after the wipe instead of inspecting freed memory.
+struct KeyGuard<'a> {
+    key: &'a mut Vec<u8>,
+}
+
+impl<'a> KeyGuard<'a> {
+    fn new(key: &'a mut Vec<u8>) -> Self {
+        Self { key }
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        self.key
+    }
+}
+
+impl Drop for KeyGuard<'_> {
+    fn drop(&mut self) {
+        self.key.zeroize();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -33,17 +57,62 @@ use std::io::{Read, Seek, SeekFrom, Write};
 /// Create a new vault file at `path` with the given capacity.
 ///
 /// The algorithm string must be "aes-256-gcm" or "chacha20-poly1305".
+///
+/// The vault format this writes is the unauthenticated v1/v2 one, so the call
+/// is refused before `path` is touched unless `unsafe_legacy_policy` is
+/// `AllowUnauthenticatedV1V2`.
 #[cfg(feature = "compression")]
 pub fn vault_create(
     path: String,
     mut key: Vec<u8>,
     algorithm: String,
     capacity_bytes: u64,
+    unsafe_legacy_policy: UnsafeLegacyEvfsPolicy,
+) -> Result<VaultHandle, CryptoError> {
+    vault_create_guarded(
+        path,
+        &mut key,
+        algorithm,
+        capacity_bytes,
+        unsafe_legacy_policy,
+    )
+}
+
+/// Guards the caller's key, then makes the one policy decision for creation.
+///
+/// Takes the key by reference so a test owns the allocation and can read it back
+/// after the guard has wiped it. Derivation happens here so the guard drops
+/// before any of the work below, which keeps the caller's plaintext key out of
+/// memory for the whole preallocation.
+#[cfg(feature = "compression")]
+fn vault_create_guarded(
+    path: String,
+    key: &mut Vec<u8>,
+    algorithm: String,
+    capacity_bytes: u64,
+    unsafe_legacy_policy: UnsafeLegacyEvfsPolicy,
+) -> Result<VaultHandle, CryptoError> {
+    let (grant, keys) = {
+        let key = KeyGuard::new(key);
+        let grant = unsafe_legacy_policy.authorize()?;
+        (grant, segment::derive_vault_keys(key.as_bytes())?)
+    };
+
+    create_legacy_vault(path, keys, algorithm, capacity_bytes, grant)
+}
+
+/// Writes a v2 vault. Unreachable without a grant, so the signature is what
+/// keeps a default call out.
+#[cfg(feature = "compression")]
+fn create_legacy_vault(
+    path: String,
+    keys: segment::VaultKeys,
+    algorithm: String,
+    capacity_bytes: u64,
+    grant: LegacyFormatGrant,
 ) -> Result<VaultHandle, CryptoError> {
     let algo = parse_algorithm(&algorithm)?;
     let lock = VaultLock::acquire(&path)?;
-    let keys = segment::derive_vault_keys(&key)?;
-    key.zeroize();
     let index_pad_size = format::compute_index_size(capacity_bytes);
     let total_size = format::total_vault_size(capacity_bytes, index_pad_size)?;
 
@@ -89,12 +158,52 @@ pub fn vault_create(
         wal,
         lock,
         index_dirty: false,
+        grant,
     })
 }
 
 /// Open an existing vault, running WAL recovery if needed.
+///
+/// The stored format is the unauthenticated v1/v2 one, so the call is refused
+/// before `path` is touched unless `unsafe_legacy_policy` is
+/// `AllowUnauthenticatedV1V2`.
 #[cfg(feature = "compression")]
-pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoError> {
+pub fn vault_open(
+    path: String,
+    mut key: Vec<u8>,
+    unsafe_legacy_policy: UnsafeLegacyEvfsPolicy,
+) -> Result<VaultHandle, CryptoError> {
+    vault_open_guarded(path, &mut key, unsafe_legacy_policy)
+}
+
+/// Guards the caller's key, then makes the one policy decision for opening.
+///
+/// Takes the key by reference so a test owns the allocation and can read it back
+/// after the guard has wiped it. Derivation happens here so the guard drops
+/// before the recovery and index work below.
+#[cfg(feature = "compression")]
+fn vault_open_guarded(
+    path: String,
+    key: &mut Vec<u8>,
+    unsafe_legacy_policy: UnsafeLegacyEvfsPolicy,
+) -> Result<VaultHandle, CryptoError> {
+    let (grant, keys) = {
+        let key = KeyGuard::new(key);
+        let grant = unsafe_legacy_policy.authorize()?;
+        (grant, segment::derive_vault_keys(key.as_bytes())?)
+    };
+
+    open_legacy_vault(path, keys, grant)
+}
+
+/// Opens a v1/v2 vault, recovering the WAL if needed. Unreachable without a
+/// grant, so the signature is what keeps a default call out.
+#[cfg(feature = "compression")]
+fn open_legacy_vault(
+    path: String,
+    keys: segment::VaultKeys,
+    grant: LegacyFormatGrant,
+) -> Result<VaultHandle, CryptoError> {
     let lock = VaultLock::acquire(&path)?;
 
     // If a previous key rotation was interrupted after pre-allocation but before
@@ -122,10 +231,6 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
     let index_pad_size = header.index_size as usize;
     let enc_idx_size = format::encrypted_index_size(index_pad_size);
     let data_off = format::data_region_offset(index_pad_size);
-
-    // Derive keys
-    let keys = segment::derive_vault_keys(&key)?;
-    key.zeroize();
 
     // Compute capacity from file size
     let file_size = file.seek(SeekFrom::End(0))?;
@@ -255,6 +360,7 @@ pub fn vault_open(path: String, mut key: Vec<u8>) -> Result<VaultHandle, CryptoE
         wal,
         lock,
         index_dirty: false,
+        grant,
     })
 }
 
@@ -1446,9 +1552,25 @@ pub fn vault_defragment(handle: &mut VaultHandle) -> Result<DefragResult, Crypto
 
 /// Consumes old handle (keys invalidated after rename). Returns new handle with new keys.
 pub fn vault_rotate_key(
-    mut handle: VaultHandle,
+    handle: VaultHandle,
     mut new_key: Vec<u8>,
 ) -> Result<VaultHandle, CryptoError> {
+    vault_rotate_key_guarded(handle, &mut new_key)
+}
+
+/// Takes the key by reference so a test owns the allocation and can read it back
+/// after the guard has wiped it.
+fn vault_rotate_key_guarded(
+    mut handle: VaultHandle,
+    new_key: &mut Vec<u8>,
+) -> Result<VaultHandle, CryptoError> {
+    // Derived first and under the guard, so the caller's key is gone before the
+    // lock, the cleanup and the copy below, and on every early return.
+    let new_keys = {
+        let new_key = KeyGuard::new(new_key);
+        segment::derive_vault_keys(new_key.as_bytes())?
+    };
+
     // We acquire a lock on both the current vault and the new vault that we do the transition with.
     let temp_path = format!("{}.rotating", handle.path);
 
@@ -1460,19 +1582,7 @@ pub fn vault_rotate_key(
     }
 
     let temp_lock = VaultLock::acquire(&temp_path)?;
-
-    // Generate the new key
     let capacity = handle.index.capacity;
-    let new_keys = match segment::derive_vault_keys(&new_key) {
-        Ok(k) => {
-            new_key.zeroize();
-            k
-        }
-        Err(e) => {
-            new_key.zeroize();
-            return Err(e);
-        }
-    };
     // Re-calc the same constants.
     let index_pad_size = format::compute_index_size(capacity);
     let total_size = format::total_vault_size(capacity, index_pad_size)?;
@@ -1707,6 +1817,9 @@ pub fn vault_rotate_key(
         wal: new_wal,
         lock: new_lock,
         index_dirty: false,
+        // The rotated file is the same vault in the same format, so it stays
+        // covered by the opt-in that opened it rather than granting its own.
+        grant: handle.grant,
     })
 }
 
@@ -1717,8 +1830,13 @@ pub fn vault_rotate_key(
 /// AEAD-wrapped with the caller's `wrapping_key`.
 ///
 /// The vault is not modified by this operation.
-#[cfg(feature = "compression")]
-pub fn vault_export(
+///
+/// The archive structure it writes is plaintext and its trailer is unkeyed, so
+/// this release ships no way to reach it. It is compiled for the regression and
+/// fixture tests only, and the Dart method that used to call it now returns a
+/// disabled-format result instead.
+#[cfg(all(test, feature = "compression"))]
+fn vault_export(
     handle: &mut VaultHandle,
     wrapping_key: Vec<u8>,
     export_path: String,
@@ -1774,7 +1892,7 @@ pub fn vault_export(
 
 /// Write the archive contents. Separated from `vault_export` so the caller
 /// can delete the partial file if this returns an error.
-#[cfg(feature = "compression")]
+#[cfg(all(test, feature = "compression"))]
 fn vault_export_write(
     handle: &mut VaultHandle,
     export_key: &[u8],
@@ -1935,14 +2053,21 @@ pub fn vault_close(mut handle: VaultHandle) -> Result<(), CryptoError> {
 ///
 /// Archives with version < 2 do not carry per-segment metadata; imported
 /// segments from those archives will have empty metadata.
-#[cfg(feature = "compression")]
-pub fn vault_import(
+///
+/// The archive it parses has no authenticated structure, so this release ships
+/// no way to reach it. It is compiled for the regression and fixture tests only,
+/// and the Dart method that used to call it now returns a disabled-format
+/// result instead. The grant it takes is the destination vault's: import writes
+/// the same unauthenticated v1/v2 format that `vault_create` writes.
+#[cfg(all(test, feature = "compression"))]
+fn vault_import(
     archive_path: String,
     wrapping_key: Vec<u8>,
     dest_path: String,
-    new_master_key: Vec<u8>,
+    mut new_master_key: Vec<u8>,
     algorithm: String,
     capacity_bytes: u64,
+    grant: LegacyFormatGrant,
 ) -> Result<VaultHandle, CryptoError> {
     use crate::core::evfs::archive::{
         ArchiveHeader, ArchiveTrailer, SegmentRecord, ARCHIVE_HEADER_SIZE, ARCHIVE_TRAILER_SIZE,
@@ -1951,6 +2076,7 @@ pub fn vault_import(
 
     // Ensure automatic zeroization on drop
     let wrapping_key = Zeroizing::new(wrapping_key);
+    let new_master_key = KeyGuard::new(&mut new_master_key);
 
     let mut archive = File::open(&archive_path)
         .map_err(|e| CryptoError::IoError(format!("cannot open archive '{archive_path}': {e}")))?;
@@ -1992,8 +2118,14 @@ pub fn vault_import(
     );
 
     // Create new destination vault
-    let mut dest_vault =
-        vault_create(dest_path.clone(), new_master_key, algorithm, capacity_bytes)?;
+    let dest_keys = segment::derive_vault_keys(new_master_key.as_bytes())?;
+    let mut dest_vault = create_legacy_vault(
+        dest_path.clone(),
+        dest_keys,
+        algorithm,
+        capacity_bytes,
+        grant,
+    )?;
 
     // Process all segments inside a closure to handle atomic crash recovery cleanup
     let mut process_records = || -> Result<(), CryptoError> {

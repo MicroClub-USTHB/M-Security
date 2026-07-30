@@ -7,6 +7,11 @@ import 'package:m_security/src/rust/api/compression.dart';
 import 'package:m_security/src/rust/api/encryption.dart';
 import 'package:m_security/src/rust/frb_generated.dart';
 import 'package:m_security/src/evfs/vault_service.dart';
+import 'package:m_security/src/rust/api/evfs/types.dart';
+
+// Every vault here is the unauthenticated v1/v2 format, which VaultService
+// refuses unless the caller says so.
+const _unsafeLegacy = UnsafeLegacyEvfsPolicy.allowUnauthenticatedV1V2;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +37,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       //segment
@@ -42,7 +48,11 @@ void main() {
       await VaultService.close(handle: handle);
 
       //reopen vault
-      final reopened = await VaultService.open(path: path, key: key);
+      final reopened = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
 
       //read segment
       final result = await VaultService.read(
@@ -64,6 +74,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024, //5MB
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data1 = Uint8List.fromList(List.generate(1000, (i) => i % 256));
@@ -108,6 +119,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write original
@@ -139,6 +151,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       expect(
@@ -158,6 +171,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       //write a segment
@@ -189,6 +203,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024, // 1MB total
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       //Try to write 1MB of data (will fail because index takes space too)
@@ -221,12 +236,17 @@ void main() {
         key: keyA,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
       await VaultService.close(handle: handle);
 
       //try to open with keyB
       expect(
-        () async => await VaultService.open(path: path, key: keyB),
+        () async => await VaultService.open(
+          path: path,
+          key: keyB,
+          unsafeLegacyPolicy: _unsafeLegacy,
+        ),
         throwsA(isA<Exception>()),
       );
     });
@@ -240,18 +260,27 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       //try to open again without closing first
       expect(
-        () async => await VaultService.open(path: path, key: key),
+        () async => await VaultService.open(
+          path: path,
+          key: key,
+          unsafeLegacyPolicy: _unsafeLegacy,
+        ),
         throwsA(predicate((e) => e.toString().contains('vaultLocked'))),
       );
 
       await VaultService.close(handle: handle);
 
       //now it should work!
-      final handle2 = await VaultService.open(path: path, key: key);
+      final handle2 = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
       await VaultService.close(handle: handle2);
     });
 
@@ -264,6 +293,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
       //write 3 segments
       await VaultService.write(
@@ -299,6 +329,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: totalCapacity,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Check initial capacity
@@ -329,6 +360,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
       final data = Uint8List.fromList(List.generate(10000, (i) => i % 256));
       await VaultService.write(
@@ -352,6 +384,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final data = Uint8List.fromList(List.generate(10000, (i) => i % 256));
@@ -379,6 +412,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Fake JPEG data
@@ -414,6 +448,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 5 * 1024 * 1024, // 5MB
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Prepare test data (compressible - lots of repeats)
@@ -508,6 +543,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write data
@@ -526,7 +562,11 @@ void main() {
       await file.writeAsBytes(bytes);
 
       // Reopen
-      final reopened = await VaultService.open(path: path, key: key);
+      final reopened = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
 
       // Try to read → should detect tampering via checksum
       expect(
@@ -546,6 +586,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write some data
@@ -560,7 +601,11 @@ void main() {
       await VaultService.close(handle: handle);
 
       // Reopen (WAL recovery runs but finds everything committed)
-      final reopened = await VaultService.open(path: path, key: key);
+      final reopened = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
 
       // Verify data survived
       final result = await VaultService.read(
@@ -579,7 +624,11 @@ void main() {
 
       // Close and reopen again
       await VaultService.close(handle: reopened);
-      final reopened2 = await VaultService.open(path: path, key: key);
+      final reopened2 = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
 
       // Both segments should exist
       final result1 = await VaultService.read(
@@ -607,6 +656,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write A, B, C
@@ -655,6 +705,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final result = await VaultService.defragment(handle: handle);
@@ -675,6 +726,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 512 * 1024, // 512KB
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Grow to 1MB
@@ -702,6 +754,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024, // 1MB
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write small data
@@ -732,6 +785,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       // Write enough data to occupy space
@@ -761,6 +815,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: cap,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final h = await VaultService.health(handle: handle);
@@ -784,6 +839,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       await VaultService.write(
@@ -831,6 +887,7 @@ void main() {
         key: key,
         algorithm: 'aes-256-gcm',
         capacityBytes: 2 * 1024 * 1024,
+        unsafeLegacyPolicy: _unsafeLegacy,
       );
 
       final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -868,7 +925,11 @@ void main() {
       // 1. Try to decrypt primary index → fail (corrupted)
       // 2. Fall back to shadow index → succeed
       // 3. Restore primary index from shadow
-      final reopened = await VaultService.open(path: path, key: key);
+      final reopened = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
 
       // Read data - should work because shadow index has it
       final result = await VaultService.read(
@@ -884,7 +945,11 @@ void main() {
       await VaultService.close(handle: reopened);
 
       // Reopen again - primary should be restored now
-      final reopened2 = await VaultService.open(path: path, key: key);
+      final reopened2 = await VaultService.open(
+        path: path,
+        key: key,
+        unsafeLegacyPolicy: _unsafeLegacy,
+      );
       final result2 = await VaultService.read(
         handle: reopened2,
         name: 'important.bin',
@@ -909,6 +974,7 @@ void main() {
           algorithm: 'aes-256-gcm',
           capacityBytes:
               16 * 1024 * 1024, // 16 MB — enough for encrypted overhead
+          unsafeLegacyPolicy: _unsafeLegacy,
         );
 
         // Build source data in memory for the round-trip assertion.
@@ -957,6 +1023,7 @@ void main() {
           key: key,
           algorithm: 'aes-256-gcm',
           capacityBytes: 2 * 1024 * 1024,
+          unsafeLegacyPolicy: _unsafeLegacy,
         );
 
         final sourceData = Uint8List.fromList(
@@ -990,6 +1057,7 @@ void main() {
           key: key,
           algorithm: 'aes-256-gcm',
           capacityBytes: 2 * 1024 * 1024,
+          unsafeLegacyPolicy: _unsafeLegacy,
         );
 
         final sourceData = Uint8List.fromList(
@@ -1030,6 +1098,7 @@ void main() {
             key: key,
             algorithm: 'aes-256-gcm',
             capacityBytes: 4 * 1024 * 1024,
+            unsafeLegacyPolicy: _unsafeLegacy,
           );
 
           // Track write progress.
@@ -1086,6 +1155,7 @@ void main() {
           key: key,
           algorithm: 'aes-256-gcm',
           capacityBytes: 2 * 1024 * 1024,
+          unsafeLegacyPolicy: _unsafeLegacy,
         );
 
         // Underflow: stream emits fewer bytes than totalSize claims.
@@ -1128,6 +1198,7 @@ void main() {
           key: key,
           algorithm: 'aes-256-gcm',
           capacityBytes: 55 * 1024 * 1024,
+          unsafeLegacyPolicy: _unsafeLegacy,
         );
 
         // Generate stream lazily — never holds more than one 64 KB chunk in
