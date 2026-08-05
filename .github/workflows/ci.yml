@@ -63,6 +63,8 @@ jobs:
       - run: flutter pub get
       - name: Assemble the publish payload
         run: dart run tool/publication.dart --out "$RUNNER_TEMP/payload"
+      # --min-tests is the number of cases containment_test.dart declares, so it
+      # has to move with that file. It is a floor, not an assertion of equality.
       - name: Run the containment subset from a clean consumer
         run: >
           xvfb-run -a dart run tool/packaged_consumer.dart

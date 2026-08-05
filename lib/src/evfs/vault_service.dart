@@ -274,7 +274,8 @@ class VaultService {
 
   /// Defragment the vault: compact segments, coalesce free space.
   ///
-  /// Each segment move is WAL-protected for crash safety.
+  /// Each segment move is journalled, but the journal is the same one described
+  /// on this class, so a crash part way through is not a recoverable state.
   /// Returns a [DefragResult] with move count and bytes reclaimed.
   static Future<rust_types.DefragResult> defragment({
     required rust_types.VaultHandle handle,

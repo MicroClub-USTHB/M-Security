@@ -269,38 +269,44 @@ Keep commits atomic, with one logical change per commit.
 
 ```bash
 cd rust && cargo test
+cd rust && cargo test --release
 ```
 
-There are 79 unit tests covering all algorithms, including NIST and RFC test vectors (RFC 8439 for ChaCha20, RFC 5869 for HKDF).
+There are 466 unit tests covering all algorithms, including NIST and RFC test vectors (RFC 8439 for ChaCha20, RFC 5869 for HKDF). Both profiles run the same set.
 
-### Dart Integration Tests
+### Host Dart tests
 
-Integration tests require a running device or simulator. From the **project root**:
+```bash
+flutter test test/ tool/
+```
+
+Twenty cases, no device needed.
+
+### Integration tests
+
+One file executes, against the native library built from the assembled publish payload.
 
 ```bash
 cd example
-flutter test integration_test/aes_gcm_test.dart
-flutter test integration_test/chacha20_test.dart
-flutter test integration_test/hashing_test.dart
-flutter test integration_test/argon2_test.dart
-flutter test integration_test/hkdf_test.dart
+flutter test integration_test/containment_test.dart -d macos
 ```
 
-There are 44 integration tests across 5 files covering all features.
+The broader suites under `integration_test/` and `example/integration_test/` hold 98 and 120 declarations and are not wired into any runner. Adding a case to one of them does not make it run. Canonicalizing those trees is open work.
 
 ### CI Pipeline
 
 All pull requests must pass the CI pipeline (`.github/workflows/ci.yml`), which runs:
 
-| Job         | Runner          | What it does                                  |
-| ----------- | --------------- | --------------------------------------------- |
-| **Rust**    | `ubuntu-latest` | `cargo clippy -- -D warnings` + `cargo test`  |
-| **Dart**    | `ubuntu-latest` | FRB codegen + `build_runner` + `dart analyze` |
-| **Android** | `ubuntu-latest` | Full APK build (ARM64 + ARMv7, NDK r27c)      |
-| **iOS**     | `macos-latest`  | Simulator debug build (ARM64 + ARM64-sim)     |
-| **Linux**   | `ubuntu-latest` | Release build with GTK-3                      |
+| Job                   | Runner          | What it does                                             |
+| --------------------- | --------------- | -------------------------------------------------------- |
+| **Rust**              | `ubuntu-latest` | `cargo clippy -- -D warnings` + `cargo test`             |
+| **Dart**              | `ubuntu-latest` | FRB codegen + `build_runner` + `dart analyze` + host tests |
+| **Packaged consumer** | `ubuntu-latest` | Assembles the publish payload, builds a consumer outside the repository against it and runs the integration file |
+| **Android**           | `ubuntu-latest` | Release APK (ARM64 + ARMv7, NDK r27c)                    |
+| **Apple**             | `macos-latest`  | iOS simulator debug build and a macOS debug build         |
+| **Linux**             | `ubuntu-latest` | Release build with GTK-3                                 |
 
-The CI is triggered on pushes and PRs to `main` and `dev` branches.
+CI triggers on pushes to `main` and `dev`, and on pull requests to those and to `staging/**`. The last three jobs are skipped when the base is a `staging/` branch, so they first run at the promotion into `dev`. Adding a case to `containment_test.dart` means raising `--min-tests` in the workflow to match.
 
 ## Submitting a Pull Request
 

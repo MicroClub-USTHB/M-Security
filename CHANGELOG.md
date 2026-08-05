@@ -13,6 +13,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.3.6](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.6) - 2026-07-31
+
+### Added
+
+- `UnsafeLegacyEvfsPolicy` on `VaultService.create()` and `open()`, defaulting to `deny`. Both now fail with `unsafeLegacyFormatDenied` before touching the path; `allowUnauthenticatedV1V2` restores the previous behaviour and changes no stored bytes.
+- Argon2id verification limits. The password may be at most 1024 UTF-8 bytes and the hash must sit within published parameter bounds, both checked before any memory is reserved. One verification runs at a time.
+- `Argon2PolicyViolation`, `Argon2VerificationBusy`, `DisabledFormat` and `UnsafeLegacyFormatDenied` variants in `CryptoError`.
+- `example/integration_test/containment_test.dart`, executed in CI by a consumer built outside the repository against the assembled publish payload.
+
+### Removed
+
+- `.mvex` export and import, and encrypted or compressed `MSSE` stream files, from the Rust source, the generated bindings and the built library's exported symbols. The six Dart methods remain as stubs so existing code compiles, each emitting one `disabledFormat` error before touching input or output. Existing files in either format are unreadable by this release and unchanged on disk.
+- `createNoopEncryption()`, which aborted the host process when the testing feature was absent.
+
+### Changed
+
+- Flutter Rust Bridge pinned to exact 2.12.0 across the manifest, the crate, the CI generators and the committed bindings. A range let a fresh install resolve a runtime the bindings refuse.
+- Flutter floor raised to `>=3.38.9`, which carries Dart 3.10.8. The previous `>=3.3.0` could not coexist with the `^3.10.8` Dart constraint.
+
+### Fixed
+
+- Apple pod builds no longer dump the process environment into build logs.
+- The publish payload no longer carries local build output or example `Podfile.lock` files, and `rust/.gitignore` no longer hides the tracked `src/frb_generated.rs`.
+- README, CONTRIBUTING and RELEASE_GUIDE describe the current surface.
+
+### Security
+
+- The v1/v2 vault format derives its keys with no per-vault salt, so two vaults under one master key repeat their nonces. Segment nonces come from the segment index and generation rather than the CSPRNG, structural metadata is unauthenticated, and log replay can restore an index pointing at ciphertext a delete already erased. Opting in accepts all of it.
+
 ## [v0.3.5](https://github.com/MicroClub-USTHB/M-Security/releases/tag/v0.3.5) - 2026-04-10
 
 ### Added
