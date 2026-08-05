@@ -90,12 +90,21 @@ cd ..
 flutter pub get
 flutter_rust_bridge_codegen generate
 dart run build_runner build --delete-conflicting-outputs
-dart analyze lib/ integration_test/
+dart analyze lib/ integration_test/ test/ tool/ example/
+flutter test test/ tool/
 
-# Run integration tests (requires a device/simulator)
+# Run the integration file that actually executes (requires a device/simulator)
 cd example
-flutter test integration_test/
+flutter test integration_test/containment_test.dart -d macos
 cd ..
+
+# Assemble the publish payload and check it from outside the checkout.
+# Do this rather than running the dry run against the repository. The payload
+# is what ships, and only this proves no untracked local file influences it.
+dart run tool/publication.dart --out /tmp/payload
+dart run tool/packaged_consumer.dart --payload /tmp/payload --out /tmp/consumer \
+  --device macos --min-tests 20 --report /tmp/payload.consumer.json
+(cd /tmp/payload && dart pub publish --dry-run)
 ```
 
 ### 5. Open a Pull Request to `main`
@@ -210,21 +219,26 @@ git checkout -b hotfix/vX.Y.Z main
 
 ## Checklist
 
-Use this checklist when preparing a release:
+Use this checklist when preparing a release. The eight version locations move together, and missing one ships a package whose parts disagree.
 
 - [ ] Version updated in `pubspec.yaml`
 - [ ] Version updated in `rust/Cargo.toml`
+- [ ] Version updated in the `m_security` root entry of `rust/Cargo.lock` (`cargo update -p m_security`)
 - [ ] Version updated in `ios/m_security.podspec`
 - [ ] Version updated in `macos/m_security.podspec`
-- [ ] CHANGELOG.md updated with release date
-- [ ] All Rust tests pass (`cargo test`)
-- [ ] Clippy clean (`cargo clippy -- -D warnings`)
+- [ ] Version updated in the README installation snippet
+- [ ] Version updated in `example/lib/main.dart` (both the app title and the AppBar)
+- [ ] Version updated in `example/pubspec.lock` (`cd example && flutter pub get`)
+- [ ] CHANGELOG.md has a heading naming this version, otherwise pub warns and the payload assembler fails
+- [ ] All Rust tests pass in both profiles (`cargo test`, `cargo test --release`)
+- [ ] Clippy clean (`cargo clippy --all-targets -- -D warnings`)
 - [ ] FRB codegen runs cleanly (`flutter_rust_bridge_codegen generate`)
 - [ ] Dart analysis clean (`dart analyze`)
-- [ ] Integration tests pass
+- [ ] Host Dart tests pass (`flutter test test/ tool/`)
+- [ ] The packaged consumer reports a nonzero executed count and a clean symbol scan
+- [ ] `dart pub publish --dry-run` succeeds from the assembled payload, not from the checkout
 - [ ] CI pipeline passes on the PR
 - [ ] PR merged to `main`
-- [ ] Dry-run publish passes (`dart pub publish --dry-run`)
 - [ ] Git tag created and pushed
 - [ ] GitHub Release created
 - [ ] Published to pub.dev (`dart pub publish`)

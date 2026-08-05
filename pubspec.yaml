@@ -1,8 +1,8 @@
 name: m_security
 description: >-
   A native Rust cryptographic SDK for Flutter via FFI. AES-256-GCM, ChaCha20-Poly1305,
-  BLAKE3, SHA-3, Argon2id, HKDF, streaming encryption, and encrypted virtual file system.
-version: 0.3.5
+  BLAKE3, SHA-3, Argon2id, HKDF, file hashing, and an encrypted virtual file system.
+version: 0.3.6
 homepage: https://github.com/MicroClub-USTHB/M-Security
 repository: https://github.com/MicroClub-USTHB/M-Security
 issue_tracker: https://github.com/MicroClub-USTHB/M-Security/issues
@@ -15,7 +15,7 @@ topics:
 
 environment:
   sdk: ^3.10.8
-  flutter: '>=3.3.0'
+  flutter: '>=3.38.9'
 
 dependencies:
   collection: ^1.18.0
