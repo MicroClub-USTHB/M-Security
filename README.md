@@ -78,7 +78,7 @@ M-Security compiles Rust code during the Flutter build. You need:
   | Linux       | `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev` |
   | Windows     | Visual Studio Build Tools + LLVM                              |
 
-Rust compilation is handled automatically by [Cargokit](https://github.com/nickhudson/cargokit) during `flutter build` / `flutter run`.
+Rust compilation is handled automatically by a [build hook](https://dart.dev/tools/hooks) ([native_toolchain_rust](https://pub.dev/packages/native_toolchain_rust)) during `flutter build` / `flutter run`. You need [rustup](https://rustup.rs) installed; the pinned toolchain in `rust/rust-toolchain.toml` is downloaded on first build. Requires Flutter 3.38+.
 
 ## Getting Started
 
