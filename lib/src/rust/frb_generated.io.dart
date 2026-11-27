@@ -5,8 +5,6 @@
 
 import 'api/compression.dart';
 import 'api/encryption.dart';
-import 'api/encryption/aes_gcm.dart';
-import 'api/encryption/chacha20.dart';
 import 'api/evfs.dart';
 import 'api/evfs/types.dart';
 import 'api/hashing.dart';
@@ -1513,18 +1511,6 @@ class RustLibWire implements BaseWire {
       _wire__crate__api__encryption__generate_aes256_gcm_keyPtr
           .asFunction<void Function(int)>();
 
-  void wire__crate__api__encryption__aes_gcm__generate_aes_key(int port_) {
-    return _wire__crate__api__encryption__aes_gcm__generate_aes_key(port_);
-  }
-
-  late final _wire__crate__api__encryption__aes_gcm__generate_aes_keyPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-        'frbgen_m_security_wire__crate__api__encryption__aes_gcm__generate_aes_key',
-      );
-  late final _wire__crate__api__encryption__aes_gcm__generate_aes_key =
-      _wire__crate__api__encryption__aes_gcm__generate_aes_keyPtr
-          .asFunction<void Function(int)>();
-
   void wire__crate__api__encryption__generate_chacha20_poly1305_key(int port_) {
     return _wire__crate__api__encryption__generate_chacha20_poly1305_key(port_);
   }
@@ -1535,18 +1521,6 @@ class RustLibWire implements BaseWire {
       );
   late final _wire__crate__api__encryption__generate_chacha20_poly1305_key =
       _wire__crate__api__encryption__generate_chacha20_poly1305_keyPtr
-          .asFunction<void Function(int)>();
-
-  void wire__crate__api__encryption__chacha20__generate_chacha_key(int port_) {
-    return _wire__crate__api__encryption__chacha20__generate_chacha_key(port_);
-  }
-
-  late final _wire__crate__api__encryption__chacha20__generate_chacha_keyPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-        'frbgen_m_security_wire__crate__api__encryption__chacha20__generate_chacha_key',
-      );
-  late final _wire__crate__api__encryption__chacha20__generate_chacha_key =
-      _wire__crate__api__encryption__chacha20__generate_chacha_keyPtr
           .asFunction<void Function(int)>();
 
   void wire__crate__api__hashing__hasher_algorithm_id(int port_, int handle) {

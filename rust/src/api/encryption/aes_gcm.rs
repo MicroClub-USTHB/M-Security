@@ -12,7 +12,7 @@ use crate::core::rng::generate_nonce;
 use crate::core::secret::SecretBuffer;
 use crate::core::traits::Encryption;
 
-const KEY_LEN: usize = 32;
+pub(crate) const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 12;
 const TAG_LEN: usize = 16;
 
@@ -86,17 +86,13 @@ impl Encryption for Aes256GcmCipher {
     }
 }
 
-/// Generate a random 32-byte AES-256 key.
-pub fn generate_aes_key() -> Result<Vec<u8>, CryptoError> {
-    crate::core::rng::generate_random_bytes(KEY_LEN)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::encryption::generate_aes256_gcm_key;
 
     fn make_key() -> Vec<u8> {
-        generate_aes_key().expect("key gen failed")
+        generate_aes256_gcm_key().expect("key gen failed")
     }
 
     fn hex(s: &str) -> Vec<u8> {
@@ -189,15 +185,15 @@ mod tests {
     }
 
     #[test]
-    fn generate_aes_key_returns_32_bytes() {
-        let key = generate_aes_key().expect("key gen");
+    fn generate_aes256_gcm_key_returns_32_bytes() {
+        let key = generate_aes256_gcm_key().expect("key gen");
         assert_eq!(key.len(), 32);
     }
 
     #[test]
-    fn generate_aes_key_is_random() {
-        let k1 = generate_aes_key().expect("k1");
-        let k2 = generate_aes_key().expect("k2");
+    fn generate_aes256_gcm_key_is_random() {
+        let k1 = generate_aes256_gcm_key().expect("k1");
+        let k2 = generate_aes256_gcm_key().expect("k2");
         assert_ne!(k1, k2);
     }
 

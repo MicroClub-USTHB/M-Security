@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 15652661;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1568908497;
 
 // Section: executor
 
@@ -531,25 +531,6 @@ fn wire__crate__api__encryption__generate_aes256_gcm_key_impl(
         },
     )
 }
-fn wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "generate_aes_key",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::encryption::aes_gcm::generate_aes_key()?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
 ) {
@@ -563,25 +544,6 @@ fn wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(
             move |context| {
                 transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
                     let output_ok = crate::api::encryption::generate_chacha20_poly1305_key()?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__encryption__chacha20__generate_chacha_key_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::DcoCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "generate_chacha_key",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            move |context| {
-                transform_result_dco::<_, _, crate::core::error::CryptoError>((move || {
-                    let output_ok = crate::api::encryption::chacha20::generate_chacha_key()?;
                     Ok(output_ok)
                 })())
             }
@@ -3778,24 +3740,10 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__encryption__aes_gcm__generate_aes_key(
-        port_: i64,
-    ) {
-        wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(port_)
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_m_security_wire__crate__api__encryption__generate_chacha20_poly1305_key(
         port_: i64,
     ) {
         wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(port_)
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_m_security_wire__crate__api__encryption__chacha20__generate_chacha_key(
-        port_: i64,
-    ) {
-        wire__crate__api__encryption__chacha20__generate_chacha_key_impl(port_)
     }
 
     #[unsafe(no_mangle)]
@@ -5101,24 +5049,10 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn wire__crate__api__encryption__aes_gcm__generate_aes_key(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-    ) {
-        wire__crate__api__encryption__aes_gcm__generate_aes_key_impl(port_)
-    }
-
-    #[wasm_bindgen]
     pub fn wire__crate__api__encryption__generate_chacha20_poly1305_key(
         port_: flutter_rust_bridge::for_generated::MessagePort,
     ) {
         wire__crate__api__encryption__generate_chacha20_poly1305_key_impl(port_)
-    }
-
-    #[wasm_bindgen]
-    pub fn wire__crate__api__encryption__chacha20__generate_chacha_key(
-        port_: flutter_rust_bridge::for_generated::MessagePort,
-    ) {
-        wire__crate__api__encryption__chacha20__generate_chacha_key_impl(port_)
     }
 
     #[wasm_bindgen]

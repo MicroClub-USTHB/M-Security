@@ -63,7 +63,7 @@ pub fn create_aes256_gcm(key: Vec<u8>) -> Result<CipherHandle, CryptoError> {
 
 /// Generate a random 32-byte key for AES-256-GCM.
 pub fn generate_aes256_gcm_key() -> Result<Vec<u8>, CryptoError> {
-    aes_gcm::generate_aes_key()
+    crate::core::rng::generate_random_bytes(aes_gcm::KEY_LEN)
 }
 
 /// Create a ChaCha20-Poly1305 cipher handle from a 32-byte key.
@@ -74,7 +74,7 @@ pub fn create_chacha20_poly1305(key: Vec<u8>) -> Result<CipherHandle, CryptoErro
 
 /// Generate a random 32-byte key for ChaCha20-Poly1305.
 pub fn generate_chacha20_poly1305_key() -> Result<Vec<u8>, CryptoError> {
-    chacha20::generate_chacha_key()
+    crate::core::rng::generate_random_bytes(chacha20::KEY_LEN)
 }
 
 /// Encrypt plaintext using the given cipher handle.
