@@ -8,8 +8,6 @@
 
 import 'api/compression.dart';
 import 'api/encryption.dart';
-import 'api/encryption/aes_gcm.dart';
-import 'api/encryption/chacha20.dart';
 import 'api/evfs.dart';
 import 'api/evfs/types.dart';
 import 'api/hashing.dart';
@@ -1121,20 +1119,9 @@ class RustLibWire implements BaseWire {
     NativePortType port_,
   ) => wasmModule.wire__crate__api__encryption__generate_aes256_gcm_key(port_);
 
-  void wire__crate__api__encryption__aes_gcm__generate_aes_key(
-    NativePortType port_,
-  ) =>
-      wasmModule.wire__crate__api__encryption__aes_gcm__generate_aes_key(port_);
-
   void wire__crate__api__encryption__generate_chacha20_poly1305_key(
     NativePortType port_,
   ) => wasmModule.wire__crate__api__encryption__generate_chacha20_poly1305_key(
-    port_,
-  );
-
-  void wire__crate__api__encryption__chacha20__generate_chacha_key(
-    NativePortType port_,
-  ) => wasmModule.wire__crate__api__encryption__chacha20__generate_chacha_key(
     port_,
   );
 
@@ -1590,15 +1577,7 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
     NativePortType port_,
   );
 
-  external void wire__crate__api__encryption__aes_gcm__generate_aes_key(
-    NativePortType port_,
-  );
-
   external void wire__crate__api__encryption__generate_chacha20_poly1305_key(
-    NativePortType port_,
-  );
-
-  external void wire__crate__api__encryption__chacha20__generate_chacha_key(
     NativePortType port_,
   );
 

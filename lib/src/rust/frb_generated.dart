@@ -5,8 +5,6 @@
 
 import 'api/compression.dart';
 import 'api/encryption.dart';
-import 'api/encryption/aes_gcm.dart';
-import 'api/encryption/chacha20.dart';
 import 'api/evfs.dart';
 import 'api/evfs/types.dart';
 import 'api/hashing.dart';
@@ -74,7 +72,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 15652661;
+  int get rustContentHash => 1568908497;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -157,11 +155,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<Uint8List> crateApiEncryptionGenerateAes256GcmKey();
 
-  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey();
-
   Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key();
-
-  Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey();
 
   Future<String> crateApiHashingHasherAlgorithmId({
     required HasherHandle handle,
@@ -904,29 +898,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "generate_aes256_gcm_key", argNames: []);
 
   @override
-  Future<Uint8List> crateApiEncryptionAesGcmGenerateAesKey() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          return wire.wire__crate__api__encryption__aes_gcm__generate_aes_key(
-            port_,
-          );
-        },
-        codec: DcoCodec(
-          decodeSuccessData: dco_decode_list_prim_u_8_strict,
-          decodeErrorData: dco_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionAesGcmGenerateAesKeyConstMeta =>
-      const TaskConstMeta(debugName: "generate_aes_key", argNames: []);
-
-  @override
   Future<Uint8List> crateApiEncryptionGenerateChacha20Poly1305Key() {
     return handler.executeNormal(
       NormalTask(
@@ -952,30 +923,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         debugName: "generate_chacha20_poly1305_key",
         argNames: [],
       );
-
-  @override
-  Future<Uint8List> crateApiEncryptionChacha20GenerateChachaKey() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          return wire
-              .wire__crate__api__encryption__chacha20__generate_chacha_key(
-                port_,
-              );
-        },
-        codec: DcoCodec(
-          decodeSuccessData: dco_decode_list_prim_u_8_strict,
-          decodeErrorData: dco_decode_crypto_error,
-        ),
-        constMeta: kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiEncryptionChacha20GenerateChachaKeyConstMeta =>
-      const TaskConstMeta(debugName: "generate_chacha_key", argNames: []);
 
   @override
   Future<String> crateApiHashingHasherAlgorithmId({

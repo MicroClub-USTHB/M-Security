@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:m_security/src/encryption/aes_gcm.dart';
-import 'package:m_security/src/rust/api/encryption/aes_gcm.dart' as rust;
+import 'package:m_security/src/rust/api/encryption.dart' as rust;
 import 'package:m_security/src/rust/frb_generated.dart';
 
 void main() {
@@ -67,7 +67,7 @@ void main() {
     });
 
     test('key generation returns 32 bytes', () async {
-      final key = await rust.generateAesKey();
+      final key = await rust.generateAes256GcmKey();
       expect(key.length, equals(32));
     });
 
