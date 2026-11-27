@@ -10,7 +10,7 @@
 *.ipr
 *.iws
 
-# Exclude Rust source and build artifacts (compiled via cargokit at build time)
+# Exclude Rust source and build artifacts (compiled by hook/build.dart at build time)
 rust/target/
 
 # Exclude example build artifacts
@@ -19,8 +19,5 @@ example/.dart_tool/
 example/android/.gradle/
 example/ios/Pods/
 example/macos/Pods/
-
-# Exclude cargokit build artifacts
-cargokit/build_tool/.dart_tool/
 
 # Do NOT exclude lib/src/rust/ — these generated files are needed by consumers
